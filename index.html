@@ -51,6 +51,13 @@
   .mal-pill-btn:hover { background: var(--mal-paper); border-color: var(--mal-primary-3); transform: translateY(-1px); }
   /* Persona card animation */
   .mal-persona-card { animation: mal-fade-up .5s ease-out backwards; }
+  /* Cursor blink for demo-mode auto-typing */
+  @keyframes mal-cursor-blink { from, to { opacity: 1; } 50% { opacity: 0; } }
+  /* Toast pop for demo-mode notifications */
+  @keyframes mal-toast-pop {
+    0% { opacity: 0; transform: translateY(-12px) scale(.96); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
   /* Mobile fluid container — no iPhone bezel under 720px */
   @media (max-width: 720px) {
     .mal-app-fluid { padding: 0 !important; }
@@ -81,6 +88,7 @@
 <script src="mal/i18n.js"></script>
 <script src="mal/supabase-client.js"></script>
 <script src="mal/session-store.js"></script>
+<script src="mal/autopilot.js"></script>
 
 <!-- Mal design system + screens -->
 <script type="text/babel" src="mal/icons.jsx"></script>
@@ -93,6 +101,7 @@
 <script type="text/babel" src="mal/screens-buyer-extend.jsx"></script>
 <script type="text/babel" src="mal/screens-others.jsx"></script>
 <script type="text/babel" src="mal/persona-picker.jsx"></script>
+<script type="text/babel" src="mal/screens-demo-mode.jsx"></script>
 
 <script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
@@ -136,7 +145,7 @@ function useSavedToast() {
 // ----------------------------------------------------------------------------
 // AppShell — top bar + frame for the picked persona
 // ----------------------------------------------------------------------------
-function AppShell({ persona, lang, setLang, onHome, onSwitchPersona, isMobile }) {
+function AppShell({ persona, initialRoute = 'home', lang, setLang, onHome, onSwitchPersona, isMobile }) {
   // Buyer + Supplier are mobile-first apps; others are desktop-first
   const personaPrefersMobile = persona === 'buyer' || persona === 'supplier' || persona === 'anchorSup';
   const [viewport, setViewport] = useState(isMobile ? 'mobile' : (personaPrefersMobile ? 'mobile' : 'desktop'));
@@ -198,7 +207,7 @@ function AppShell({ persona, lang, setLang, onHome, onSwitchPersona, isMobile })
       {isMobile ? (
         // Full-bleed on mobile — drop the iPhone bezel; embed=true means the
         // PrototypeChrome stays out and we render PersonaApp directly.
-        <FullBleedMobileApp persona={persona} lang={lang} />
+        <FullBleedMobileApp persona={persona} lang={lang} initialRoute={initialRoute} />
       ) : (
         <div className="mal-app-fluid" style={{ padding: 24 }}>
           <MalPrototype embed
@@ -207,7 +216,7 @@ function AppShell({ persona, lang, setLang, onHome, onSwitchPersona, isMobile })
                         initialLang={lang}
                         initialTheme={theme}
                         initialDensity="cozy"
-                        initialRoute="home" />
+                        initialRoute={initialRoute} />
         </div>
       )}
     </div>
@@ -215,8 +224,8 @@ function AppShell({ persona, lang, setLang, onHome, onSwitchPersona, isMobile })
 }
 
 // Renders the picked persona app full-bleed on small screens (no 390px bezel).
-function FullBleedMobileApp({ persona, lang }) {
-  const [route, setRoute] = useState('home');
+function FullBleedMobileApp({ persona, lang, initialRoute = 'home' }) {
+  const [route, setRoute] = useState(initialRoute);
   // Persist persona/lang on first mount of an app
   useEffect(() => {
     if (window.MalSession) window.MalSession.setMeta(persona, lang);
@@ -247,8 +256,9 @@ const PERSONA_DETAILS_LOCAL = {
 // Root — landing → picker → app
 // ----------------------------------------------------------------------------
 function Root() {
-  const [view, setView] = useState('landing');     // 'landing' | 'picker' | 'app'
+  const [view, setView] = useState('landing');     // 'landing' | 'picker' | 'app' | 'demo'
   const [persona, setPersona] = useState(null);
+  const [appRoute, setAppRoute] = useState('home'); // initial route for AppShell
   const [lang, setLang] = useState('en');
   const [hydrated, setHydrated] = useState(false);
   const isMobile = useIsMobile();
@@ -291,17 +301,28 @@ function Root() {
         <PersonaPicker lang={lang}
                        setLang={setLang}
                        isMobile={isMobile}
-                       onPick={(p) => { setPersona(p); setView('app'); }}
+                       onDemo={() => setView('demo')}
+                       onPick={(p, opts) => {
+                         setPersona(p);
+                         setAppRoute((opts && opts.route) || 'home');
+                         setView('app');
+                       }}
                        onBack={() => setView('landing')} />
       )}
 
       {view === 'app' && persona && (
         <AppShell persona={persona}
+                  initialRoute={appRoute}
                   lang={lang}
                   setLang={setLang}
                   isMobile={isMobile}
                   onHome={() => setView('landing')}
                   onSwitchPersona={() => setView('picker')} />
+      )}
+
+      {view === 'demo' && (
+        <DemoMode lang={lang} setLang={setLang} isMobile={isMobile}
+                  onExit={() => setView('picker')} />
       )}
 
       {savedToast}

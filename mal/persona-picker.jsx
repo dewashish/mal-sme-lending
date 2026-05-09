@@ -43,7 +43,7 @@ const PERSONA_DETAILS = [
   },
 ];
 
-function PersonaPicker({ lang = 'en', setLang, onPick, onBack, isMobile }) {
+function PersonaPicker({ lang = 'en', setLang, onPick, onBack, isMobile, onDemo }) {
   const isAr = lang === 'ar';
   const t = PERSONA_DETAILS;
   const Ico = window.MalIcon;
@@ -105,31 +105,87 @@ function PersonaPicker({ lang = 'en', setLang, onPick, onBack, isMobile }) {
           </p>
         </div>
 
+        {/* Demo Mode CTA — wide tile that spans the grid */}
+        <button onClick={onDemo} className="mal-persona-card mal-demo-tile" style={{
+          marginTop: isMobile ? 32 : 48,
+          width: '100%',
+          textAlign: isAr ? 'right' : 'left',
+          background: 'linear-gradient(135deg, #2A1F6F 0%, #5B3FB2 60%, #C97AB6 100%)',
+          color: '#fff',
+          border: 'none',
+          borderRadius: 'var(--mal-r-lg)',
+          padding: isMobile ? 20 : 28,
+          cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 18,
+          position: 'relative', overflow: 'hidden',
+          boxShadow: 'var(--mal-sh-3)',
+          transition: 'transform .18s ease, box-shadow .18s ease',
+          font: 'inherit',
+          animationDelay: '0ms',
+        }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = ''; }}>
+          <div aria-hidden style={{
+            position: 'absolute', insetInlineEnd: -60, top: -40, width: 240, height: 240,
+            borderRadius: '50%', filter: 'blur(40px)', opacity: 0.55,
+            background: 'conic-gradient(from 90deg, var(--mal-iri-1), var(--mal-iri-2), var(--mal-iri-3), var(--mal-iri-4), var(--mal-iri-1))',
+            pointerEvents: 'none',
+          }}/>
+          <div className="mal-orb" style={{
+            width: 56, height: 56, animation: 'mal-orb-spin 14s linear infinite',
+            position: 'relative', zIndex: 1, flexShrink: 0,
+          }}/>
+          <div style={{ flex: 1, minWidth: 0, position: 'relative', zIndex: 1 }}>
+            <div style={{ fontSize: 11, opacity: .8, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+              {isAr ? 'وضع العرض المُصاحَب' : 'Side-by-side demo'}
+            </div>
+            <div style={{
+              fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+              fontSize: isMobile ? 26 : 32, lineHeight: 1.05, marginTop: 6, letterSpacing: '-0.01em',
+            }}>
+              {isAr ? 'شاهد المشتري والمورّد بالتزامن' : 'Watch Buyer & Supplier sync, live'}
+            </div>
+            <div style={{ fontSize: 13, opacity: .85, marginTop: 6, maxWidth: 540 }}>
+              {isAr
+                ? 'تشغيل تلقائي كامل: الإعداد، إصدار الفاتورة، اختيار الخطّة، وصول التحويل — كلّ ذلك بشاشتين متجاوبتين.'
+                : 'Full autopilot: parallel onboarding → supplier issues an invoice → buyer picks a plan → wire lands. Two phones, one story.'}
+            </div>
+          </div>
+          <div aria-hidden style={{
+            width: 44, height: 44, borderRadius: 999,
+            background: 'rgba(255,255,255,.18)', backdropFilter: 'blur(8px)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            position: 'relative', zIndex: 1, flexShrink: 0,
+            transform: isAr ? 'scaleX(-1)' : 'none',
+          }}>
+            {Ico.play ? Ico.play({ width: 18, height: 18, color: '#fff' }) : '▶'}
+          </div>
+        </button>
+
         {/* Persona grid */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
           gap: isMobile ? 14 : 18,
-          marginTop: isMobile ? 32 : 48,
+          marginTop: isMobile ? 18 : 22,
         }}>
           {t.map((p, i) => {
             const txt = p[lang] || p.en;
+            const supportsOnboarding = p.id === 'buyer' || p.id === 'supplier';
             return (
-              <button key={p.id}
-                onClick={() => onPick(p.id)}
+              <div key={p.id}
                 className="mal-persona-card"
+                role="group"
                 style={{
                   textAlign: isAr ? 'right' : 'left',
                   background: 'var(--mal-paper)',
                   border: '1px solid var(--mal-line)',
                   borderRadius: 'var(--mal-r-lg)',
                   padding: isMobile ? 20 : 24,
-                  cursor: 'pointer',
                   display: 'flex', flexDirection: 'column', gap: 14,
                   minHeight: 220,
                   position: 'relative', overflow: 'hidden',
                   transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
-                  font: 'inherit', color: 'inherit',
                   animationDelay: (i * 60) + 'ms',
                 }}
                 onMouseEnter={(e) => {
@@ -150,40 +206,62 @@ function PersonaPicker({ lang = 'en', setLang, onPick, onBack, isMobile }) {
                   pointerEvents: 'none',
                 }}/>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 1 }}>
-                  <Avatar name={(txt.title || '').slice(0, 2)} tone={p.tone} size={44} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span className="mal-caption" style={{ color: 'var(--mal-mid)' }}>{p.product}</span>
-                    <span style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic', fontSize: 22, lineHeight: 1, letterSpacing: '-0.01em' }}>
-                      {txt.title}
+                <button onClick={() => onPick(p.id)}
+                        style={{
+                          all: 'unset', cursor: 'pointer',
+                          display: 'flex', flexDirection: 'column', gap: 14,
+                          flex: 1, minHeight: 0,
+                          position: 'relative', zIndex: 1,
+                        }}
+                        aria-label={txt.cta}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <Avatar name={(txt.title || '').slice(0, 2)} tone={p.tone} size={44} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span className="mal-caption" style={{ color: 'var(--mal-mid)' }}>{p.product}</span>
+                      <span style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic', fontSize: 22, lineHeight: 1, letterSpacing: '-0.01em' }}>
+                        {txt.title}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p style={{
+                    margin: 0, color: 'var(--mal-mid)', fontSize: 13.5, lineHeight: 1.5,
+                  }}>{txt.desc}</p>
+
+                  <div style={{ flex: 1 }} />
+
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    paddingTop: 12, borderTop: '1px solid var(--mal-line)',
+                  }}>
+                    <span className="mal-mono" style={{ fontSize: 11, color: 'var(--mal-mid-2)', letterSpacing: '.04em' }}>
+                      {txt.sample}
+                    </span>
+                    <span aria-hidden style={{
+                      width: 32, height: 32, borderRadius: 999,
+                      background: 'var(--mal-primary)', color: '#fff',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      transform: isAr ? 'scaleX(-1)' : 'none',
+                    }}>
+                      {Ico.arrow ? Ico.arrow({ width: 14, height: 14 }) : '→'}
                     </span>
                   </div>
-                </div>
+                </button>
 
-                <p style={{
-                  margin: 0, color: 'var(--mal-mid)', fontSize: 13.5, lineHeight: 1.5,
-                  position: 'relative', zIndex: 1,
-                }}>{txt.desc}</p>
-
-                <div style={{ flex: 1 }} />
-
-                <div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  paddingTop: 12, borderTop: '1px solid var(--mal-line)', position: 'relative', zIndex: 1,
-                }}>
-                  <span className="mal-mono" style={{ fontSize: 11, color: 'var(--mal-mid-2)', letterSpacing: '.04em' }}>
-                    {txt.sample}
-                  </span>
-                  <span aria-hidden style={{
-                    width: 32, height: 32, borderRadius: 999,
-                    background: 'var(--mal-primary)', color: '#fff',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    transform: isAr ? 'scaleX(-1)' : 'none',
-                  }}>
-                    {Ico.arrow ? Ico.arrow({ width: 14, height: 14 }) : '→'}
-                  </span>
-                </div>
-              </button>
+                {supportsOnboarding && (
+                  <button onClick={(e) => { e.stopPropagation(); onPick(p.id, { route: 'onboarding' }); }}
+                          style={{
+                            all: 'unset', cursor: 'pointer',
+                            position: 'relative', zIndex: 2,
+                            fontSize: 12, color: 'var(--mal-primary-3)',
+                            fontWeight: 500,
+                            textDecoration: 'underline', textUnderlineOffset: 3,
+                            textDecorationColor: 'var(--mal-primary-50)',
+                          }}>
+                    {isAr ? '↻ ابدأ من الإعداد' : '↻ Start fresh from onboarding'}
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

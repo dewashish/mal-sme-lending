@@ -14,11 +14,18 @@ const BUYER_STEPS = [
   'owners', 'bank', 'documents', 'review', 'decision', 'limit'
 ];
 
-function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDone }) {
-  const [stepIdx, setStepIdx] = oS(initialStep);
+function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDone, controlledStep, onStepChange }) {
+  const [internalStep, setInternalStep] = oS(initialStep);
+  const isControlled = typeof controlledStep === 'number';
+  const stepIdx = isControlled ? controlledStep : internalStep;
+  const setStepIdx = (n) => {
+    const clamped = Math.min(BUYER_STEPS.length - 1, Math.max(0, n));
+    if (isControlled) onStepChange?.(clamped);
+    else setInternalStep(clamped);
+  };
   const step = BUYER_STEPS[stepIdx];
-  const next = () => setStepIdx(Math.min(BUYER_STEPS.length - 1, stepIdx + 1));
-  const back = () => setStepIdx(Math.max(0, stepIdx - 1));
+  const next = () => setStepIdx(stepIdx + 1);
+  const back = () => setStepIdx(stepIdx - 1);
   const isAr = lang === 'ar';
 
   // Persist progress on each "Continue" click — only commit-style, not keystrokes.
@@ -367,11 +374,18 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
 // ============================================================
 const SUPPLIER_STEPS = ['welcome', 'phone', 'license', 'invoice', 'bank', 'buyers', 'review', 'ready'];
 
-function SupplierOnboardingFlow({ lang, initialStep = 0, onDone }) {
-  const [stepIdx, setStepIdx] = oS(initialStep);
+function SupplierOnboardingFlow({ lang, initialStep = 0, onDone, controlledStep, onStepChange }) {
+  const [internalStep, setInternalStep] = oS(initialStep);
+  const isControlled = typeof controlledStep === 'number';
+  const stepIdx = isControlled ? controlledStep : internalStep;
+  const setStepIdx = (n) => {
+    const clamped = Math.min(SUPPLIER_STEPS.length - 1, Math.max(0, n));
+    if (isControlled) onStepChange?.(clamped);
+    else setInternalStep(clamped);
+  };
   const step = SUPPLIER_STEPS[stepIdx];
-  const next = () => setStepIdx(Math.min(SUPPLIER_STEPS.length - 1, stepIdx + 1));
-  const back = () => setStepIdx(Math.max(0, stepIdx - 1));
+  const next = () => setStepIdx(stepIdx + 1);
+  const back = () => setStepIdx(stepIdx - 1);
   const isAr = lang === 'ar';
   const phases = isAr ? ['ابدأ', 'تحقّق', 'فواتير', 'جاهز'] : ['Start', 'Verify', 'Invoice', 'Ready'];
   const phaseOf = { welcome: 0, phone: 0, license: 1, invoice: 2, bank: 2, buyers: 2, review: 2, ready: 3 };
