@@ -1,0 +1,384 @@
+/* ============================================================
+   Mal Design System — Tokens
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* ---- Brand: warm pearl + iridescent indigo ---- */
+  --mal-ink:        #0B0B14;
+  --mal-ink-2:      #1A1A28;
+  --mal-mid:        #5C5C72;
+  --mal-mid-2:      #8B8BA1;
+  --mal-line:       #E8E3D6;
+  --mal-line-2:     #F0EBDE;
+  --mal-surface:    #FAF7EE;       /* warm pearl bg */
+  --mal-surface-2:  #F4F0E2;
+  --mal-paper:      #FFFEF9;
+  --mal-elev:       #FFFFFF;
+
+  /* primary accent — refined indigo (from Mal orb) */
+  --mal-primary:    #2A1F6F;
+  --mal-primary-2:  #3D2E94;
+  --mal-primary-3:  #5A47C2;
+  --mal-primary-50: #EFEAFF;
+
+  /* iridescent gradient (orb) */
+  --mal-iri-1:      #B6CFE8;       /* sky */
+  --mal-iri-2:      #C9B7E8;       /* lilac */
+  --mal-iri-3:      #F0B7C2;       /* coral */
+  --mal-iri-4:      #FBD9B5;       /* peach */
+
+  /* status */
+  --mal-success:    #1F7A4F;
+  --mal-success-bg: #DDF1E5;
+  --mal-warn:       #B86F1A;
+  --mal-warn-bg:    #FBE9D0;
+  --mal-danger:     #B83A3A;
+  --mal-danger-bg:  #F8D9D5;
+  --mal-info:       #1F5BAA;
+  --mal-info-bg:    #DCE8F8;
+
+  /* radii */
+  --mal-r-xs: 6px;
+  --mal-r-sm: 10px;
+  --mal-r-md: 14px;
+  --mal-r-lg: 20px;
+  --mal-r-xl: 28px;
+  --mal-r-pill: 999px;
+
+  /* shadows */
+  --mal-sh-1: 0 1px 0 rgba(11,11,20,.04), 0 1px 2px rgba(11,11,20,.04);
+  --mal-sh-2: 0 4px 12px rgba(11,11,20,.06), 0 1px 2px rgba(11,11,20,.04);
+  --mal-sh-3: 0 12px 32px rgba(11,11,20,.10), 0 2px 6px rgba(11,11,20,.06);
+  --mal-sh-orb: 0 24px 60px -16px rgba(42,31,111,.35), 0 2px 6px rgba(11,11,20,.04);
+
+  /* type */
+  --mal-font-display: 'Instrument Serif', 'Times New Roman', serif;
+  --mal-font-ui: 'Geist', system-ui, -apple-system, sans-serif;
+  --mal-font-mono: 'Geist Mono', ui-monospace, monospace;
+  --mal-font-ar: 'IBM Plex Sans Arabic', 'Geist', system-ui, sans-serif;
+
+  /* density */
+  --mal-density: 1;
+  --mal-h-input: calc(44px * var(--mal-density));
+  --mal-h-button: calc(44px * var(--mal-density));
+  --mal-h-row: calc(56px * var(--mal-density));
+  --mal-pad-card: calc(20px * var(--mal-density));
+  --mal-gap: calc(12px * var(--mal-density));
+}
+
+/* dark mode */
+[data-theme="dark"] {
+  --mal-ink:        #F4F0E2;
+  --mal-ink-2:      #DCD7C5;
+  --mal-mid:        #9A9AB0;
+  --mal-mid-2:      #6F6F85;
+  --mal-line:       #25253A;
+  --mal-line-2:     #1B1B2D;
+  --mal-surface:    #0E0E1A;
+  --mal-surface-2:  #14142A;
+  --mal-paper:      #16162C;
+  --mal-elev:       #1B1B33;
+
+  --mal-primary:    #C9B7E8;
+  --mal-primary-2:  #B6A3DC;
+  --mal-primary-3:  #8E7BC9;
+  --mal-primary-50: #221C45;
+
+  --mal-success-bg: #143A29;
+  --mal-warn-bg:    #3B2A12;
+  --mal-danger-bg:  #3B1B19;
+  --mal-info-bg:    #16294A;
+
+  --mal-sh-1: 0 1px 0 rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.5);
+  --mal-sh-2: 0 4px 14px rgba(0,0,0,.55);
+  --mal-sh-3: 0 16px 40px rgba(0,0,0,.7);
+}
+
+/* density variants */
+[data-density="compact"] { --mal-density: 0.86; }
+[data-density="spacious"] { --mal-density: 1.18; }
+
+/* ============================================================
+   Base
+   ============================================================ */
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--mal-font-ui);
+  color: var(--mal-ink);
+  background: var(--mal-surface);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "ss01", "cv11";
+}
+
+[dir="rtl"] body, [dir="rtl"] {
+  font-family: var(--mal-font-ar);
+}
+
+/* ============================================================
+   Type
+   ============================================================ */
+.mal-display {
+  font-family: var(--mal-font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.98;
+}
+.mal-display-xl { font-family: var(--mal-font-display); font-weight: 400; font-size: clamp(56px, 8vw, 128px); line-height: 0.9; letter-spacing: -0.035em; }
+.mal-display-lg { font-family: var(--mal-font-display); font-weight: 400; font-size: 80px; line-height: 0.92; letter-spacing: -0.03em; }
+.mal-display-md { font-family: var(--mal-font-display); font-weight: 400; font-size: 56px; line-height: 0.96; letter-spacing: -0.025em; }
+.mal-display-sm { font-family: var(--mal-font-display); font-weight: 400; font-size: 36px; line-height: 1.0; letter-spacing: -0.02em; }
+
+.mal-h1 { font-family: var(--mal-font-ui); font-weight: 500; font-size: 28px; line-height: 1.1; letter-spacing: -0.02em; }
+.mal-h2 { font-family: var(--mal-font-ui); font-weight: 500; font-size: 22px; line-height: 1.2; letter-spacing: -0.015em; }
+.mal-h3 { font-family: var(--mal-font-ui); font-weight: 500; font-size: 17px; line-height: 1.25; letter-spacing: -0.01em; }
+.mal-body  { font-family: var(--mal-font-ui); font-weight: 400; font-size: 15px; line-height: 1.5; }
+.mal-body-sm { font-family: var(--mal-font-ui); font-weight: 400; font-size: 13px; line-height: 1.45; }
+.mal-caption { font-family: var(--mal-font-ui); font-weight: 500; font-size: 11px; line-height: 1.3; letter-spacing: 0.04em; text-transform: uppercase; color: var(--mal-mid); }
+.mal-mono { font-family: var(--mal-font-mono); font-size: 12px; letter-spacing: 0; }
+.mal-num  { font-family: var(--mal-font-mono); font-feature-settings: "tnum"; }
+
+/* ============================================================
+   Iridescent
+   ============================================================ */
+.mal-iri-bg {
+  background:
+    radial-gradient(60% 80% at 30% 30%, var(--mal-iri-2) 0%, transparent 60%),
+    radial-gradient(60% 80% at 80% 20%, var(--mal-iri-3) 0%, transparent 55%),
+    radial-gradient(70% 80% at 70% 80%, var(--mal-iri-1) 0%, transparent 60%),
+    radial-gradient(60% 60% at 20% 90%, var(--mal-iri-4) 0%, transparent 55%);
+}
+.mal-iri-text {
+  background: linear-gradient(120deg, #2A1F6F 0%, #5A47C2 35%, #B6CFE8 60%, #F0B7C2 85%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+}
+
+/* Iridescent orb element — shared visual */
+.mal-orb {
+  position: relative;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, rgba(255,255,255,.95) 0%, rgba(255,255,255,.4) 12%, transparent 35%),
+    radial-gradient(circle at 65% 60%, var(--mal-iri-3) 0%, transparent 45%),
+    radial-gradient(circle at 30% 70%, var(--mal-iri-1) 0%, transparent 50%),
+    radial-gradient(circle at 70% 25%, var(--mal-iri-2) 0%, transparent 50%),
+    linear-gradient(135deg, var(--mal-iri-1), var(--mal-iri-2), var(--mal-iri-3));
+  box-shadow:
+    inset -10% -10% 25% rgba(42,31,111,.18),
+    inset 8% 8% 18% rgba(255,255,255,.6),
+    var(--mal-sh-orb);
+}
+
+/* ============================================================
+   Cards & primitives
+   ============================================================ */
+.mal-card {
+  background: var(--mal-paper);
+  border: 1px solid var(--mal-line);
+  border-radius: var(--mal-r-md);
+  box-shadow: var(--mal-sh-1);
+}
+.mal-card-elev {
+  background: var(--mal-elev);
+  border: 1px solid var(--mal-line);
+  border-radius: var(--mal-r-lg);
+  box-shadow: var(--mal-sh-2);
+}
+.mal-divider {
+  height: 1px;
+  background: var(--mal-line);
+  border: 0;
+}
+
+/* Buttons */
+.mal-btn {
+  font-family: var(--mal-font-ui);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: -0.005em;
+  height: var(--mal-h-button);
+  padding: 0 18px;
+  border-radius: var(--mal-r-pill);
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all .14s ease;
+  white-space: nowrap;
+}
+.mal-btn-primary {
+  background: var(--mal-ink);
+  color: var(--mal-paper);
+}
+.mal-btn-primary:hover { background: var(--mal-ink-2); transform: translateY(-1px); }
+.mal-btn-secondary {
+  background: var(--mal-paper);
+  color: var(--mal-ink);
+  border-color: var(--mal-line);
+}
+.mal-btn-secondary:hover { background: var(--mal-surface-2); }
+.mal-btn-ghost {
+  background: transparent;
+  color: var(--mal-ink);
+}
+.mal-btn-ghost:hover { background: var(--mal-surface-2); }
+.mal-btn-iri {
+  background: linear-gradient(120deg, var(--mal-iri-2) 0%, var(--mal-iri-3) 50%, var(--mal-iri-4) 100%);
+  color: var(--mal-ink);
+  border: 1px solid rgba(11,11,20,.06);
+}
+.mal-btn-sm { height: 32px; font-size: 13px; padding: 0 12px; }
+.mal-btn-lg { height: 52px; font-size: 15px; padding: 0 26px; }
+
+/* Inputs */
+.mal-input {
+  font-family: var(--mal-font-ui);
+  font-size: 15px;
+  height: var(--mal-h-input);
+  padding: 0 14px;
+  border-radius: var(--mal-r-sm);
+  border: 1px solid var(--mal-line);
+  background: var(--mal-paper);
+  color: var(--mal-ink);
+  width: 100%;
+  outline: none;
+  transition: border-color .14s, box-shadow .14s;
+  box-sizing: border-box;
+}
+.mal-input:focus {
+  border-color: var(--mal-primary-3);
+  box-shadow: 0 0 0 3px var(--mal-primary-50);
+}
+.mal-input::placeholder { color: var(--mal-mid-2); }
+
+.mal-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mal-mid);
+  margin-bottom: 6px;
+  display: block;
+  letter-spacing: 0.01em;
+}
+
+/* Pills / status */
+.mal-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: var(--mal-r-pill);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.mal-pill-success { background: var(--mal-success-bg); color: var(--mal-success); }
+.mal-pill-warn { background: var(--mal-warn-bg); color: var(--mal-warn); }
+.mal-pill-danger { background: var(--mal-danger-bg); color: var(--mal-danger); }
+.mal-pill-info { background: var(--mal-info-bg); color: var(--mal-info); }
+.mal-pill-neutral { background: var(--mal-line-2); color: var(--mal-mid); }
+.mal-pill-ink { background: var(--mal-ink); color: var(--mal-paper); }
+.mal-pill-dot::before {
+  content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .8;
+}
+
+/* Tables */
+.mal-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 14px;
+}
+.mal-table th {
+  text-align: left;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mal-mid);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mal-line);
+  background: var(--mal-surface-2);
+}
+[dir="rtl"] .mal-table th { text-align: right; }
+.mal-table td {
+  padding: 16px;
+  border-bottom: 1px solid var(--mal-line-2);
+  vertical-align: middle;
+}
+.mal-table tr:hover td {
+  background: var(--mal-surface-2);
+}
+
+/* Misc */
+.mal-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--mal-r-pill);
+  font-size: 13px;
+  color: var(--mal-mid);
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.mal-tab[aria-selected="true"], .mal-tab.active {
+  background: var(--mal-paper);
+  color: var(--mal-ink);
+  border-color: var(--mal-line);
+  box-shadow: var(--mal-sh-1);
+}
+
+.mal-kbd {
+  font-family: var(--mal-font-mono);
+  font-size: 11px;
+  background: var(--mal-paper);
+  border: 1px solid var(--mal-line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 2px 6px;
+  color: var(--mal-mid);
+}
+
+/* Scrollbar */
+.mal-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.mal-scroll::-webkit-scrollbar-thumb { background: var(--mal-line); border-radius: 999px; }
+.mal-scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* RTL flips */
+[dir="rtl"] .mal-flip { transform: scaleX(-1); }
+
+/* Animations */
+@keyframes mal-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes mal-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes mal-orb-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@keyframes mal-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes mal-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .55; }
+}
+@keyframes mal-count-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.mal-fade-up { animation: mal-fade-up .5s cubic-bezier(.2,.7,.2,1) both; }
+.mal-fade { animation: mal-fade .4s ease both; }

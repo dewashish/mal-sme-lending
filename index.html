@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="theme-color" content="#FAF7EE" />
+<title>Mal — UAE SME Lending</title>
+<meta name="description" content="One credit platform for UAE SMEs. Pay suppliers now, get paid earlier, advance healthcare claims, run an anchor SCF auction." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23B6CFE8'/><stop offset='.5' stop-color='%23C9B7E8'/><stop offset='1' stop-color='%23FBD9B5'/></linearGradient></defs><circle cx='16' cy='16' r='14' fill='url(%23g)'/></svg>" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="mal/tokens.css" />
+<style>
+  html, body { margin: 0; padding: 0; background: #FAF7EE; font-family: var(--mal-font-ui); color: var(--mal-ink); }
+  body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+  #root { min-height: 100vh; }
+  *::-webkit-scrollbar { width: 0; height: 0; }
+  /* Saved-toast */
+  .mal-saved-toast {
+    position: fixed; bottom: 20px; inset-inline-end: 20px; z-index: 999;
+    background: var(--mal-ink); color: #FAF7EE;
+    padding: 10px 14px; border-radius: 999px; font-size: 12px; font-weight: 500;
+    letter-spacing: .02em;
+    box-shadow: var(--mal-sh-3);
+    display: inline-flex; align-items: center; gap: 8px;
+    animation: mal-toast-in .2s ease-out, mal-toast-out .25s ease-in 1.4s forwards;
+    pointer-events: none;
+  }
+  .mal-saved-toast::before {
+    content: ''; width: 6px; height: 6px; border-radius: 999px; background: #6CD9A0;
+  }
+  @keyframes mal-toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes mal-toast-out { to { opacity: 0; transform: translateY(8px); } }
+  /* App-shell top bar */
+  .mal-app-bar {
+    height: 52px; background: var(--mal-paper); border-bottom: 1px solid var(--mal-line);
+    display: flex; align-items: center; justify-content: space-between;
+    padding-inline: 16px; gap: 12px; flex-wrap: nowrap;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .mal-app-bar-actions { display: inline-flex; align-items: center; gap: 8px; }
+  .mal-pill-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--mal-surface); border: 1px solid var(--mal-line);
+    color: var(--mal-ink); border-radius: 999px;
+    padding: 6px 12px; font-size: 12px; font-weight: 500;
+    cursor: pointer; font-family: inherit;
+    transition: background .14s, border-color .14s, transform .14s;
+  }
+  .mal-pill-btn:hover { background: var(--mal-paper); border-color: var(--mal-primary-3); transform: translateY(-1px); }
+  /* Persona card animation */
+  .mal-persona-card { animation: mal-fade-up .5s ease-out backwards; }
+  /* Mobile fluid container — no iPhone bezel under 720px */
+  @media (max-width: 720px) {
+    .mal-app-fluid { padding: 0 !important; }
+    .mal-app-fluid > div > div { /* hide PrototypeChrome row spacer on mobile */
+      margin-top: 0 !important;
+    }
+  }
+  /* Make the persona-app full-bleed on mobile (no device frame) */
+  .mal-mobile-fullbleed > div { display: contents; }
+  .mal-mobile-fullbleed .mobile-frame-replacer {
+    width: 100%; min-height: calc(100vh - 52px); background: var(--mal-surface);
+    overflow-x: hidden; display: flex; flex-direction: column;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- React + Babel-standalone -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" crossorigin="anonymous"></script>
+
+<!-- Supabase UMD (must load before our supabase-client.js) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin="anonymous"></script>
+
+<!-- Mal data + persistence -->
+<script src="mal/i18n.js"></script>
+<script src="mal/supabase-client.js"></script>
+<script src="mal/session-store.js"></script>
+
+<!-- Mal design system + screens -->
+<script type="text/babel" src="mal/icons.jsx"></script>
+<script type="text/babel" src="mal/ui.jsx"></script>
+<script type="text/babel" src="mal/ios-frame.jsx"></script>
+<script type="text/babel" src="mal/landing-and-system.jsx"></script>
+<script type="text/babel" src="mal/prototype-shell.jsx"></script>
+<script type="text/babel" src="mal/screens-onboarding.jsx"></script>
+<script type="text/babel" src="mal/screens-buyer.jsx"></script>
+<script type="text/babel" src="mal/screens-buyer-extend.jsx"></script>
+<script type="text/babel" src="mal/screens-others.jsx"></script>
+<script type="text/babel" src="mal/persona-picker.jsx"></script>
+
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+// ----------------------------------------------------------------------------
+// Hooks
+// ----------------------------------------------------------------------------
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(max-width: 720px)').matches
+      : false
+  );
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia('(max-width: 720px)');
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener ? mq.addEventListener('change', handler) : mq.addListener(handler);
+    return () => mq.removeEventListener ? mq.removeEventListener('change', handler) : mq.removeListener(handler);
+  }, []);
+  return isMobile;
+}
+
+function useSavedToast() {
+  const [visible, setVisible] = useState(false);
+  const [label, setLabel] = useState('Saved');
+  useEffect(() => {
+    if (!window.MalSession || !window.MalSession.onSaved) return;
+    const off = window.MalSession.onSaved((slice) => {
+      // Don't toast for noisy meta saves
+      if (slice === '__meta') return;
+      setLabel('Saved · ' + slice);
+      setVisible(true);
+      setTimeout(() => setVisible(false), 1700);
+    });
+    return off;
+  }, []);
+  return visible ? <div className="mal-saved-toast">{label}</div> : null;
+}
+
+// ----------------------------------------------------------------------------
+// AppShell — top bar + frame for the picked persona
+// ----------------------------------------------------------------------------
+function AppShell({ persona, lang, setLang, onHome, onSwitchPersona, isMobile }) {
+  // Buyer + Supplier are mobile-first apps; others are desktop-first
+  const personaPrefersMobile = persona === 'buyer' || persona === 'supplier' || persona === 'anchorSup';
+  const [viewport, setViewport] = useState(isMobile ? 'mobile' : (personaPrefersMobile ? 'mobile' : 'desktop'));
+  const [theme, setTheme] = useState('light');
+
+  useEffect(() => {
+    if (isMobile) setViewport('mobile');
+  }, [isMobile, persona]);
+
+  // Sync theme + density on root
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.density = 'cozy';
+  }, [theme]);
+
+  const Ico = window.MalIcon;
+  const personaLabel = (window.PersonaPicker && PERSONA_DETAILS_LOCAL[persona]) || persona;
+
+  return (
+    <div data-theme={theme} dir={lang === 'ar' ? 'rtl' : 'ltr'}
+         style={{ minHeight: '100vh', background: 'var(--mal-surface)' }}>
+      <div className="mal-app-bar">
+        <button className="mal-pill-btn" onClick={onHome} aria-label="Home / landing">
+          <span style={{ transform: lang === 'ar' ? 'scaleX(-1)' : 'none', display: 'inline-flex' }}>
+            {Ico.arrowL ? Ico.arrowL({ width: 12, height: 12 }) : '←'}
+          </span>
+          <MalLogo size={16} />
+        </button>
+
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', minWidth: 0 }}>
+          <span style={{
+            fontSize: 12, color: 'var(--mal-mid)', whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis',
+          }}>
+            {personaLabel}
+          </span>
+        </div>
+
+        <div className="mal-app-bar-actions">
+          {!isMobile && (
+            <Tabs value={viewport} onChange={setViewport} size="sm" items={[
+              { value: 'mobile', label: 'Mobile' }, { value: 'desktop', label: 'Desktop' },
+            ]} />
+          )}
+          <Tabs value={lang} onChange={setLang} size="sm" items={[
+            { value: 'en', label: 'EN' }, { value: 'ar', label: 'AR' },
+          ]} />
+          <IconBtn icon={theme === 'dark' ? 'sun' : 'moon'}
+                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                   label="Theme" size={32} kind="default" />
+          <button className="mal-pill-btn" onClick={onSwitchPersona}>
+            {Ico.swap ? Ico.swap({ width: 12, height: 12 }) : null}
+            {lang === 'ar' ? 'بدّل' : 'Switch'}
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      {isMobile ? (
+        // Full-bleed on mobile — drop the iPhone bezel; embed=true means the
+        // PrototypeChrome stays out and we render PersonaApp directly.
+        <FullBleedMobileApp persona={persona} lang={lang} />
+      ) : (
+        <div className="mal-app-fluid" style={{ padding: 24 }}>
+          <MalPrototype embed
+                        initialPersona={persona}
+                        initialViewport={viewport}
+                        initialLang={lang}
+                        initialTheme={theme}
+                        initialDensity="cozy"
+                        initialRoute="home" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Renders the picked persona app full-bleed on small screens (no 390px bezel).
+function FullBleedMobileApp({ persona, lang }) {
+  const [route, setRoute] = useState('home');
+  // Persist persona/lang on first mount of an app
+  useEffect(() => {
+    if (window.MalSession) window.MalSession.setMeta(persona, lang);
+  }, [persona, lang]);
+
+  return (
+    <div dir={lang === 'ar' ? 'rtl' : 'ltr'}
+         className="mal-mobile-fullbleed"
+         style={{ background: 'var(--mal-surface)', minHeight: 'calc(100vh - 52px)' }}>
+      <div className="mobile-frame-replacer">
+        <PersonaApp persona={persona} route={route} setRoute={setRoute} lang={lang} viewport="mobile" />
+      </div>
+    </div>
+  );
+}
+
+// Mirror of PERSONA_DETAILS for label lookup outside the picker.
+const PERSONA_DETAILS_LOCAL = {
+  buyer: 'Buyer SME',
+  supplier: 'Supplier SME',
+  hcops: 'Healthcare Provider — Ops',
+  hccoder: 'Healthcare Provider — Coder',
+  anchorAP: 'Anchor — AP',
+  anchorSup: 'Anchor — Supplier',
+};
+
+// ----------------------------------------------------------------------------
+// Root — landing → picker → app
+// ----------------------------------------------------------------------------
+function Root() {
+  const [view, setView] = useState('landing');     // 'landing' | 'picker' | 'app'
+  const [persona, setPersona] = useState(null);
+  const [lang, setLang] = useState('en');
+  const [hydrated, setHydrated] = useState(false);
+  const isMobile = useIsMobile();
+
+  const savedToast = useSavedToast();
+
+  // Load any prior session state on first mount; if persona/lang were saved,
+  // resume there. Otherwise stay on landing.
+  useEffect(() => {
+    let alive = true;
+    if (!window.MalSession) { setHydrated(true); return; }
+    window.MalSession.loadState().then((cache) => {
+      if (!alive) return;
+      if (cache && cache.__lang) setLang(cache.__lang);
+      if (cache && cache.__persona) {
+        setPersona(cache.__persona);
+        // Don't auto-jump into app on first visit — preserve landing as the
+        // "front door" experience. Persona is just remembered for the picker.
+      }
+      setHydrated(true);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  // Persist lang on change once hydrated
+  useEffect(() => {
+    if (!hydrated || !window.MalSession) return;
+    window.MalSession.setMeta(persona || null, lang);
+  }, [lang, persona, hydrated]);
+
+  return (
+    <>
+      {view === 'landing' && (
+        <MalLanding lang={lang}
+                    viewport={isMobile ? 'mobile' : 'desktop'}
+                    onLaunch={() => setView('picker')} />
+      )}
+
+      {view === 'picker' && (
+        <PersonaPicker lang={lang}
+                       setLang={setLang}
+                       isMobile={isMobile}
+                       onPick={(p) => { setPersona(p); setView('app'); }}
+                       onBack={() => setView('landing')} />
+      )}
+
+      {view === 'app' && persona && (
+        <AppShell persona={persona}
+                  lang={lang}
+                  setLang={setLang}
+                  isMobile={isMobile}
+                  onHome={() => setView('landing')}
+                  onSwitchPersona={() => setView('picker')} />
+      )}
+
+      {savedToast}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<Root />);
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "name": "mal-sme-lending",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Working prototype of the Mal UAE SME lending platform — six personas, EN/AR, Supabase-backed session state.",
+  "scripts": {
+    "dev": "npx --yes serve@latest -l 3000 .",
+    "start": "npx --yes serve@latest -l 3000 ."
+  },
+  "keywords": [
+    "uae",
+    "sme",
+    "lending",
+    "fintech",
+    "prototype"
+  ],
+  "license": "UNLICENSED"
+}
