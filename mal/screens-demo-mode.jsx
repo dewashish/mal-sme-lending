@@ -1760,6 +1760,25 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
               : overdue ? (isAr ? 'متأخّر' : 'Overdue')
               : (isAr ? 'في الوقت' : 'On track')}
           </Pill>
+          {!isClosed && !isRefinanced && (
+            <SwitchTermPill
+              isAr={isAr}
+              currentType={plan.type}
+              onPick={(newType) => {
+                const preset = PLAN_DEFS[newType];
+                if (!preset) return;
+                patch({
+                  plan: { ...preset, switchedFrom: plan.type },
+                  paymentsByEmi: {},
+                  buyerToast: {
+                    title: isAr ? 'تم تبديل الخطة' : 'Plan switched',
+                    sub: isAr ? `${plan.label} → ${preset.label}` : `${plan.label} → ${preset.label}`,
+                    icon: 'check', tone: 'success',
+                  },
+                });
+              }}
+            />
+          )}
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -3297,6 +3316,67 @@ function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
         })}
       </div>
     </Card>
+  );
+}
+
+// ============================================================
+// SwitchTermPill — small dropdown on the active-plan card. Lets the
+// buyer convert Pay-30 → BNPL-90 / Inst-3 / Inst-4 in one tap, before
+// going through the full Restructure flow. Mondu-style post-purchase
+// term flexibility. Only shown when the plan hasn't started accruing
+// payments — see callsite gating.
+// ============================================================
+function SwitchTermPill({ isAr, currentType, onPick }) {
+  const [open, setOpen] = dmS(false);
+  const opts = [
+    { type: 'pay30',         label: isAr ? 'ادفع خلال ٣٠'  : 'Pay 30d',           sub: '0%'   },
+    { type: 'bnpl60',        label: isAr ? 'BNPL ٦٠'       : 'BNPL 60d',          sub: '+1.8%' },
+    { type: 'bnpl90',        label: isAr ? 'BNPL ٩٠'       : 'BNPL 90d',          sub: '+2.6%' },
+    { type: 'inst3',         label: isAr ? 'أقساط ٣ شهور' : 'Instal · 3 mo',     sub: '+3.0%' },
+    { type: 'installment_4', label: isAr ? 'أقساط ٤ شهور' : 'Instal · 4 mo',     sub: '+3.6%' },
+  ].filter((o) => o.type !== currentType);
+
+  return (
+    <div style={{ position: 'relative', marginInlineStart: 'auto' }}>
+      <button onClick={() => setOpen((o) => !o)} style={{
+        all: 'unset', cursor: 'pointer',
+        padding: '4px 10px', borderRadius: 999,
+        background: 'var(--mal-surface-2)',
+        border: '1px solid var(--mal-line)',
+        fontSize: 11, color: 'var(--mal-ink-2)',
+        fontWeight: 500,
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+      }}>
+        <span>{isAr ? 'بدّل المدّة' : 'Switch term'}</span>
+        <span style={{ fontSize: 9 }}>▾</span>
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', insetInlineEnd: 0, top: '100%', marginTop: 6,
+          zIndex: 5, minWidth: 170,
+          background: 'var(--mal-paper)',
+          border: '1px solid var(--mal-line)',
+          borderRadius: 12,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.16)',
+          padding: 4,
+        }}>
+          {opts.map((opt) => (
+            <button key={opt.type} onClick={() => { onPick(opt.type); setOpen(false); }} style={{
+              all: 'unset', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              width: '100%', padding: '8px 12px', borderRadius: 8,
+              fontSize: 12, color: 'var(--mal-ink)',
+              transition: 'background .15s',
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--mal-surface-2)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+              <span>{opt.label}</span>
+              <span style={{ fontSize: 10.5, color: 'var(--mal-mid)', fontFamily: 'var(--mal-font-mono)' }}>{opt.sub}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
