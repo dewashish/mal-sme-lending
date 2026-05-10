@@ -9,10 +9,18 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
   const isMobile = viewport === 'mobile';
 
   const SECTIONS = [
-    { id: 'strategy',  num: '01', label: isAr ? 'الاستراتيجية' : 'Strategy',           gradient: 'linear-gradient(135deg, #C9B7E8, #B6CFE8 70%, #FBD9B5)' },
-    { id: 'prototype', num: '02', label: isAr ? 'النموذج' : 'Prototype',                gradient: 'linear-gradient(135deg, #B6CFE8, #C9B7E8 70%, #F0B7C2)' },
-    { id: 'financial', num: '03', label: isAr ? 'النمذجة المالية' : 'Financial Modeling', gradient: 'linear-gradient(135deg, #FBD9B5, #F0B7C2 60%, #C9B7E8)' },
-    { id: 'ai',        num: '04', label: isAr ? 'مبادرات الذكاء' : 'AI Initiatives',     gradient: 'linear-gradient(135deg, #2A1F6F, #5A47C2 70%, #C9B7E8)', dark: true },
+    { id: 'strategy',  num: '01', label: isAr ? 'الاستراتيجية' : 'Strategy',
+      gradient: 'linear-gradient(135deg, #1A2238 0%, #2A1F6F 60%, #4A3FA0 100%)', dark: true,
+      accent: 'linear-gradient(135deg, #C9B7E8, #B6CFE8 70%, #FBD9B5)' },
+    { id: 'prototype', num: '02', label: isAr ? 'النموذج' : 'Prototype',
+      gradient: 'linear-gradient(135deg, #1A1B2E 0%, #2C2257 60%, #5247A0 100%)', dark: true,
+      accent: 'linear-gradient(135deg, #B6CFE8, #C9B7E8 70%, #F0B7C2)' },
+    { id: 'financial', num: '03', label: isAr ? 'النمذجة المالية' : 'Financial Modeling',
+      gradient: 'linear-gradient(135deg, #1F1A2E 0%, #3D2459 60%, #8A4A8B 100%)', dark: true,
+      accent: 'linear-gradient(135deg, #FBD9B5, #F0B7C2 60%, #C9B7E8)' },
+    { id: 'ai',        num: '04', label: isAr ? 'مبادرات الذكاء' : 'AI Initiatives',
+      gradient: 'linear-gradient(135deg, #0A0A1A 0%, #2A1F6F 60%, #5A47C2 100%)', dark: true,
+      accent: 'linear-gradient(135deg, #2A1F6F, #5A47C2 70%, #C9B7E8)' },
   ];
 
   return (
@@ -180,25 +188,21 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
         const halo = e.currentTarget.querySelector('.mal-card-halo');
         if (halo) { halo.style.transform = ''; halo.style.opacity = '0.5'; }
       }}>
-      {/* Iridescent halo (light cards) */}
-      {!section.dark && (
-        <div className="mal-card-halo" aria-hidden style={{
-          position: 'absolute', top: -90, insetInlineEnd: -90,
-          width: 260, height: 260, borderRadius: '50%',
-          background: section.gradient,
-          filter: 'blur(28px)', opacity: 0.5,
-          transition: 'transform .55s cubic-bezier(.4,0,.2,1), opacity .55s',
-          pointerEvents: 'none',
-        }}/>
-      )}
-      {/* Soft inner glow (dark card) */}
-      {section.dark && (
-        <div aria-hidden style={{
-          position: 'absolute', inset: 0,
-          background: 'radial-gradient(circle at 20% 100%, rgba(255,255,255,.22), transparent 55%)',
-          pointerEvents: 'none',
-        }}/>
-      )}
+      {/* Iridescent accent halo */}
+      <div className="mal-card-halo" aria-hidden style={{
+        position: 'absolute', top: -100, insetInlineEnd: -100,
+        width: 280, height: 280, borderRadius: '50%',
+        background: section.accent || section.gradient,
+        filter: 'blur(36px)', opacity: 0.42,
+        transition: 'transform .55s cubic-bezier(.4,0,.2,1), opacity .55s',
+        pointerEvents: 'none',
+      }}/>
+      {/* Soft inner glow */}
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(circle at 20% 100%, rgba(255,255,255,.12), transparent 55%)',
+        pointerEvents: 'none',
+      }}/>
 
       {/* Top: number */}
       <div style={{
