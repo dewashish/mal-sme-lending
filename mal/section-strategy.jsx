@@ -60,8 +60,7 @@ function SectionStrategy({ lang, isMobile }) {
         paddingTop: 28,
       }}>
         <DocHero isAr={isAr} isMobile={isMobile}/>
-        <LiveUnitEconomicsCallout isAr={isAr} isMobile={isMobile}/>
-        <DocBody doc={doc} sectionRefs={sectionRefs}/>
+        <DocBody doc={doc} sectionRefs={sectionRefs} isAr={isAr} isMobile={isMobile}/>
         <DocOutro isAr={isAr}/>
       </article>
     </div>
@@ -130,9 +129,15 @@ function StrategyTOC({ toc, activeId, jumpTo, isAr }) {
 }
 
 // ============================================================
-// Live Unit Economics callout — pulls from window.MAL_P1_DATA
+// Live Unit Economics callout — embedded inside each Product N
+// chapter at its "Three-Year Unit Economics" h2.
+// productNum: 1 = Smart Invoice (live data) · 2 = Healthcare · 3 = Anchor SCF
 // ============================================================
-function LiveUnitEconomicsCallout({ isAr, isMobile }) {
+function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
+  // Only Smart Invoice has a live model. P2/P3 render a placeholder.
+  if (productNum !== 1) {
+    return <UnitEconomicsPlaceholder productNum={productNum} isAr={isAr} isMobile={isMobile}/>;
+  }
   const data = (typeof window !== 'undefined') ? window.MAL_P1_DATA : null;
   if (!data) return null;
   const fy = data.fiveYearSummary;
@@ -261,6 +266,75 @@ function LiveUnitEconomicsCallout({ isAr, isMobile }) {
 }
 
 // ============================================================
+// Placeholder for Products 2 and 3 — model not yet wired
+// ============================================================
+function UnitEconomicsPlaceholder({ productNum, isAr, isMobile }) {
+  const products = {
+    2: {
+      title: 'Healthcare Insurance Receivables Engine',
+      titleAr: 'محرك ذمم تأمين الرعاية الصحية',
+      blurb: 'Same-day claim advance · multi-payer · predictive adjudication.',
+      blurbAr: 'سلفة المطالبات في نفس اليوم · متعدد الجهات الدافعة · توقع التسوية.',
+    },
+    3: {
+      title: 'Anchor-Led Supply Chain Finance',
+      titleAr: 'تمويل سلسلة التوريد بقيادة المرسي',
+      blurb: 'Reverse factoring · daily dynamic-discount auction · anchor-validated invoices.',
+      blurbAr: 'تخصيم عكسي · مزاد خصم ديناميكي يومي · فواتير مصادق عليها من المرسي.',
+    },
+  };
+  const p = products[productNum];
+  if (!p) return null;
+  return (
+    <section style={{
+      margin: '12px 0 28px',
+      padding: isMobile ? 18 : 22,
+      borderRadius: 14,
+      background: 'var(--mal-paper)',
+      border: '1px dashed var(--mal-line)',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      <div aria-hidden style={{
+        position: 'absolute', inset: 0,
+        background: 'repeating-linear-gradient(135deg, transparent 0 12px, rgba(26,26,40,.022) 12px 24px)',
+        pointerEvents: 'none',
+      }}/>
+      <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+          <Pill tone="neutral" dot>{isAr ? 'النموذج قيد الإعداد' : 'Live model · in progress'}</Pill>
+          <span style={{ fontSize: 11, color: 'var(--mal-mid-2)', fontWeight: 600,
+                         letterSpacing: '.06em', textTransform: 'uppercase' }}>
+            {isAr ? `المنتج ${productNum}` : `Product ${productNum}`}
+          </span>
+        </div>
+        <div style={{
+          fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+          fontSize: isMobile ? 20 : 24, lineHeight: 1.2, letterSpacing: '-0.01em',
+          marginBottom: 8, color: 'var(--mal-ink)',
+        }}>
+          {isAr ? p.titleAr : p.title}
+        </div>
+        <p style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--mal-mid)', margin: '0 0 14px' }}>
+          {isAr ? p.blurbAr : p.blurb}
+        </p>
+        <div style={{ fontSize: 12, color: 'var(--mal-mid)', lineHeight: 1.65 }}>
+          {isAr
+            ? 'سيظهر نموذج الاقتصاد الوحدوي الكامل هنا بمجرد بناء ورقة إكسل واعتمادها — متطابقاً مع ما هو متاح حالياً للفاتورة الذكية.'
+            : 'The full unit-economics model will appear here once the Excel workbook for this product is built and validated — identical in structure to what\'s already live for Smart Invoice.'}
+        </div>
+        <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <Pill tone="neutral">{isAr ? 'تقدير ٣ سنوات' : '3-year projection'}</Pill>
+          <Pill tone="neutral">{isAr ? 'أساس / ضغط' : 'Base / Stress'}</Pill>
+          <Pill tone="neutral">{isAr ? 'PD/LGD/EAD' : 'PD / LGD / EAD'}</Pill>
+          <Pill tone="neutral">{isAr ? 'تخطيط رأس المال' : 'Capital plan'}</Pill>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================
 // HERO — title block
 // ============================================================
 function DocHero({ isAr, isMobile }) {
@@ -280,7 +354,31 @@ function DocHero({ isAr, isMobile }) {
 // ============================================================
 // BODY — render every paragraph
 // ============================================================
-function DocBody({ doc, sectionRefs }) {
+// Helper: figure out which product number a "Three-Year Unit Economics"
+// h2 belongs to by reading its text or surrounding context.
+function detectProductNum(text) {
+  const t = String(text || '').toLowerCase();
+  if (/product\s*1|: product 1|p1\b/.test(t)) return 1;
+  if (/product\s*2|: product 2|p2\b/.test(t)) return 2;
+  if (/product\s*3|: product 3|p3\b/.test(t)) return 3;
+  return null;
+}
+
+function isUnitEconHeading(p) {
+  if (p.tag !== 'h2') return false;
+  const text = (p.spans || []).map((s) => s.t || '').join('');
+  return /three[\s-]year unit economics/i.test(text);
+}
+
+function DocBody({ doc, sectionRefs, isAr, isMobile }) {
+  // Skip the preamble: drop everything before the first H1 ("1. Executive Overview").
+  // This removes "Head of Product Strategy", "UAE SME Lending Platform",
+  // "Confidential. Internal. Working Draft.", etc.
+  const trimmedDoc = stM(() => {
+    const firstH1 = doc.findIndex((p) => p.tag === 'h1');
+    return firstH1 > 0 ? doc.slice(firstH1) : doc;
+  }, [doc]);
+
   // Group consecutive list items into <ul> blocks for nicer rendering.
   const blocks = stM(() => {
     const out = [];
@@ -288,7 +386,7 @@ function DocBody({ doc, sectionRefs }) {
     const flushList = () => {
       if (listBuffer.length) { out.push({ type: 'list', items: listBuffer }); listBuffer = []; }
     };
-    doc.forEach((p, i) => {
+    trimmedDoc.forEach((p, i) => {
       if (p.tag === 'li') {
         listBuffer.push({ ...p, key: i });
       } else {
@@ -302,7 +400,7 @@ function DocBody({ doc, sectionRefs }) {
     });
     flushList();
     return out;
-  }, [doc]);
+  }, [trimmedDoc]);
 
   return (
     <>
@@ -328,6 +426,20 @@ function DocBody({ doc, sectionRefs }) {
           return <TableBlock key={'t' + bi} rows={b.table.rows}/>;
         }
         const p = b.para;
+        // After the "Three-Year Unit Economics: Product N" h2 emerges,
+        // inject the live unit-economics callout right below it.
+        if (isUnitEconHeading(p)) {
+          const text = (p.spans || []).map((s) => s.t || '').join('');
+          const productNum = detectProductNum(text);
+          if (productNum) {
+            return (
+              <React.Fragment key={'ue-' + p.key}>
+                <ParaBlock para={p} sectionRefs={sectionRefs}/>
+                <LiveUnitEconomicsCallout productNum={productNum} isAr={isAr} isMobile={isMobile}/>
+              </React.Fragment>
+            );
+          }
+        }
         return <ParaBlock key={p.key} para={p} sectionRefs={sectionRefs}/>;
       })}
     </>
