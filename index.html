@@ -96,36 +96,27 @@
     from { opacity: 1; }
     to   { opacity: 0; }
   }
-  /* Excel download CTA — shimmer + soft outward glow */
-  @keyframes mal-excel-pulse {
-    0%, 100% { box-shadow: 0 1px 2px rgba(16,124,65,.18), 0 0 0 0 rgba(16,124,65,.35); }
-    50%      { box-shadow: 0 1px 2px rgba(16,124,65,.18), 0 0 0 8px rgba(16,124,65,0); }
-  }
+  /* Excel download CTA — single subtle shimmer on mount, then quiet */
   @keyframes mal-excel-shimmer {
-    0%   { transform: translateX(-130%); }
-    100% { transform: translateX(230%); }
+    0%   { transform: translateX(-150%); opacity: 0; }
+    20%  { opacity: 1; }
+    80%  { opacity: 1; }
+    100% { transform: translateX(250%); opacity: 0; }
   }
   .mal-excel-cta {
     position: relative;
     overflow: hidden;
-    animation: mal-excel-pulse 2.6s cubic-bezier(.4,0,.6,1) infinite;
   }
   .mal-excel-cta::before {
     content: "";
     position: absolute;
     top: 0; bottom: 0; left: 0;
-    width: 35%;
-    background: linear-gradient(110deg, transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%);
-    animation: mal-excel-shimmer 3.2s ease-in-out infinite;
-    animation-delay: .4s;
+    width: 40%;
+    background: linear-gradient(110deg, transparent 0%, rgba(16,124,65,.22) 50%, transparent 100%);
+    animation: mal-excel-shimmer 2s ease-in-out 1;
+    animation-fill-mode: forwards;
+    animation-delay: .6s;
     pointer-events: none;
-  }
-  .mal-excel-cta:hover {
-    animation-play-state: paused;
-  }
-  .mal-excel-cta:hover::before {
-    animation-play-state: paused;
-    opacity: 0;
   }
   /* ============================================================
      Floating left dotnav (cfodeck-faithful)
@@ -250,14 +241,14 @@
 <script type="text/babel" src="mal/persona-picker.jsx"></script>
 <script type="text/babel" src="mal/screens-demo-mode.jsx"></script>
 <script type="text/babel" src="mal/charts.jsx"></script>
-<script type="text/babel" src="mal/tour.jsx?v=20260510-9"></script>
+<script type="text/babel" src="mal/tour.jsx?v=20260510-10"></script>
 <script src="mal/strategy-doc.js"></script>
 <script src="mal/p1-model-data.js"></script>
 <script src="mal/product-catalogue.js"></script>
-<script type="text/babel" src="mal/section-prototype.jsx?v=20260510-9"></script>
-<script type="text/babel" src="mal/section-strategy.jsx?v=20260510-9"></script>
-<script type="text/babel" src="mal/section-financial.jsx?v=20260510-9"></script>
-<script type="text/babel" src="mal/section-ai.jsx?v=20260510-9"></script>
+<script type="text/babel" src="mal/section-prototype.jsx?v=20260510-10"></script>
+<script type="text/babel" src="mal/section-strategy.jsx?v=20260510-10"></script>
+<script type="text/babel" src="mal/section-financial.jsx?v=20260510-10"></script>
+<script type="text/babel" src="mal/section-ai.jsx?v=20260510-10"></script>
 
 <script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;

@@ -95,26 +95,26 @@ function SectionFinancial({ lang, isMobile }) {
                title={`${data.meta.workbook} · ${data.meta.sheets} sheets · synced ${data.meta.lastUpdated}`}
                className="mal-excel-cta"
                style={{
-                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                 padding: '9px 16px', borderRadius: 999,
-                 background: '#107C41',
-                 border: '1px solid #0E6939',
-                 color: '#FFFFFF',
-                 fontSize: 12.5, fontWeight: 600, letterSpacing: '0.01em',
+                 display: 'inline-flex', alignItems: 'center', gap: 6,
+                 padding: '6px 12px', borderRadius: 999,
+                 background: 'transparent',
+                 border: '1px solid var(--mal-line)',
+                 color: 'var(--mal-mid)',
+                 fontSize: 11.5, fontWeight: 500,
                  textDecoration: 'none',
-                 transition: 'background .15s, transform .15s',
+                 transition: 'color .15s, border-color .15s',
                }}
                onMouseEnter={(e) => {
-                 e.currentTarget.style.background = '#0E6939';
-                 e.currentTarget.style.transform = 'translateY(-1px)';
+                 e.currentTarget.style.color = 'var(--mal-ink)';
+                 e.currentTarget.style.borderColor = '#107C41';
                }}
                onMouseLeave={(e) => {
-                 e.currentTarget.style.background = '#107C41';
-                 e.currentTarget.style.transform = 'translateY(0)';
+                 e.currentTarget.style.color = 'var(--mal-mid)';
+                 e.currentTarget.style.borderColor = 'var(--mal-line)';
                }}>
-              <DownloadArrowIcon/>
               <ExcelIcon/>
               <span>{isAr ? 'تحميل إكسل' : 'Download Excel'}</span>
+              <DownloadArrowIcon/>
             </a>
           )}
         </div>
