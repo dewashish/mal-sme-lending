@@ -219,6 +219,7 @@
 <script type="text/babel" src="mal/persona-picker.jsx"></script>
 <script type="text/babel" src="mal/screens-demo-mode.jsx"></script>
 <script type="text/babel" src="mal/charts.jsx"></script>
+<script src="mal/strategy-doc.js"></script>
 <script type="text/babel" src="mal/section-prototype.jsx"></script>
 <script type="text/babel" src="mal/section-strategy.jsx"></script>
 <script type="text/babel" src="mal/section-financial.jsx"></script>
@@ -407,7 +408,7 @@ function Root() {
       {view === 'landing' && (
         <MalLanding lang={lang}
                     viewport={isMobile ? 'mobile' : 'desktop'}
-                    onLaunch={() => { setView('app'); setSection('strategy'); }} />
+                    onLaunch={(picked = 'strategy') => { setView('app'); setSection(picked); }} />
       )}
 
       {view === 'app' && (

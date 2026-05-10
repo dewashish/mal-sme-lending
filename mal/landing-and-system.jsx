@@ -1,221 +1,283 @@
 /* eslint-disable */
-// Mal — Marketing landing + Design system page.
+// Mal — Landing (4-section hero) + Design system page.
 
 // ============================================================
-// LANDING PAGE
+// LANDING PAGE — single-screen hero, 4 interactive section cards
 // ============================================================
 function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
   const isAr = lang === 'ar';
+  const isMobile = viewport === 'mobile';
+
+  const SECTIONS = [
+    {
+      id: 'strategy',
+      num: '01',
+      label: isAr ? 'الاستراتيجية' : 'Strategy',
+      title: isAr ? 'وثيقة استراتيجية المنتج' : 'Head of Product · strategy doc',
+      blurb: isAr
+        ? 'الوثيقة كاملةً: ثلاث منتجات، الاقتصاد المتوقع، خطّة البناء، الذكاء الاصطناعي، التوزيع.'
+        : 'The full strategy document — every product, every cycle, every economic.',
+      gradient: 'linear-gradient(135deg, #C9B7E8, #B6CFE8 70%, #FBD9B5)',
+      meta: isAr ? '٧ أقسام · ٤ ملاحق' : '7 chapters · 4 appendices',
+    },
+    {
+      id: 'prototype',
+      num: '02',
+      label: isAr ? 'النموذج الأوليّ' : 'Prototype',
+      title: isAr ? 'تجربة المنتجات حيّة' : 'Working products · click anywhere',
+      blurb: isAr
+        ? 'الفاتورة الذكية افتراضياً. بدّل بين المنتجات الأربعة. كل شاشة قابلة للنقر.'
+        : 'Smart Invoice loads by default. Switch between Products 1–4. Every screen is interactive.',
+      gradient: 'linear-gradient(135deg, #B6CFE8, #C9B7E8 70%, #F0B7C2)',
+      meta: isAr ? '٤ منتجات' : '4 products',
+    },
+    {
+      id: 'financial',
+      num: '03',
+      label: isAr ? 'النمذجة المالية' : 'Financial Modeling',
+      title: isAr ? 'اقتصاد كل منتج، تفاعلياً' : 'Every product\'s P&L · in your hands',
+      blurb: isAr
+        ? 'حرّك تكلفة التمويل، التقدم، التعثر، الحجم. شاهد NIM وROA يتحرّكان مباشرة.'
+        : 'Move cost-of-funds, advance, default, opex. NIM, RAROC, P&L recompute live across Y1–Y3.',
+      gradient: 'linear-gradient(135deg, #FBD9B5, #F0B7C2 60%, #C9B7E8)',
+      meta: isAr ? 'ميزان حيّ · CSV' : 'Live model · CSV export',
+    },
+    {
+      id: 'ai',
+      num: '04',
+      label: isAr ? 'مبادرات الذكاء الاصطناعي' : 'AI Initiatives',
+      title: isAr ? 'عشرون وكيلاً، رحلة واحدة' : '20 agents · one credit loop',
+      blurb: isAr
+        ? 'الفهرس، البنية، محرّك القرار، الإنذار المبكّر، التحصيل الذكي ثنائي اللغة.'
+        : 'Inventory, architecture, decision engine, early-warning system, bilingual AI collections.',
+      gradient: 'linear-gradient(135deg, #2A1F6F, #5A47C2 70%, #C9B7E8)',
+      meta: isAr ? '٢٠ وكيلاً' : '20 agents · 6 pillars',
+      dark: true,
+    },
+  ];
+
   return (
-    <div dir={isAr ? 'rtl' : 'ltr'} style={{ fontFamily: 'var(--mal-font-ui)', color: 'var(--mal-ink)', background: 'var(--mal-surface)', minHeight: '100%' }}>
-      {/* Top nav */}
-      <header style={{ height: 64, paddingInline: viewport === 'mobile' ? 18 : 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--mal-line)', background: 'var(--mal-surface)' }}>
+    <div dir={isAr ? 'rtl' : 'ltr'} style={{
+      fontFamily: 'var(--mal-font-ui)', color: 'var(--mal-ink)',
+      background: 'var(--mal-surface)', minHeight: '100vh',
+      position: 'relative', overflow: 'hidden',
+    }}>
+      {/* Ambient orbs */}
+      <div aria-hidden style={{
+        position: 'absolute', top: -180, insetInlineEnd: -180,
+        width: 520, height: 520, borderRadius: '50%',
+        background: 'conic-gradient(from 90deg, var(--mal-iri-1), var(--mal-iri-2), var(--mal-iri-3), var(--mal-iri-4), var(--mal-iri-1))',
+        filter: 'blur(80px)', opacity: 0.35,
+        animation: 'mal-orb-spin 40s linear infinite',
+        pointerEvents: 'none',
+      }}/>
+      <div aria-hidden style={{
+        position: 'absolute', bottom: -200, insetInlineStart: -200,
+        width: 480, height: 480, borderRadius: '50%',
+        background: 'conic-gradient(from 270deg, var(--mal-iri-3), var(--mal-iri-1), var(--mal-iri-4), var(--mal-iri-2))',
+        filter: 'blur(100px)', opacity: 0.28,
+        animation: 'mal-orb-spin 55s linear infinite reverse',
+        pointerEvents: 'none',
+      }}/>
+
+      {/* Top bar */}
+      <header style={{
+        height: 64,
+        paddingInline: isMobile ? 18 : 56,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        position: 'relative', zIndex: 2,
+      }}>
         <MalLogo size={22}/>
-        {viewport === 'desktop' && <nav style={{ display: 'flex', gap: 24, fontSize: 13, color: 'var(--mal-mid)' }}>
-          {['Smart Invoice','Claims Engine','Anchor SCF','Pricing','About'].map(n =>
-            <a key={n} href="#" style={{ color: 'inherit', textDecoration: 'none' }}>{n}</a>)}
-        </nav>}
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Button kind="ghost" size="sm">{isAr ? 'دخول' : 'Sign in'}</Button>
-          <Button kind="primary" size="sm" iconRight="arrow" onClick={onLaunch}>{isAr ? 'ابدأ' : 'Get started'}</Button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--mal-mid)' }}>
+          <span>{isAr ? 'مرخّص ADGM FSRA' : 'Regulated · ADGM FSRA'}</span>
+          {!isMobile && <span style={{ opacity: .4 }}>·</span>}
+          {!isMobile && <span style={{ fontFamily: 'var(--mal-font-mono)' }}>EN · AR</span>}
         </div>
       </header>
 
-      {/* Hero */}
-      <section style={{ paddingInline: viewport === 'mobile' ? 18 : 56, paddingBlock: viewport === 'mobile' ? 40 : 88, display: 'grid', gridTemplateColumns: viewport === 'desktop' ? '1.2fr 1fr' : '1fr', gap: 40, alignItems: 'center' }}>
-        <div>
-          <Pill tone="ink" dot>{isAr ? 'مرخّص من سلطة دبي للخدمات المالية' : 'DFSA-licensed · Abu Dhabi'}</Pill>
-          <h1 className="mal-display" style={{ fontSize: viewport === 'desktop' ? 96 : 56, marginTop: 18, fontStyle: 'italic' }}>
-            {isAr ? <>رأس مال<br/><span className="mal-iri-text">يتحرّك بسرعة التجارة.</span></> : <>Capital that moves<br/>at the <span className="mal-iri-text">speed of trade.</span></>}
-          </h1>
-          <p className="mal-body" style={{ marginTop: 20, color: 'var(--mal-mid)', maxWidth: 520 }}>
-            {isAr ? 'منصّة تمويل واحدة لرواد الأعمال في الإمارات. ادفع موردينك الآن، اقبض من عملائك مبكراً، وموّل مطالباتك الصحية، كل ذلك في دقائق وبضمانة بياناتك.' : 'One credit platform for UAE SMEs. Pay suppliers now, get paid by buyers earlier, and advance healthcare claims — in minutes, underwritten by your own data.'}
-          </p>
-          <div style={{ display: 'flex', gap: 10, marginTop: 28, flexWrap: 'wrap' }}>
-            <Button kind="primary" size="lg" iconRight="arrow" onClick={onLaunch}>{isAr ? 'افتح حساباً' : 'Open an account'}</Button>
-            <Button kind="secondary" size="lg" icon="play">{isAr ? 'شاهد كيف' : 'Watch the 90s tour'}</Button>
-          </div>
-          <div style={{ display: 'flex', gap: 24, marginTop: 36, fontSize: 12, color: 'var(--mal-mid)', flexWrap: 'wrap' }}>
-            <span>{isAr ? 'تحت إشراف ADGM' : 'Regulated by ADGM FSRA'}</span>
-            <span>·</span>
-            <span>AECB · UAE Pass · Peppol</span>
-            <span>·</span>
-            <span>{isAr ? 'متاح بالعربية والإنجليزية' : 'EN · AR'}</span>
-          </div>
+      {/* Hero block */}
+      <section style={{
+        paddingInline: isMobile ? 18 : 64, paddingTop: isMobile ? 30 : 56,
+        position: 'relative', zIndex: 2, maxWidth: 1280, margin: '0 auto',
+      }}>
+        <div className="mal-fade-up" style={{ marginBottom: 24 }}>
+          <Pill tone="ink" dot>
+            {isAr ? 'مالٌ · منصّة الإقراض للمنشآت الإماراتية' : 'Mal · UAE SME Lending Platform'}
+          </Pill>
         </div>
-        {viewport === 'desktop' && (
-          <div style={{ position: 'relative', height: 480, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="mal-orb" style={{ width: 380, height: 380, animation: 'mal-orb-spin 22s linear infinite' }}/>
-            <div style={{ position: 'absolute', insetInlineEnd: 0, top: 30, background: 'var(--mal-paper)', border: '1px solid var(--mal-line)', borderRadius: 16, padding: 14, boxShadow: 'var(--mal-sh-3)', width: 240 }}>
-              <div className="mal-caption">{isAr ? 'تمت الموافقة' : 'Approved'}</div>
-              <div className="mal-display-sm" style={{ fontStyle: 'italic', marginTop: 4 }}>AED 850,000</div>
-              <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 4 }}>{isAr ? 'حد ائتماني · فئة A' : 'Credit limit · Tier A'}</div>
-            </div>
-            <div style={{ position: 'absolute', insetInlineStart: 0, bottom: 40, background: 'var(--mal-paper)', border: '1px solid var(--mal-line)', borderRadius: 16, padding: 14, boxShadow: 'var(--mal-sh-3)', width: 220 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Pill tone="success" dot>{isAr ? 'مموّل' : 'Wired'}</Pill>
-                <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>2m ago</span>
-              </div>
-              <div className="mal-num" style={{ fontStyle: 'italic', fontFamily: 'var(--mal-font-display)', fontSize: 28, marginTop: 6 }}>AED 222,250</div>
-              <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{isAr ? 'إلى أطلس للتغليف' : 'to Atlas Packaging'}</div>
-            </div>
-          </div>
-        )}
+        <h1 className="mal-fade-up mal-display" style={{
+          animationDelay: '50ms',
+          fontSize: isMobile ? 48 : 88, lineHeight: 1, fontStyle: 'italic',
+          letterSpacing: '-0.025em',
+          margin: 0,
+          maxWidth: 1100,
+        }}>
+          {isAr
+            ? <>منصّة ائتمان واحدة. <span className="mal-iri-text">أربع زوايا للنظر إليها.</span></>
+            : <>One credit platform. <span className="mal-iri-text">Four ways to look at it.</span></>}
+        </h1>
+        <p className="mal-fade-up" style={{
+          animationDelay: '120ms',
+          fontSize: isMobile ? 15 : 18, lineHeight: 1.55,
+          color: 'var(--mal-mid)', maxWidth: 720,
+          marginTop: 22, marginBottom: 0,
+        }}>
+          {isAr
+            ? 'الاستراتيجية الكاملة، النماذج العاملة، النمذجة المالية الحيّة، وبنية الذكاء الاصطناعي. كل قسم قابل للنقر.'
+            : 'The full strategy doc, the working prototypes, live financial models, and the AI architecture that runs underneath. Click any card to dive in.'}
+        </p>
       </section>
 
-      {/* Stats strip */}
-      <section style={{ paddingInline: viewport === 'mobile' ? 18 : 56, paddingBlock: 32, borderBlock: '1px solid var(--mal-line)', background: 'var(--mal-surface-2)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: viewport === 'desktop' ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)', gap: 24 }}>
-          {[
-            ['AED 12B+', isAr ? 'فرصة سوقية' : 'TAM in UAE SME credit'],
-            ['<4h', isAr ? 'إلى تمويل' : 'to first wire'],
-            ['400K+', isAr ? 'منشأة صغيرة ومتوسطة' : 'SMEs in UAE'],
-            ['85%', isAr ? 'بدون كشف بنكي ورقي' : 'fully digital onboarding'],
-          ].map(([v, l], i) => (
-            <div key={i}>
-              <div className="mal-display-sm" style={{ fontStyle: 'italic' }}>{v}</div>
-              <div style={{ fontSize: 12, color: 'var(--mal-mid)', marginTop: 4 }}>{l}</div>
-            </div>
+      {/* Four section cards */}
+      <section style={{
+        paddingInline: isMobile ? 18 : 64, paddingTop: isMobile ? 32 : 60, paddingBottom: isMobile ? 40 : 80,
+        maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 2,
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
+          gap: isMobile ? 14 : 18,
+        }}>
+          {SECTIONS.map((s, i) => (
+            <SectionCard key={s.id} section={s} index={i} isAr={isAr} isMobile={isMobile}
+                         onClick={() => onLaunch && onLaunch(s.id)}/>
           ))}
         </div>
       </section>
 
-      {/* Three products */}
-      <section style={{ paddingInline: viewport === 'mobile' ? 18 : 56, paddingBlock: viewport === 'mobile' ? 40 : 88 }}>
-        <div className="mal-caption">{isAr ? 'ثلاث منتجات' : 'Three products'}</div>
-        <h2 className="mal-display" style={{ fontSize: viewport === 'desktop' ? 56 : 36, marginTop: 12, marginBottom: 36, fontStyle: 'italic' }}>
-          {isAr ? 'تمويل لكل دورة في عملك.' : 'Financing for every cycle in your business.'}
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: viewport === 'desktop' ? 'repeat(3, 1fr)' : '1fr', gap: 14 }}>
-          <ProductCard num="01" tone="lilac" iri="linear-gradient(135deg, #C9B7E8, #B6CFE8)"
-            title={isAr ? 'الفاتورة الذكية' : 'Smart Invoice'}
-            tagline={isAr ? 'ادفع واستلم بين الشركات' : 'B2B Pay & Get Paid'}
-            desc={isAr ? 'مشترٍ يحصل على ٥ خطط دفع. مورّد يحصل على نقد فوري. مال يُسوّيها بينهما.' : 'The buyer picks from 5 payment plans. The supplier gets paid in 4 hours. Mal settles in between.'}
-            bullets={[isAr ? '٥ خطط دفع للمشتري' : '5 plans for buyer', isAr ? 'سداد ٤ ساعات للمورد' : '4-hour wire to supplier', isAr ? 'بدون رجوع متاح' : 'Non-recourse option']}
-            personas={[isAr ? 'مشتري' : 'Buyer SME', isAr ? 'مورّد' : 'Supplier SME']}
-            onClick={onLaunch}/>
-          <ProductCard num="02" tone="coral" iri="linear-gradient(135deg, #F0B7C2, #FBD9B5)"
-            title={isAr ? 'محرّك المطالبات' : 'Claims Engine'}
-            tagline={isAr ? 'تمويل الذمم الصحية' : 'Healthcare Receivables'}
-            desc={isAr ? 'سلفة على مطالبات التأمين قبل ٧٥ يوماً، مع نموذج تنبؤي يصلح المطالبات قبل الإرسال.' : 'Advance insurance claims 75 days early, with predictive scoring that fixes claims before they\'re submitted.'}
-            bullets={[isAr ? 'حتى ٨٥٪ سلفة' : 'Up to 85% advance', isAr ? 'نموذج موافقة تنبؤي' : 'Predictive approval model', isAr ? 'تكامل HCP' : 'EMR / HCP integration']}
-            personas={[isAr ? 'إدارة العيادة' : 'Provider Ops', isAr ? 'فريق الترميز' : 'Coding desk']}
-            onClick={onLaunch}/>
-          <ProductCard num="03" tone="ink" iri="linear-gradient(135deg, #2A1F6F, #5A47C2)"
-            title={isAr ? 'تمويل سلسلة التوريد' : 'Anchor SCF'}
-            tagline={isAr ? 'بقيادة الشركات الكبرى' : 'Anchor-led, dynamic-discount'}
-            desc={isAr ? 'الشركات الكبرى تربط نظام مدفوعاتها. الموردون يقدّمون عروضاً تنافسية للسداد المبكّر.' : 'Anchors plug their AP. Suppliers bid for early payment in a daily auction. Mal funds the winning rate.'}
-            bullets={[isAr ? 'مزاد يومي' : 'Daily auction', isAr ? 'تكامل ERP' : 'SAP / Oracle / NetSuite', isAr ? 'فائدة محسّنة للجميع' : 'Optimised yield, both sides']}
-            personas={[isAr ? 'إدارة الذمم' : 'Anchor AP', isAr ? 'مورّد المرتكز' : 'Anchor Supplier']}
-            onClick={onLaunch}/>
-        </div>
-      </section>
-
-      {/* How it works (Smart Invoice) */}
-      <section style={{ paddingInline: viewport === 'mobile' ? 18 : 56, paddingBlock: 64, background: 'var(--mal-paper)', borderBlock: '1px solid var(--mal-line)' }}>
-        <div className="mal-caption">{isAr ? 'كيف تعمل الفاتورة الذكية' : 'How Smart Invoice works'}</div>
-        <h2 className="mal-display" style={{ fontSize: viewport === 'desktop' ? 44 : 32, marginTop: 12, marginBottom: 32, fontStyle: 'italic' }}>
-          {isAr ? 'فاتورة واحدة. خطّتا تمويل. أربع ساعات.' : 'One invoice. Two financings. Four hours.'}
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: viewport === 'desktop' ? 'repeat(4, 1fr)' : '1fr', gap: 14 }}>
-          {[
-            { n: 1, h: isAr ? 'فاتورة' : 'Invoice raised', s: isAr ? 'المورد يصدر فاتورة عبر Peppol أو يرفعها للمنصّة.' : 'Supplier issues an e-invoice via Peppol or uploads to Mal.', i: 'invoice' },
-            { n: 2, h: isAr ? 'خطّة المشتري' : 'Buyer picks plan', s: isAr ? '٥ خطط: مباشر، BNPL ٣٠/٦٠/٩٠، أو أقساط.' : 'Direct, BNPL 30/60/90, or installments — buyer chooses.', i: 'card' },
-            { n: 3, h: isAr ? 'سلفة المورّد' : 'Supplier accepts', s: isAr ? 'يقبل ٩٣٪ سلفة الآن، ٧٪ احتياطي بعد السداد.' : 'Accepts 93% advance now, 7% holdback on settlement.', i: 'bolt' },
-            { n: 4, h: isAr ? 'مال يُسوّي' : 'Mal settles', s: isAr ? 'الخصم البنكي يُجمّع من المشتري عبر الخطّة المختارة.' : 'Direct debit collects from buyer per their chosen plan.', i: 'check' },
-          ].map(s => (
-            <Card key={s.n} padded>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div className="mal-num" style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic', fontSize: 32, color: 'var(--mal-primary-3)' }}>0{s.n}</div>
-                {Ico[s.i]({ width: 18, height: 18, stroke: 'var(--mal-mid)' })}
-              </div>
-              <div className="mal-h3" style={{ marginTop: 14 }}>{s.h}</div>
-              <div style={{ fontSize: 13, color: 'var(--mal-mid)', marginTop: 6 }}>{s.s}</div>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Personas band */}
-      <section style={{ paddingInline: viewport === 'mobile' ? 18 : 56, paddingBlock: 64 }}>
-        <div className="mal-caption">{isAr ? 'لمن صُمّمت' : 'Built for'}</div>
-        <h2 className="mal-display" style={{ fontSize: viewport === 'desktop' ? 44 : 30, marginTop: 12, marginBottom: 28, fontStyle: 'italic' }}>
-          {isAr ? 'لكل دور وجهة عمل خاصة.' : 'Each role gets its own surface.'}
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: viewport === 'desktop' ? 'repeat(3, 1fr)' : '1fr', gap: 10 }}>
-          {[
-            { name: isAr ? 'مشتري المنشأة' : 'Buyer SME', sub: isAr ? 'يدفع ٥ خطط · حد ائتماني واحد' : '5 ways to pay · one limit', tone: 'lilac', icon: 'card' },
-            { name: isAr ? 'مورّد المنشأة' : 'Supplier SME', sub: isAr ? 'يقبض اليوم · يعرف الفرع' : 'Get paid today · know your buyer', tone: 'sky', icon: 'truck' },
-            { name: isAr ? 'إدارة العيادة' : 'Provider Ops', sub: isAr ? 'سلفة المطالبات · لوحة DSO' : 'Advance claims · DSO dashboard', tone: 'coral', icon: 'hospital' },
-            { name: isAr ? 'فريق الترميز' : 'Coding desk', sub: isAr ? 'إصلاح المطالبات · نموذج تنبؤي' : 'Fix claims · predictive model', tone: 'peach', icon: 'shield' },
-            { name: isAr ? 'إدارة الذمم' : 'Anchor AP', sub: isAr ? 'مدفوعات · مزاد يومي' : 'AP feed · daily auction', tone: 'ink', icon: 'building' },
-            { name: isAr ? 'مورّد المرتكز' : 'Anchor Supplier', sub: isAr ? 'عروض تنافسية · سيولة' : 'Bid · liquidity', tone: 'lilac', icon: 'trade' },
-          ].map((p, i) => (
-            <Card key={i} padded onClick={onLaunch} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <Avatar tone={p.tone} name={Ico[p.icon]({ width: 16, height: 16 })} size={42}/>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>{p.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--mal-mid)' }}>{p.sub}</div>
-              </div>
-              {Ico.arrow({ color: 'var(--mal-mid)' })}
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section style={{ paddingInline: viewport === 'mobile' ? 18 : 56, paddingBlock: 88, textAlign: 'center', background: 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)', color: '#fff', position: 'relative', overflow: 'hidden' }}>
-        <div className="mal-orb" style={{ position: 'absolute', width: 480, height: 480, top: -200, insetInlineEnd: -200, opacity: .3, animation: 'mal-orb-spin 30s linear infinite' }}/>
-        <div className="mal-orb" style={{ position: 'absolute', width: 320, height: 320, bottom: -160, insetInlineStart: -160, opacity: .25, animation: 'mal-orb-spin 40s linear infinite reverse' }}/>
-        <div style={{ position: 'relative', maxWidth: 720, margin: '0 auto' }}>
-          <h2 className="mal-display" style={{ fontSize: viewport === 'desktop' ? 64 : 38, fontStyle: 'italic' }}>
-            {isAr ? 'سيولة تتحرّك بسرعتك.' : 'Cash that keeps up with you.'}
-          </h2>
-          <p style={{ marginTop: 20, color: 'rgba(255,255,255,.7)' }}>
-            {isAr ? 'افتح حسابك في ١٠ دقائق. اطلب أول تمويل اليوم.' : 'Open an account in 10 minutes. Request your first wire today.'}
-          </p>
-          <div style={{ marginTop: 28, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Button kind="iri" size="lg" iconRight="arrow" onClick={onLaunch}>{isAr ? 'ابدأ' : 'Get started'}</Button>
-            <Button kind="ghost" size="lg" style={{ color: '#fff' }}>{isAr ? 'تحدّث إلى المبيعات' : 'Talk to sales'}</Button>
-          </div>
-        </div>
-      </section>
-
-      <footer style={{ paddingInline: viewport === 'mobile' ? 18 : 56, paddingBlock: 36, fontSize: 11, color: 'var(--mal-mid)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      {/* Footer */}
+      <footer style={{
+        paddingInline: isMobile ? 18 : 56, paddingBlock: 28,
+        fontSize: 11, color: 'var(--mal-mid-2)',
+        display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+        position: 'relative', zIndex: 2,
+        borderTop: '1px solid var(--mal-line)',
+      }}>
         <span>© 2026 Mal Capital Ltd. {isAr ? 'تحت إشراف ADGM FSRA.' : 'Regulated by ADGM FSRA.'}</span>
-        <span>{isAr ? 'الخصوصية · الشروط · الأمان' : 'Privacy · Terms · Security'}</span>
+        <span style={{ fontFamily: 'var(--mal-font-mono)' }}>AECB · EmaraTax · UAE Open Finance · EDB</span>
       </footer>
     </div>
   );
 }
 
-function ProductCard({ num, title, tagline, desc, bullets, personas, iri, onClick }) {
+// One big section card on the landing — animates on hover, opens its section
+function SectionCard({ section, index, isAr, isMobile, onClick }) {
   return (
-    <Card padded onClick={onClick} style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 14, height: '100%', padding: 24, transition: 'transform .14s, box-shadow .14s' }}
-      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--mal-sh-2)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--mal-sh-1)'; }}>
-      <div style={{ height: 120, borderRadius: 12, background: iri, position: 'relative', overflow: 'hidden' }}>
-        <div className="mal-orb" style={{ position: 'absolute', width: 90, height: 90, top: -20, insetInlineEnd: -20, opacity: .8 }}/>
-        <div style={{ position: 'absolute', insetInlineStart: 16, bottom: 12, color: 'rgba(0,0,0,.6)' }}>
-          <div className="mal-num" style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic', fontSize: 28 }}>{num}</div>
+    <button
+      onClick={onClick}
+      className="mal-fade-up"
+      style={{
+        all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
+        animationDelay: (200 + index * 80) + 'ms',
+        position: 'relative', overflow: 'hidden',
+        background: section.dark ? section.gradient : 'var(--mal-paper)',
+        border: '1px solid ' + (section.dark ? 'transparent' : 'var(--mal-line)'),
+        borderRadius: 24,
+        padding: isMobile ? 22 : 32,
+        minHeight: isMobile ? 220 : 280,
+        transition: 'transform .28s cubic-bezier(.4,0,.2,1), box-shadow .28s, border-color .28s',
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+        gap: 18,
+        color: section.dark ? '#FAF7EE' : 'var(--mal-ink)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-4px)';
+        e.currentTarget.style.boxShadow = section.dark
+          ? '0 20px 60px -20px rgba(42,31,111,.55)'
+          : 'var(--mal-sh-3)';
+        if (!section.dark) e.currentTarget.style.borderColor = 'var(--mal-primary-3)';
+        const arrow = e.currentTarget.querySelector('.mal-card-arrow');
+        if (arrow) arrow.style.transform = 'translateX(' + (isAr ? '-6px' : '6px') + ')';
+        const halo = e.currentTarget.querySelector('.mal-card-halo');
+        if (halo) halo.style.transform = 'scale(1.2)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = '';
+        e.currentTarget.style.boxShadow = '';
+        if (!section.dark) e.currentTarget.style.borderColor = 'var(--mal-line)';
+        const arrow = e.currentTarget.querySelector('.mal-card-arrow');
+        if (arrow) arrow.style.transform = '';
+        const halo = e.currentTarget.querySelector('.mal-card-halo');
+        if (halo) halo.style.transform = '';
+      }}>
+      {/* Iridescent halo (only on light cards) */}
+      {!section.dark && (
+        <div className="mal-card-halo" aria-hidden style={{
+          position: 'absolute', top: -80, insetInlineEnd: -80,
+          width: 280, height: 280, borderRadius: '50%',
+          background: section.gradient,
+          filter: 'blur(20px)', opacity: 0.55,
+          transition: 'transform .55s cubic-bezier(.4,0,.2,1)',
+          pointerEvents: 'none',
+        }}/>
+      )}
+      {/* Subtle grain */}
+      {section.dark && (
+        <div aria-hidden style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,.18), transparent 50%)',
+          pointerEvents: 'none',
+        }}/>
+      )}
+
+      {/* Header row: number + label */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        position: 'relative', zIndex: 2,
+      }}>
+        <span style={{
+          fontFamily: 'var(--mal-font-mono)',
+          fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase',
+          color: section.dark ? 'rgba(250,247,238,.65)' : 'var(--mal-mid)',
+          fontWeight: 500,
+        }}>{section.num} · {section.label}</span>
+        <span style={{
+          fontSize: 11, fontFamily: 'var(--mal-font-mono)',
+          color: section.dark ? 'rgba(250,247,238,.65)' : 'var(--mal-mid-2)',
+        }}>{section.meta}</span>
+      </div>
+
+      {/* Title + blurb */}
+      <div style={{ position: 'relative', zIndex: 2 }}>
+        <div style={{
+          fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+          fontSize: isMobile ? 28 : 36, lineHeight: 1.05,
+          letterSpacing: '-0.015em',
+        }}>
+          {section.title}
+        </div>
+        <div style={{
+          fontSize: isMobile ? 13 : 14, lineHeight: 1.55,
+          color: section.dark ? 'rgba(250,247,238,.72)' : 'var(--mal-mid)',
+          marginTop: 12, maxWidth: 480,
+        }}>
+          {section.blurb}
         </div>
       </div>
-      <div>
-        <div style={{ fontSize: 11, color: 'var(--mal-mid)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{tagline}</div>
-        <div className="mal-h2" style={{ marginTop: 4, fontStyle: 'italic', fontFamily: 'var(--mal-font-display)' }}>{title}</div>
+
+      {/* Footer: open arrow */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        position: 'relative', zIndex: 2,
+      }}>
+        <span style={{
+          fontSize: 12, fontWeight: 500,
+          color: section.dark ? '#FAF7EE' : 'var(--mal-primary)',
+        }}>
+          {isAr ? 'افتح القسم' : 'Open section'}
+        </span>
+        <span className="mal-card-arrow" style={{
+          width: 36, height: 36, borderRadius: 999,
+          background: section.dark ? 'rgba(250,247,238,.18)' : 'var(--mal-surface-2)',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          color: section.dark ? '#FAF7EE' : 'var(--mal-primary)',
+          fontSize: 16, transition: 'transform .25s cubic-bezier(.4,0,.2,1)',
+          transform: isAr ? 'scaleX(-1)' : 'none',
+        }}>
+          →
+        </span>
       </div>
-      <div style={{ fontSize: 13, color: 'var(--mal-mid)', lineHeight: 1.5 }}>{desc}</div>
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-        {bullets.map((b, i) => (
-          <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-            {Ico.check({ width: 14, height: 14, stroke: 'var(--mal-success)' })}{b}
-          </li>
-        ))}
-      </ul>
-      <div style={{ marginTop: 'auto', display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {personas.map(p => <Pill key={p} tone="neutral">{p}</Pill>)}
-      </div>
-    </Card>
+    </button>
   );
 }
 
