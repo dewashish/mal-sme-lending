@@ -1204,7 +1204,9 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
     { key: 'installment_4', label: isAr ? 'أقساط ٤ شهور'  : 'Instalments · 4 mo', cost: '+3.6%',  sub: 'AED 9,000', recommended: true },
   ];
   const picked = scenario.plan?.type;
+  const variant = scenario.productVariant || 'conventional';
   const [signing, setSigning] = dmS(false);
+  const [showTawarruq, setShowTawarruq] = dmS(false);
   // Once signed, advance phase to 'funded' after a brief animation
   dmE(() => {
     if (signing) {
@@ -1222,6 +1224,43 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
       <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 30, fontStyle: 'italic', lineHeight: 1.05 }}>
         {isAr ? 'كيف تريد أن تدفع؟' : 'How do you want to pay?'}
       </div>
+
+      {/* Conventional / Sharia variant toggle */}
+      <div style={{
+        display: 'inline-flex', padding: 3, gap: 3, borderRadius: 999,
+        background: 'var(--mal-surface-2)', border: '1px solid var(--mal-line)',
+        alignSelf: 'flex-start',
+      }}>
+        {[
+          { v: 'conventional', label: isAr ? 'تقليدي' : 'Conventional' },
+          { v: 'sharia',       label: isAr ? 'شرعي'   : 'Sharia · Tawarruq' },
+        ].map((opt) => {
+          const active = variant === opt.v;
+          return (
+            <button key={opt.v} onClick={() => patch({ productVariant: opt.v })} style={{
+              all: 'unset', cursor: 'pointer',
+              padding: '5px 12px', borderRadius: 999,
+              fontSize: 11.5, fontWeight: active ? 700 : 500,
+              color: active ? '#fff' : 'var(--mal-ink-2)',
+              background: active ? 'var(--mal-primary)' : 'transparent',
+              transition: 'background .15s, color .15s',
+            }}>{opt.label}</button>
+          );
+        })}
+      </div>
+      {variant === 'sharia' && (
+        <div style={{
+          fontSize: 11, color: 'var(--mal-mid)', lineHeight: 1.5,
+          padding: '8px 12px', borderRadius: 8,
+          background: 'rgba(10,128,86,0.08)',
+          border: '1px solid rgba(10,128,86,0.22)',
+        }}>
+          {isAr
+            ? '✓ متوافق مع الشريعة عبر هيكل المرابحة بالتورّق (AAOIFI). نشتري سلعة لك، نبيعها لك بالأجل، ثم تُباع نقداً.'
+            : '✓ Sharia-compliant via Commodity Murabaha (Tawarruq), AAOIFI-aligned. Mal buys a commodity, sells it to you on deferred terms, you sell it spot for cash.'}
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {plans.map((p, i) => {
           const selected = picked === p.key;
@@ -1268,11 +1307,38 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
 
       {scenario.plan && (
         <Button kind="primary" size="lg" full
-                onClick={() => { if (!signing) { onSign && onSign(); setSigning(true); } }}
+                onClick={() => {
+                  if (signing) return;
+                  if (variant === 'sharia' && !showTawarruq) {
+                    // Show the Tawarruq visualiser before signing the contract
+                    setShowTawarruq(true);
+                    return;
+                  }
+                  onSign && onSign();
+                  setSigning(true);
+                }}
                 icon={signing ? 'check' : 'lock'}>
           {signing ? (isAr ? 'جارٍ التوقيع…' : 'Signing…')
-            : (isAr ? 'وقّع بهوية رقمية' : 'Sign with UAE Pass')}
+            : variant === 'sharia'
+              ? (isAr ? 'تابع — اعرض هيكل التورّق' : 'Continue — show Tawarruq structure')
+              : (isAr ? 'وقّع بهوية رقمية' : 'Sign with UAE Pass')}
         </Button>
+      )}
+
+      {/* Tawarruq visualiser overlay */}
+      {showTawarruq && (
+        <TawarruqVisualiser
+          isAr={isAr}
+          principal={scenario.plan?.principal || 250000}
+          totalCost={scenario.plan?.totalCost || 0}
+          tenorMonths={scenario.plan?.tenorMonths || 4}
+          onClose={() => setShowTawarruq(false)}
+          onSign={() => {
+            setShowTawarruq(false);
+            onSign && onSign();
+            setSigning(true);
+          }}
+        />
       )}
     </div>
   );
@@ -3206,4 +3272,150 @@ function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
   );
 }
 
-window.DemoMode = DemoMode;
+// ============================================================
+// TawarruqVisualiser — animated 4-leg commodity-murabaha trade flow.
+// Shows AAOIFI-aligned structure before the buyer signs a Sharia contract.
+// Modal-style overlay; can be closed or signed-through.
+// ============================================================
+function TawarruqVisualiser({ isAr, principal, totalCost, tenorMonths, onClose, onSign }) {
+  const [step, setStep] = dmS(0);
+  const total = principal + totalCost;
+  const profitPct = totalCost > 0 ? ((totalCost / principal) * 100).toFixed(1) : '0.0';
+  const monthly = Math.round(total / Math.max(1, tenorMonths));
+
+  dmE(() => {
+    if (step >= 4) return;
+    const t = setTimeout(() => setStep((s) => s + 1), 1100);
+    return () => clearTimeout(t);
+  }, [step]);
+
+  const legs = [
+    {
+      id: 1,
+      title: isAr ? 'مال يشتري السلعة' : 'Mal buys commodity',
+      sub: isAr
+        ? `سلعة فضّيّة من DMCC · فوريّ · ${principal.toLocaleString()} د.إ`
+        : `Silver from DMCC broker · spot · AED ${principal.toLocaleString()}`,
+    },
+    {
+      id: 2,
+      title: isAr ? 'مال يبيع لك السلعة' : 'Mal sells commodity to you',
+      sub: isAr
+        ? `بسعر ${total.toLocaleString()} د.إ · مؤجَّل ${tenorMonths} شهر · ربح ${profitPct}%`
+        : `AED ${total.toLocaleString()} · deferred ${tenorMonths} mo · profit ${profitPct}%`,
+    },
+    {
+      id: 3,
+      title: isAr ? 'تبيع السلعة' : 'You sell commodity',
+      sub: isAr
+        ? `لوسيط آخر · فوريّ · ${principal.toLocaleString()} د.إ نقداً`
+        : `to a different broker · spot · AED ${principal.toLocaleString()} cash`,
+    },
+    {
+      id: 4,
+      title: isAr ? 'لديك النقد · تسدّد لمال شهرياً' : 'You hold cash · repay Mal monthly',
+      sub: isAr
+        ? `${monthly.toLocaleString()} د.إ × ${tenorMonths}`
+        : `AED ${monthly.toLocaleString()} × ${tenorMonths}`,
+    },
+  ];
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, zIndex: 10,
+      background: 'rgba(15,17,23,0.5)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 14, borderRadius: 'inherit',
+    }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        background: 'var(--mal-paper)',
+        borderRadius: 16, width: '100%',
+        padding: 18, display: 'flex', flexDirection: 'column', gap: 14,
+        boxShadow: '0 14px 50px rgba(0,0,0,0.32)',
+        maxHeight: '90%', overflowY: 'auto',
+      }}>
+        <div className="mal-caption" style={{ color: '#0a8056' }}>
+          {isAr ? 'هيكل التورّق · شرعي' : 'Tawarruq structure · Sharia'}
+        </div>
+        <div style={{
+          fontFamily: 'var(--mal-font-display)', fontSize: 22, lineHeight: 1.15,
+          fontStyle: 'italic',
+        }}>
+          {isAr ? 'كيف يعمل التمويل الإسلامي هنا.' : 'How the Islamic structure works.'}
+        </div>
+
+        {/* 4 trade legs, each animating in */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {legs.map((leg, i) => {
+            const active = step >= i;
+            return (
+              <div key={leg.id} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: 10, borderRadius: 12,
+                background: active ? 'rgba(10,128,86,0.10)' : 'var(--mal-surface-2)',
+                border: '1px solid ' + (active ? 'rgba(10,128,86,0.32)' : 'var(--mal-line)'),
+                opacity: active ? 1 : 0.45,
+                transform: active ? 'translateY(0)' : 'translateY(4px)',
+                transition: 'opacity .35s ease, transform .35s ease, background .25s, border-color .25s',
+              }}>
+                <span style={{
+                  width: 26, height: 26, borderRadius: 999,
+                  flexShrink: 0,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  background: active ? '#0a8056' : 'var(--mal-line)',
+                  color: '#fff',
+                  fontSize: 12, fontWeight: 700,
+                }}>{leg.id}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-ink)' }}>{leg.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2, lineHeight: 1.5 }}>{leg.sub}</div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 10px', borderRadius: 10,
+          background: 'rgba(10,128,86,0.08)',
+          border: '1px solid rgba(10,128,86,0.22)',
+          fontSize: 11, color: 'var(--mal-ink)', lineHeight: 1.5,
+        }}>
+          <span style={{ fontSize: 14, color: '#0a8056' }}>✓</span>
+          <span>{isAr
+            ? 'تنفيذ السلعة على DMCC · مراجَع من قبل هيئة شرعية AAOIFI · فتوى متاحة للتنزيل.'
+            : 'Commodity executed on DMCC · AAOIFI-aligned scholar review · fatwa PDF on request.'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={onClose} style={{
+            all: 'unset', cursor: 'pointer',
+            padding: '8px 14px', borderRadius: 999,
+            border: '1px solid var(--mal-line)',
+            background: 'var(--mal-paper)', color: 'var(--mal-ink-2)',
+            fontSize: 12, fontWeight: 500,
+          }}>
+            {isAr ? 'رجوع' : 'Back'}
+          </button>
+          <button onClick={onSign} disabled={step < 3} style={{
+            all: 'unset', cursor: step < 3 ? 'not-allowed' : 'pointer', flex: 1, textAlign: 'center',
+            padding: '8px 14px', borderRadius: 999,
+            background: step < 3 ? 'var(--mal-line)' : 'var(--mal-primary)',
+            color: '#fff', fontSize: 12.5, fontWeight: 600,
+            opacity: step < 3 ? 0.6 : 1,
+            transition: 'background .2s, opacity .2s',
+          }}>
+            {step < 3
+              ? (isAr ? 'يرجى مشاهدة التدفّق…' : 'Watch the trade flow…')
+              : (isAr ? 'وقّع عقد المرابحة بـ UAE Pass' : 'Sign Murabaha contract · UAE Pass')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// BundleConsolidateCard — appears when buyer has 2+ active obligations.
