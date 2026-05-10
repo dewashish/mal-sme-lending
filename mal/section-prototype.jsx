@@ -77,28 +77,14 @@ function SectionPrototype({ lang, isMobile }) {
     <div className="mal-section-page" dir={isAr ? 'rtl' : 'ltr'} style={{
       maxWidth: 1280, padding: isMobile ? '20px 14px 60px' : '28px 24px 60px',
     }}>
-      {/* Hero */}
-      <div className="mal-fade-up" style={{ marginBottom: 24 }}>
-        <Pill tone="ink" dot>
-          {isAr ? 'النموذج الأوليّ · ٤ منتجات · قابلة للنقر' : 'Prototype · 4 products · interactive'}
-        </Pill>
-        <h1 style={{
-          fontFamily: 'var(--mal-font-display)',
-          fontSize: isMobile ? 40 : 64,
-          fontStyle: 'italic',
-          margin: '14px 0 10px',
-          lineHeight: 1.05, letterSpacing: '-0.02em',
-        }}>
-          {isAr
-            ? <>اختر منتجاً. <span className="mal-iri-text">جرّبه مباشرة.</span></>
-            : <>Pick a product. <span className="mal-iri-text">Use it for real.</span></>}
-        </h1>
-        <p style={{ color: 'var(--mal-mid)', maxWidth: 680, fontSize: isMobile ? 14 : 15, lineHeight: 1.6, margin: 0 }}>
-          {isAr
-            ? 'الفاتورة الذكية محمّلة افتراضياً. بدّل التبويب أعلاه للانتقال بين المنتجات. كل منتج به أكثر من واجهة—اختر زاوية الدخول.'
-            : 'Smart Invoice loads by default. Switch the tab to jump between products. Each product has multiple surfaces — pick how you want to enter.'}
-        </p>
-      </div>
+      {/* Section title */}
+      <h1 className="mal-fade-up" style={{
+        fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+        fontSize: isMobile ? 36 : 48, lineHeight: 1.0, letterSpacing: '-0.02em',
+        margin: '0 0 22px',
+      }}>
+        {isAr ? 'النموذج' : 'Prototype'}
+      </h1>
 
       {/* Product tabs */}
       <ProductTabs products={PRODUCTS} activeId={productId} onPick={setProductId} isMobile={isMobile}/>

@@ -203,29 +203,14 @@ function AiSub({ children }) {
 // ============================================================
 function AiHero({ refFn, isAr, isMobile }) {
   return (
-    <section id="aiHero" ref={refFn} style={{ paddingTop: 32, marginBottom: 60 }}>
-      <Pill tone="iri" dot>{isAr ? 'الذكاء الاصطناعي · مالي محدد' : 'AI · purpose-built for SME credit'}</Pill>
+    <section id="aiHero" ref={refFn} style={{ paddingTop: 24, marginBottom: 32 }}>
       <h1 style={{
         fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-        fontSize: isMobile ? 44 : 70, lineHeight: 1.04, letterSpacing: '-0.02em',
-        margin: '20px 0 18px',
+        fontSize: isMobile ? 36 : 48, lineHeight: 1.0, letterSpacing: '-0.02em',
+        margin: 0,
       }}>
-        {isAr
-          ? <>عشرون وكيلاً يديرون <span className="mal-iri-text">دورة الائتمان كاملة.</span></>
-          : <>Twenty agents running <span className="mal-iri-text">the entire credit loop.</span></>}
+        {isAr ? 'مبادرات الذكاء' : 'AI Initiatives'}
       </h1>
-      <p style={{ fontSize: 17, lineHeight: 1.55, color: 'var(--mal-mid)', maxWidth: 680, margin: 0 }}>
-        {isAr
-          ? 'لكل خطوة في رحلة العميل وكيل متخصص. لا يستبدل البشر — بل يضاعف قدرتهم. يقرر، ينبه، ويتفاوض في وقت لم يتوفر بشرياً.'
-          : 'Every step of the customer journey has a purpose-built agent. The aim is not replacing humans — it is letting one analyst supervise hundreds of loans in real time, decide in seconds, and pre-empt distress weeks before it shows up in the bureau.'}
-      </p>
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 24 }}>
-        <MalKpi label={isAr ? 'وكيل ذكي' : 'Production agents'} value="20" sub={isAr ? 'في خمس مجالات' : 'across five domains'}/>
-        <MalKpi label={isAr ? 'قرار تلقائي' : 'Auto-decisions'} value="78%" delta="+22pp Y3" deltaTone="up" sub={isAr ? 'بدون تدخل بشري' : 'no human in loop'}/>
-        <MalKpi label={isAr ? 'كشف التعثر مبكراً' : 'EWS lead time'} value="14 days" sub={isAr ? 'قبل التعثر الفعلي' : 'before actual default'}/>
-        <MalKpi label={isAr ? 'كفاءة التحصيل' : 'Collections lift'} value="+34%" delta="recovery rate" deltaTone="up" sub={isAr ? 'مقابل المنادة البشرية' : 'vs human-only dialer'}/>
-      </div>
     </section>
   );
 }

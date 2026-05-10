@@ -133,33 +133,14 @@ function StrategyTOC({ toc, activeId, jumpTo, isAr }) {
 // ============================================================
 function DocHero({ isAr, isMobile }) {
   return (
-    <section style={{ marginBottom: 60, position: 'relative' }}>
-      <div aria-hidden style={{
-        position: 'absolute', top: -40, insetInlineEnd: -60,
-        width: 220, height: 220, borderRadius: '50%',
-        background: 'conic-gradient(from 90deg, var(--mal-iri-1), var(--mal-iri-2), var(--mal-iri-3), var(--mal-iri-4), var(--mal-iri-1))',
-        filter: 'blur(50px)', opacity: .4, pointerEvents: 'none',
-      }}/>
-      <Pill tone="ink" dot>
-        {isAr ? 'سرّي · داخلي · مسوّدة عمل · مايو ٢٠٢٦' : 'Confidential · Internal · Working draft · May 2026'}
-      </Pill>
+    <section style={{ marginBottom: 24, paddingTop: 4 }}>
       <h1 style={{
         fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-        fontSize: isMobile ? 48 : 80, lineHeight: 1, letterSpacing: '-0.025em',
-        margin: '20px 0 18px', position: 'relative', zIndex: 2,
+        fontSize: isMobile ? 36 : 48, lineHeight: 1.0, letterSpacing: '-0.02em',
+        margin: 0,
       }}>
-        {isAr
-          ? <>رئيس استراتيجية المنتج<br/><span className="mal-iri-text">منصّة الإقراض للمنشآت الإماراتية</span></>
-          : <>Head of Product Strategy<br/><span className="mal-iri-text">UAE SME Lending Platform</span></>}
+        {isAr ? 'الاستراتيجية' : 'Strategy'}
       </h1>
-      <p style={{
-        fontSize: isMobile ? 15 : 17, lineHeight: 1.55,
-        color: 'var(--mal-mid)', maxWidth: 680, margin: 0,
-      }}>
-        {isAr
-          ? 'وثيقة كاملة بكلماتها الأصلية. ثلاثة منتجات متمايزة، رحلة كاملة لمدير المنتج، اقتصاد ثلاث سنوات. الرهان: البناء على بنى e-invoicing، Open Finance، وضمانات EDB القادمة بين ٢٠٢٦ و ٢٠٢٧.'
-          : 'The full document, every word as written. Three differentiated products. End-to-end product-manager workflow. Three-year unit economics. The bet: build first on the e-invoicing, Open Finance, and EDB-guarantee rails arriving 2026 to 2027.'}
-      </p>
     </section>
   );
 }

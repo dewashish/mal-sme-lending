@@ -210,26 +210,14 @@ function SectionFinancial({ lang, isMobile }) {
 
   return (
     <div className="mal-section-page" dir={isAr ? 'rtl' : 'ltr'}>
-      {/* Hero */}
-      <div className="mal-fade-up" style={{ marginBottom: 32 }}>
-        <Pill tone="ink" dot>{isAr ? 'النمذجة المالية' : 'Financial Modeling · interactive'}</Pill>
-        <h1 style={{
-          fontFamily: 'var(--mal-font-display)',
-          fontSize: isMobile ? 40 : 64,
-          fontStyle: 'italic',
-          margin: '14px 0 10px',
-          lineHeight: 1.05, letterSpacing: '-0.02em',
-        }}>
-          {isAr
-            ? <>اقتصاد كل منتج <span className="mal-iri-text">في يديك.</span></>
-            : <>Every product's economics, <span className="mal-iri-text">in your hands.</span></>}
-        </h1>
-        <p style={{ color: 'var(--mal-mid)', maxWidth: 720, fontSize: 15, lineHeight: 1.6 }}>
-          {isAr
-            ? 'حرّك أي مدخل — تكلفة التمويل، نسبة التقدم، التعثر، التشغيل، الحجم — وشاهد NIM، الهامش المعدل بالمخاطر، المساهمة الصافية، ROA، وكفاية رأس المال تتغير مباشرة على ثلاث سنوات.'
-            : 'Move any lever — cost of funds, advance rate, default rate, opex, disbursement — and watch NIM, risk-adjusted margin, net contribution, ROA and capital efficiency recompute live across Years 1–3. Per-product calibration, transparent formulas, exportable.'}
-        </p>
-      </div>
+      {/* Section title */}
+      <h1 className="mal-fade-up" style={{
+        fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+        fontSize: isMobile ? 36 : 48, lineHeight: 1.0, letterSpacing: '-0.02em',
+        margin: '0 0 22px',
+      }}>
+        {isAr ? 'النمذجة المالية' : 'Financial Modeling'}
+      </h1>
 
       {/* Product tabs */}
       <div style={{

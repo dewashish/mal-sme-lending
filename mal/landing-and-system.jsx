@@ -9,51 +9,10 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
   const isMobile = viewport === 'mobile';
 
   const SECTIONS = [
-    {
-      id: 'strategy',
-      num: '01',
-      label: isAr ? 'الاستراتيجية' : 'Strategy',
-      title: isAr ? 'وثيقة استراتيجية المنتج' : 'Head of Product · strategy doc',
-      blurb: isAr
-        ? 'الوثيقة كاملةً: ثلاث منتجات، الاقتصاد المتوقع، خطّة البناء، الذكاء الاصطناعي، التوزيع.'
-        : 'The full strategy document — every product, every cycle, every economic.',
-      gradient: 'linear-gradient(135deg, #C9B7E8, #B6CFE8 70%, #FBD9B5)',
-      meta: isAr ? '٧ أقسام · ٤ ملاحق' : '7 chapters · 4 appendices',
-    },
-    {
-      id: 'prototype',
-      num: '02',
-      label: isAr ? 'النموذج الأوليّ' : 'Prototype',
-      title: isAr ? 'تجربة المنتجات حيّة' : 'Working products · click anywhere',
-      blurb: isAr
-        ? 'الفاتورة الذكية افتراضياً. بدّل بين المنتجات الأربعة. كل شاشة قابلة للنقر.'
-        : 'Smart Invoice loads by default. Switch between Products 1–4. Every screen is interactive.',
-      gradient: 'linear-gradient(135deg, #B6CFE8, #C9B7E8 70%, #F0B7C2)',
-      meta: isAr ? '٤ منتجات' : '4 products',
-    },
-    {
-      id: 'financial',
-      num: '03',
-      label: isAr ? 'النمذجة المالية' : 'Financial Modeling',
-      title: isAr ? 'اقتصاد كل منتج، تفاعلياً' : 'Every product\'s P&L · in your hands',
-      blurb: isAr
-        ? 'حرّك تكلفة التمويل، التقدم، التعثر، الحجم. شاهد NIM وROA يتحرّكان مباشرة.'
-        : 'Move cost-of-funds, advance, default, opex. NIM, RAROC, P&L recompute live across Y1–Y3.',
-      gradient: 'linear-gradient(135deg, #FBD9B5, #F0B7C2 60%, #C9B7E8)',
-      meta: isAr ? 'ميزان حيّ · CSV' : 'Live model · CSV export',
-    },
-    {
-      id: 'ai',
-      num: '04',
-      label: isAr ? 'مبادرات الذكاء الاصطناعي' : 'AI Initiatives',
-      title: isAr ? 'عشرون وكيلاً، رحلة واحدة' : '20 agents · one credit loop',
-      blurb: isAr
-        ? 'الفهرس، البنية، محرّك القرار، الإنذار المبكّر، التحصيل الذكي ثنائي اللغة.'
-        : 'Inventory, architecture, decision engine, early-warning system, bilingual AI collections.',
-      gradient: 'linear-gradient(135deg, #2A1F6F, #5A47C2 70%, #C9B7E8)',
-      meta: isAr ? '٢٠ وكيلاً' : '20 agents · 6 pillars',
-      dark: true,
-    },
+    { id: 'strategy',  num: '01', label: isAr ? 'الاستراتيجية' : 'Strategy',           gradient: 'linear-gradient(135deg, #C9B7E8, #B6CFE8 70%, #FBD9B5)' },
+    { id: 'prototype', num: '02', label: isAr ? 'النموذج' : 'Prototype',                gradient: 'linear-gradient(135deg, #B6CFE8, #C9B7E8 70%, #F0B7C2)' },
+    { id: 'financial', num: '03', label: isAr ? 'النمذجة المالية' : 'Financial Modeling', gradient: 'linear-gradient(135deg, #FBD9B5, #F0B7C2 60%, #C9B7E8)' },
+    { id: 'ai',        num: '04', label: isAr ? 'مبادرات الذكاء' : 'AI Initiatives',     gradient: 'linear-gradient(135deg, #2A1F6F, #5A47C2 70%, #C9B7E8)', dark: true },
   ];
 
   return (
@@ -61,82 +20,68 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
       fontFamily: 'var(--mal-font-ui)', color: 'var(--mal-ink)',
       background: 'var(--mal-surface)', minHeight: '100vh',
       position: 'relative', overflow: 'hidden',
+      display: 'flex', flexDirection: 'column',
     }}>
       {/* Ambient orbs */}
       <div aria-hidden style={{
-        position: 'absolute', top: -180, insetInlineEnd: -180,
-        width: 520, height: 520, borderRadius: '50%',
+        position: 'absolute', top: -200, insetInlineEnd: -200,
+        width: 600, height: 600, borderRadius: '50%',
         background: 'conic-gradient(from 90deg, var(--mal-iri-1), var(--mal-iri-2), var(--mal-iri-3), var(--mal-iri-4), var(--mal-iri-1))',
-        filter: 'blur(80px)', opacity: 0.35,
+        filter: 'blur(90px)', opacity: 0.4,
         animation: 'mal-orb-spin 40s linear infinite',
         pointerEvents: 'none',
       }}/>
       <div aria-hidden style={{
-        position: 'absolute', bottom: -200, insetInlineStart: -200,
-        width: 480, height: 480, borderRadius: '50%',
+        position: 'absolute', bottom: -240, insetInlineStart: -240,
+        width: 540, height: 540, borderRadius: '50%',
         background: 'conic-gradient(from 270deg, var(--mal-iri-3), var(--mal-iri-1), var(--mal-iri-4), var(--mal-iri-2))',
-        filter: 'blur(100px)', opacity: 0.28,
+        filter: 'blur(110px)', opacity: 0.32,
         animation: 'mal-orb-spin 55s linear infinite reverse',
         pointerEvents: 'none',
       }}/>
 
-      {/* Top bar */}
+      {/* Top bar — just wordmark */}
       <header style={{
-        height: 64,
-        paddingInline: isMobile ? 18 : 56,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        height: 64, paddingInline: isMobile ? 18 : 56,
+        display: 'flex', alignItems: 'center',
         position: 'relative', zIndex: 2,
       }}>
         <MalLogo size={22}/>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--mal-mid)' }}>
-          <span>{isAr ? 'مرخّص ADGM FSRA' : 'Regulated · ADGM FSRA'}</span>
-          {!isMobile && <span style={{ opacity: .4 }}>·</span>}
-          {!isMobile && <span style={{ fontFamily: 'var(--mal-font-mono)' }}>EN · AR</span>}
-        </div>
       </header>
 
-      {/* Hero block */}
+      {/* Center stage */}
       <section style={{
-        paddingInline: isMobile ? 18 : 64, paddingTop: isMobile ? 30 : 56,
-        position: 'relative', zIndex: 2, maxWidth: 1280, margin: '0 auto',
+        flex: 1, position: 'relative', zIndex: 2,
+        maxWidth: 1180, margin: '0 auto', width: '100%',
+        paddingInline: isMobile ? 18 : 64,
+        paddingBlock: isMobile ? 28 : 60,
+        display: 'flex', flexDirection: 'column', justifyContent: 'center',
       }}>
-        <div className="mal-fade-up" style={{ marginBottom: 24 }}>
-          <Pill tone="ink" dot>
-            {isAr ? 'مالٌ · منصّة الإقراض للمنشآت الإماراتية' : 'Mal · UAE SME Lending Platform'}
-          </Pill>
-        </div>
+        {/* Wordmark */}
         <h1 className="mal-fade-up mal-display" style={{
-          animationDelay: '50ms',
-          fontSize: isMobile ? 48 : 88, lineHeight: 1, fontStyle: 'italic',
-          letterSpacing: '-0.025em',
-          margin: 0,
-          maxWidth: 1100,
+          fontSize: isMobile ? 96 : 200,
+          fontStyle: 'italic',
+          letterSpacing: '-0.04em',
+          lineHeight: 0.9,
+          margin: 0, marginBottom: isMobile ? 22 : 40,
         }}>
-          {isAr
-            ? <>منصّة ائتمان واحدة. <span className="mal-iri-text">أربع زوايا للنظر إليها.</span></>
-            : <>One credit platform. <span className="mal-iri-text">Four ways to look at it.</span></>}
+          <span className="mal-iri-text">Mal</span>
+          <span style={{
+            fontSize: isMobile ? 14 : 16, fontStyle: 'normal',
+            fontFamily: 'var(--mal-font-mono)', letterSpacing: '.18em',
+            textTransform: 'uppercase', color: 'var(--mal-mid)',
+            fontWeight: 500, marginInlineStart: isMobile ? 14 : 28,
+            verticalAlign: isMobile ? 'middle' : '40%',
+          }}>
+            {isAr ? 'منصّة الإقراض للمنشآت الإماراتية' : 'UAE SME Lending Platform'}
+          </span>
         </h1>
-        <p className="mal-fade-up" style={{
-          animationDelay: '120ms',
-          fontSize: isMobile ? 15 : 18, lineHeight: 1.55,
-          color: 'var(--mal-mid)', maxWidth: 720,
-          marginTop: 22, marginBottom: 0,
-        }}>
-          {isAr
-            ? 'الاستراتيجية الكاملة، النماذج العاملة، النمذجة المالية الحيّة، وبنية الذكاء الاصطناعي. كل قسم قابل للنقر.'
-            : 'The full strategy doc, the working prototypes, live financial models, and the AI architecture that runs underneath. Click any card to dive in.'}
-        </p>
-      </section>
 
-      {/* Four section cards */}
-      <section style={{
-        paddingInline: isMobile ? 18 : 64, paddingTop: isMobile ? 32 : 60, paddingBottom: isMobile ? 40 : 80,
-        maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 2,
-      }}>
+        {/* Four cards */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isMobile ? '1fr' : 'repeat(2, 1fr)',
-          gap: isMobile ? 14 : 18,
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(4, 1fr)',
+          gap: isMobile ? 12 : 16,
         }}>
           {SECTIONS.map((s, i) => (
             <SectionCard key={s.id} section={s} index={i} isAr={isAr} isMobile={isMobile}
@@ -145,22 +90,20 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
         </div>
       </section>
 
-      {/* Footer */}
+      {/* Minimal footer */}
       <footer style={{
-        paddingInline: isMobile ? 18 : 56, paddingBlock: 28,
+        paddingInline: isMobile ? 18 : 56, paddingBlock: 22,
         fontSize: 11, color: 'var(--mal-mid-2)',
-        display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
         position: 'relative', zIndex: 2,
-        borderTop: '1px solid var(--mal-line)',
+        fontFamily: 'var(--mal-font-mono)', letterSpacing: '.06em',
       }}>
-        <span>© 2026 Mal Capital Ltd. {isAr ? 'تحت إشراف ADGM FSRA.' : 'Regulated by ADGM FSRA.'}</span>
-        <span style={{ fontFamily: 'var(--mal-font-mono)' }}>AECB · EmaraTax · UAE Open Finance · EDB</span>
+        © 2026 Mal · {isAr ? 'مايو ٢٠٢٦' : 'May 2026'}
       </footer>
     </div>
   );
 }
 
-// One big section card on the landing — animates on hover, opens its section
+// Single section card — number + name + arrow. No marketing copy.
 function SectionCard({ section, index, isAr, isMobile, onClick }) {
   return (
     <button
@@ -168,28 +111,28 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
       className="mal-fade-up"
       style={{
         all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
-        animationDelay: (200 + index * 80) + 'ms',
+        animationDelay: (120 + index * 70) + 'ms',
         position: 'relative', overflow: 'hidden',
         background: section.dark ? section.gradient : 'var(--mal-paper)',
         border: '1px solid ' + (section.dark ? 'transparent' : 'var(--mal-line)'),
-        borderRadius: 24,
-        padding: isMobile ? 22 : 32,
-        minHeight: isMobile ? 220 : 280,
-        transition: 'transform .28s cubic-bezier(.4,0,.2,1), box-shadow .28s, border-color .28s',
+        borderRadius: 22,
+        padding: isMobile ? '24px 22px' : '28px 26px',
+        minHeight: isMobile ? 180 : 280,
+        transition: 'transform .3s cubic-bezier(.4,0,.2,1), box-shadow .3s, border-color .3s',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-        gap: 18,
         color: section.dark ? '#FAF7EE' : 'var(--mal-ink)',
+        textAlign: 'start',
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
+        e.currentTarget.style.transform = 'translateY(-6px)';
         e.currentTarget.style.boxShadow = section.dark
-          ? '0 20px 60px -20px rgba(42,31,111,.55)'
-          : 'var(--mal-sh-3)';
+          ? '0 24px 70px -20px rgba(42,31,111,.55)'
+          : '0 18px 50px -20px rgba(60,50,140,.25)';
         if (!section.dark) e.currentTarget.style.borderColor = 'var(--mal-primary-3)';
         const arrow = e.currentTarget.querySelector('.mal-card-arrow');
-        if (arrow) arrow.style.transform = 'translateX(' + (isAr ? '-6px' : '6px') + ')';
+        if (arrow) arrow.style.transform = 'translateX(' + (isAr ? '-8px' : '8px') + ')';
         const halo = e.currentTarget.querySelector('.mal-card-halo');
-        if (halo) halo.style.transform = 'scale(1.2)';
+        if (halo) { halo.style.transform = 'scale(1.3)'; halo.style.opacity = '0.85'; }
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = '';
@@ -198,81 +141,60 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
         const arrow = e.currentTarget.querySelector('.mal-card-arrow');
         if (arrow) arrow.style.transform = '';
         const halo = e.currentTarget.querySelector('.mal-card-halo');
-        if (halo) halo.style.transform = '';
+        if (halo) { halo.style.transform = ''; halo.style.opacity = '0.5'; }
       }}>
-      {/* Iridescent halo (only on light cards) */}
+      {/* Iridescent halo (light cards) */}
       {!section.dark && (
         <div className="mal-card-halo" aria-hidden style={{
-          position: 'absolute', top: -80, insetInlineEnd: -80,
-          width: 280, height: 280, borderRadius: '50%',
+          position: 'absolute', top: -90, insetInlineEnd: -90,
+          width: 260, height: 260, borderRadius: '50%',
           background: section.gradient,
-          filter: 'blur(20px)', opacity: 0.55,
-          transition: 'transform .55s cubic-bezier(.4,0,.2,1)',
+          filter: 'blur(28px)', opacity: 0.5,
+          transition: 'transform .55s cubic-bezier(.4,0,.2,1), opacity .55s',
           pointerEvents: 'none',
         }}/>
       )}
-      {/* Subtle grain */}
+      {/* Soft inner glow (dark card) */}
       {section.dark && (
         <div aria-hidden style={{
           position: 'absolute', inset: 0,
-          background: 'radial-gradient(circle at 20% 80%, rgba(255,255,255,.18), transparent 50%)',
+          background: 'radial-gradient(circle at 20% 100%, rgba(255,255,255,.22), transparent 55%)',
           pointerEvents: 'none',
         }}/>
       )}
 
-      {/* Header row: number + label */}
+      {/* Top: number */}
       <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         position: 'relative', zIndex: 2,
+        fontFamily: 'var(--mal-font-mono)',
+        fontSize: 12, letterSpacing: '.16em',
+        color: section.dark ? 'rgba(250,247,238,.7)' : 'var(--mal-mid)',
+        fontWeight: 500,
       }}>
-        <span style={{
-          fontFamily: 'var(--mal-font-mono)',
-          fontSize: 11, letterSpacing: '.16em', textTransform: 'uppercase',
-          color: section.dark ? 'rgba(250,247,238,.65)' : 'var(--mal-mid)',
-          fontWeight: 500,
-        }}>{section.num} · {section.label}</span>
-        <span style={{
-          fontSize: 11, fontFamily: 'var(--mal-font-mono)',
-          color: section.dark ? 'rgba(250,247,238,.65)' : 'var(--mal-mid-2)',
-        }}>{section.meta}</span>
+        {section.num}
       </div>
 
-      {/* Title + blurb */}
-      <div style={{ position: 'relative', zIndex: 2 }}>
+      {/* Bottom: name + arrow */}
+      <div style={{
+        position: 'relative', zIndex: 2,
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between',
+        gap: 12, marginTop: isMobile ? 22 : 100,
+      }}>
         <div style={{
           fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-          fontSize: isMobile ? 28 : 36, lineHeight: 1.05,
-          letterSpacing: '-0.015em',
+          fontSize: isMobile ? 30 : 34, lineHeight: 1.0,
+          letterSpacing: '-0.02em',
         }}>
-          {section.title}
+          {section.label}
         </div>
-        <div style={{
-          fontSize: isMobile ? 13 : 14, lineHeight: 1.55,
-          color: section.dark ? 'rgba(250,247,238,.72)' : 'var(--mal-mid)',
-          marginTop: 12, maxWidth: 480,
-        }}>
-          {section.blurb}
-        </div>
-      </div>
-
-      {/* Footer: open arrow */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        position: 'relative', zIndex: 2,
-      }}>
-        <span style={{
-          fontSize: 12, fontWeight: 500,
-          color: section.dark ? '#FAF7EE' : 'var(--mal-primary)',
-        }}>
-          {isAr ? 'افتح القسم' : 'Open section'}
-        </span>
-        <span className="mal-card-arrow" style={{
+        <span className="mal-card-arrow" aria-hidden style={{
           width: 36, height: 36, borderRadius: 999,
-          background: section.dark ? 'rgba(250,247,238,.18)' : 'var(--mal-surface-2)',
+          background: section.dark ? 'rgba(250,247,238,.2)' : 'var(--mal-surface-2)',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           color: section.dark ? '#FAF7EE' : 'var(--mal-primary)',
-          fontSize: 16, transition: 'transform .25s cubic-bezier(.4,0,.2,1)',
+          fontSize: 18, transition: 'transform .3s cubic-bezier(.4,0,.2,1)',
           transform: isAr ? 'scaleX(-1)' : 'none',
+          flexShrink: 0,
         }}>
           →
         </span>
