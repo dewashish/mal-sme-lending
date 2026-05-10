@@ -1,21 +1,24 @@
 /* eslint-disable */
 // Mal — Demo Mode (side-by-side dual panel + lifecycle simulator).
 //
-// Two phases:
-//   1) Narrative phase — autopilot script walks both panels through onboarding,
-//      first invoice, plan pick, signing, wire arrival. Manual mode pauses the
-//      script so the user can drive each panel themselves.
-//   2) Live phase — full lifecycle simulator. simDay 0 → 200 advances the
-//      calendar; the buyer + supplier panels re-render their state from the
-//      schedule. Three scenarios: happy / late-cured / default-restructure.
-//      User can scrub time, switch scenarios, switch modes, click into screens.
+// 100% manual. No autopilot, no scripted scenarios. Everything emerges from
+// what the user clicks: pay an EMI or don't, scrub time forward, and the
+// state derives from those actions.
+//
+// State model:
+//   simDay                — the simulated calendar day (0..200)
+//   paymentsByEmi         — { [emiNum]: { paidOnDay, withPenalty } }
+//   refinancedPaymentsByEmi — same shape, for EMIs of a refinanced plan
+//
+// EMI status comes from these two facts: did the user pay this EMI before
+// scrubbing past its dueDay? If yes → paid. If no AND simDay > dueDay → overdue
+// with daysOverdue = simDay - dueDay; collections stage derives from DPD.
 
 const { useState: dmS, useEffect: dmE, useRef: dmR, useMemo: dmM, useCallback: dmCB } = React;
 const dmIco = window.MalIcon;
-const A = window.MalAutopilot;
 
 // ==================================================================
-// 0. Phase model + scenario constants
+// 0. Phase + scenario constants
 // ==================================================================
 
 const DM_PHASES = [
@@ -30,20 +33,6 @@ const DM_PHASES = [
   { id: 'live',       label: 'Live · Day-by-day' },
 ];
 
-const SCENARIOS = [
-  { id: 'happy',         label: 'Happy path',          desc: 'All four EMIs auto-debit on time. Loan closes at Day 120.' },
-  { id: 'late-cured',    label: 'Late EMI · cured',    desc: 'EMI 3 fails on Day 90. Buyer pays + 2% penalty on Day 95.' },
-  { id: 'restructure',   label: 'Default · restructure', desc: 'EMI 3 fails. Tele-call Day 95. Restructured to 4 new EMIs.' },
-];
-
-// Buyer routes within phase=live
-// home | invoice-detail | plan-picker | confirm | success
-// extend-hero | extend-pick | extend-agree | extend-confirm | extend-active | extend-detail | extend-settle
-// loan-detail | settle
-
-// Supplier routes within phase=live
-// home | activity | funded | watchlist | closed
-
 // ==================================================================
 // 1. Default state
 // ==================================================================
@@ -53,8 +42,8 @@ const DEFAULT_PLAN = {
   label: '4-month installments',
   tenorMonths: 4,
   principal: 250000,
-  totalCost: 9000,           // fee
-  emiAmount: 64750,          // (250000 + 9000) / 4
+  totalCost: 9000,
+  emiAmount: 64750,
   startDay: 1,
   schedule: [
     { num: 1, dueDay: 30,  amount: 64750 },
@@ -69,7 +58,7 @@ const DEFAULT_SCENARIO = {
   buyerStep: 0,
   supplierStep: 0,
 
-  // Invoice the supplier issues
+  // Invoice the supplier issued
   invoice: {
     id: 'INV-2026-0418',
     buyer: 'Crescent Trading FZE',
@@ -81,24 +70,20 @@ const DEFAULT_SCENARIO = {
     description: 'Industrial packaging — Q4 2026',
   },
 
-  // Autopilot intro typing scratch
-  draftBuyer: '',
-  draftAmount: '',
-  draftDescription: '',
-
-  // Plan the buyer chose (set on autopilot finish or user pick)
-  plan: null,                 // null until picked, then DEFAULT_PLAN
+  // Plan the buyer picked
+  plan: null,
   signing: false,
   signed: false,
 
-  // Term extension (if buyer takes the "Need more time" path)
-  termExtension: null,        // null | { tenorMonths, principal, emiAmount, schedule, startDay }
+  // Term extension (separate, not the focus of this iteration)
+  termExtension: null,
 
-  // Live phase — calendar + scenario
+  // Live phase calendar + the user's payment record
   simDay: 0,
-  liveScenario: 'happy',     // 'happy' | 'late-cured' | 'restructure'
+  paymentsByEmi: {},                  // { 1: { paidOnDay, withPenalty }, 2: {...} }
+  refinancedPaymentsByEmi: {},        // EMIs paid on the refinanced schedule
 
-  // Buyer + supplier routes inside live phase (manual navigation)
+  // Routes within live phase
   buyerRoute: 'home',
   supplierRoute: 'home',
 
@@ -106,119 +91,155 @@ const DEFAULT_SCENARIO = {
   buyerToast: null,
   supplierToast: null,
   spotlight: null,
+
+  // Refinance draft (transient, between picker and confirm)
+  refinanceDraft: null,
 };
 
 // ==================================================================
-// 2. Lifecycle helpers — pure, derive from (plan, simDay, scenario)
+// 2. Lifecycle helpers — pure, derive from (plan, simDay, paymentsByEmi)
 // ==================================================================
 
-// Compute the status of every EMI in the schedule given simDay + scenario.
-// Returns an array of { num, dueDay, amount, status, paidDay?, daysOverdue? }.
-function computeEmiStatuses(plan, simDay, scenario) {
+// EMI status from paymentsByEmi + simDay — no scenario flag.
+function computeEmiStatuses(plan, simDay, paymentsByEmi) {
   if (!plan) return [];
-  return plan.schedule.map((emi, i) => {
-    const isLateCuredEmi3 = scenario === 'late-cured' && emi.num === 3;
-    const isRestructureEmi3 = scenario === 'restructure' && emi.num === 3;
-
-    // Happy + late-cured (cures on Day 95) → EMI 3 paid on Day 95 instead of 90
-    const effectivePaidDay = isLateCuredEmi3 ? 95 : emi.dueDay;
-    // For restructure, EMI 3 onwards never auto-pays — collection stages handle it
-    if (isRestructureEmi3) {
-      // Days 90+ — overdue, escalating
-      if (simDay < 90) return { ...emi, status: 'upcoming' };
-      const dpd = simDay - 90;
-      if (dpd < 5) return { ...emi, status: 'overdue', daysOverdue: dpd, stage: 'soft' };
-      if (dpd < 15) return { ...emi, status: 'overdue', daysOverdue: dpd, stage: 'tele-call' };
-      if (dpd < 31) return { ...emi, status: 'overdue', daysOverdue: dpd, stage: 'field' };
-      return { ...emi, status: 'overdue', daysOverdue: dpd, stage: 'legal' };
+  return plan.schedule.map((emi) => {
+    const paid = paymentsByEmi && paymentsByEmi[emi.num];
+    if (paid) {
+      return {
+        ...emi,
+        status: 'paid',
+        paidDay: paid.paidOnDay,
+        penalty: paid.withPenalty || 0,
+      };
     }
-
-    if (isLateCuredEmi3 && simDay >= 90 && simDay < 95) {
-      const dpd = simDay - 89;
-      return { ...emi, status: 'overdue', daysOverdue: dpd, stage: 'soft' };
-    }
-
-    if (simDay >= effectivePaidDay) {
-      return { ...emi, status: 'paid', paidDay: effectivePaidDay,
-               penalty: (isLateCuredEmi3 ? 1295 : 0) /* 2% of EMI */ };
+    if (simDay >= emi.dueDay) {
+      const dpd = simDay - emi.dueDay;
+      const stage = dpd < 5 ? 'soft' : dpd < 15 ? 'tele-call' : dpd < 31 ? 'field' : 'legal';
+      return { ...emi, status: 'overdue', daysOverdue: dpd, stage };
     }
     return { ...emi, status: 'upcoming' };
   });
 }
 
-// Currently-overdue EMI, if any.
 function findOverdue(statuses) {
   return statuses.find((e) => e.status === 'overdue');
 }
 
-// Next upcoming (smallest dueDay among upcoming).
 function findNextUpcoming(statuses) {
   return statuses.find((e) => e.status === 'upcoming');
 }
 
-// "Need more time?" CTA chronology rules. Returns true when we should show
-// the extend banner on the buyer side.
-function shouldShowExtendCta(plan, simDay, scenario, hasActiveExtension) {
+function shouldShowExtendCta(plan, simDay, paymentsByEmi, hasActiveExtension) {
   if (!plan || hasActiveExtension) return false;
-  const statuses = computeEmiStatuses(plan, simDay, scenario);
+  const statuses = computeEmiStatuses(plan, simDay, paymentsByEmi);
   const overdue = findOverdue(statuses);
-  if (overdue && overdue.daysOverdue <= 4) return true;     // first 4 days of soft overdue
+  if (overdue && overdue.daysOverdue <= 4) return true;
   const next = findNextUpcoming(statuses);
-  if (next && (next.dueDay - simDay) >= 0 && (next.dueDay - simDay) <= 7) return true; // last 7d
+  if (next && (next.dueDay - simDay) >= 0 && (next.dueDay - simDay) <= 7) return true;
   return false;
+}
+
+function formatSimDay(day) {
+  const start = new Date(2026, 7, 1);   // Aug 1, 2026
+  const d = new Date(start.getTime() + day * 86400000);
+  return d.toLocaleDateString('en-AE', { day: 'numeric', month: 'short' });
+}
+
+function relativeDayLabel(day, target, isAr) {
+  const diff = target - day;
+  if (diff > 0) return (isAr ? 'بعد ' : 'in ') + diff + (isAr ? ' يوم' : 'd');
+  if (diff < 0) return (isAr ? 'قبل ' : '') + Math.abs(diff) + (isAr ? ' يوم' : 'd ago');
+  return isAr ? 'اليوم' : 'today';
+}
+
+function collectionsBanner(stage, dpd, isAr) {
+  if (stage === 'soft') return {
+    tone: 'warn',
+    title: isAr ? `Day ${dpd} متأخّر — ادفع الآن أو أعد الجدولة` : `Day ${dpd} overdue · pay now or reschedule`,
+    sub: isAr ? 'رسوم تأخير ٠٫٥٪ — لم تُبلَّغ AECB بعد' : '0.5% late fee · not yet reported to AECB',
+  };
+  if (stage === 'tele-call') return {
+    tone: 'danger',
+    title: isAr ? `Day ${dpd} — اتّصال من فريق التحصيل` : `Day ${dpd} · Tele-call from collections`,
+    sub: isAr ? 'إعادة هيكلة متاحة · رسوم ٢٪' : 'Restructure available · 2% penalty',
+  };
+  if (stage === 'field') return {
+    tone: 'danger',
+    title: isAr ? `Day ${dpd} — إخطار رسمي` : `Day ${dpd} · Field/notice stage`,
+    sub: isAr ? 'سيُبلّغ AECB خلال ٣ أيام' : 'AECB will be notified in 3 days',
+  };
+  return {
+    tone: 'danger',
+    title: isAr ? `Day ${dpd} — إجراءات قانونية` : `Day ${dpd} · Legal stage`,
+    sub: isAr ? 'تمّ إيداع شيك السدّاد · شركة استرداد مُعيَّنة' : 'Cheque deposited · recovery partner engaged',
+  };
+}
+
+function buildEvents(simDay, plan, paymentsByEmi) {
+  if (!plan) return [];
+  const all = [];
+  all.push({ day: 0, scope: 'buyer',    label: 'Plan signed · 4-mo installments', icon: 'check' });
+  all.push({ day: 0, scope: 'supplier', label: 'AED 232,500 wired · 93% advance', icon: 'bank' });
+
+  computeEmiStatuses(plan, simDay, paymentsByEmi).forEach((e) => {
+    if (e.status === 'paid') {
+      all.push({ day: e.paidDay, scope: 'buyer',    label: `EMI ${e.num}/${plan.tenorMonths} paid · AED ${e.amount.toLocaleString()}` + (e.penalty ? ` (+ AED ${e.penalty.toLocaleString()} penalty)` : ''), icon: 'check' });
+      all.push({ day: e.paidDay, scope: 'supplier', label: `Buyer EMI ${e.num}/${plan.tenorMonths} cleared`, icon: 'check' });
+    }
+    if (e.status === 'overdue') {
+      const dpd = e.daysOverdue;
+      const banner = collectionsBanner(e.stage, dpd, false);
+      all.push({ day: e.dueDay + dpd, scope: 'buyer',    label: banner.title, icon: 'warning', tone: banner.tone });
+      all.push({ day: e.dueDay + dpd, scope: 'supplier', label: `Buyer DPD ${dpd} · ${e.stage}`, icon: 'info', tone: 'iri' });
+    }
+  });
+
+  const lastEmi = plan.schedule[plan.schedule.length - 1];
+  const allPaid = plan.schedule.every((emi) => paymentsByEmi && paymentsByEmi[emi.num]);
+  if (allPaid) {
+    const closedDay = Math.max(...Object.values(paymentsByEmi).map((p) => p.paidOnDay)) + 1;
+    if (simDay >= closedDay) {
+      all.push({ day: closedDay, scope: 'buyer',    label: 'Loan closed · AECB report positive · limit released', icon: 'star' });
+      all.push({ day: closedDay, scope: 'supplier', label: 'Cycle complete', icon: 'star' });
+    }
+  }
+
+  return all.filter((e) => e.day <= simDay).sort((a, b) => b.day - a.day);
 }
 
 // ------------------------------------------------------------------
 // Mid-loan refinance — "Convert remaining balance to a longer EMI"
 // ------------------------------------------------------------------
-// International precedent: HDFC/ENBD/FAB "Convert to EMI", Klarna/Two
-// "Reschedule", Affirm "Adjust". One-tap self-serve, processing fee on
-// remaining balance, AECB notated as "rescheduled" (soft flag, not default).
-//
-// Pricing model (kept simple for the demo):
-//   processingFee  = 1.5% of remaining principal (one-time)
-//   newAprPct      = original APR + 2.0%
-//   newSchedule    = N equal EMIs starting refinanceDay + 30
-//
-// Limits:
-//   - At least 1 EMI of original plan must be paid
-//   - At least 2 EMIs remaining (otherwise just pay it off)
-//   - Maximum 1 refinance per loan (buyer can't refinance the refinanced)
 
-function computeRemainingPrincipal(plan, simDay, scenario) {
+function computeRemainingPrincipal(plan, simDay, paymentsByEmi) {
   if (!plan) return 0;
-  const statuses = computeEmiStatuses(plan, simDay, scenario);
+  const statuses = computeEmiStatuses(plan, simDay, paymentsByEmi);
   const paid = statuses.filter((e) => e.status === 'paid').length;
   return plan.principal - paid * (plan.principal / plan.schedule.length);
 }
 
-function canRefinanceNow(plan, simDay, scenario, alreadyRefinanced) {
+function canRefinanceNow(plan, simDay, paymentsByEmi, alreadyRefinanced) {
   if (!plan || alreadyRefinanced) return false;
-  const statuses = computeEmiStatuses(plan, simDay, scenario);
+  const statuses = computeEmiStatuses(plan, simDay, paymentsByEmi);
   const paid = statuses.filter((e) => e.status === 'paid').length;
   const remaining = statuses.length - paid;
-  if (paid < 1) return false;          // must have paid at least one EMI
-  if (remaining < 2) return false;     // not enough left to refinance meaningfully
+  if (paid < 1) return false;
+  if (remaining < 2) return false;
 
-  // Allow at distress points: last 7d before next EMI, or first 4d of overdue.
-  // Plus always-available within the first 4 days post-EMI-paid (cooldown for stability).
   const overdue = findOverdue(statuses);
   if (overdue && overdue.daysOverdue <= 4) return true;
   const next = findNextUpcoming(statuses);
   if (next && (next.dueDay - simDay) >= 0 && (next.dueDay - simDay) <= 7) return true;
-  // Otherwise allow as a normal mid-loan option (but only between EMIs, not on due-day exactly)
   if (next && next.dueDay - simDay > 7) return true;
   return false;
 }
 
-// Build a refinanced plan from remaining balance + chosen tenor.
-function buildRefinancedPlan(plan, simDay, scenario, tenorMonths) {
-  const remaining = computeRemainingPrincipal(plan, simDay, scenario);
+function buildRefinancedPlan(plan, simDay, paymentsByEmi, tenorMonths) {
+  const remaining = computeRemainingPrincipal(plan, simDay, paymentsByEmi);
   const processingFee = Math.round(remaining * 0.015);
-  // Linearly bumped APR by tenor (just for nicer demo numbers)
   const aprByTenor = { 3: 13.5, 6: 14.5, 9: 16.0, 12: 17.5 };
   const aprPct = aprByTenor[tenorMonths] || 15.5;
-  // Total cost = remaining * (apr/12 * tenor) + processingFee
   const totalInterest = Math.round(remaining * (aprPct / 100) * (tenorMonths / 12));
   const totalAmount = remaining + processingFee + totalInterest;
   const emiAmount = Math.round(totalAmount / tenorMonths);
@@ -244,98 +265,34 @@ function buildRefinancedPlan(plan, simDay, scenario, tenorMonths) {
   };
 }
 
-// Compute the merged display schedule for a refinanced loan: paid EMIs from
-// the original plan (taken at face value) followed by the new refinanced EMIs.
-function computeMergedStatuses(plan, simDay, scenario) {
+function computeMergedStatuses(plan, simDay, paymentsByEmi, refinancedPaymentsByEmi) {
   if (!plan || !plan.refinancedFrom) {
-    return computeEmiStatuses(plan, simDay, scenario);
+    return computeEmiStatuses(plan, simDay, paymentsByEmi);
   }
   const original = plan.refinancedFrom;
   const refinanceDay = plan.refinancedAt;
-  // Original EMIs that were paid before refinance — derive from a snapshot
-  // computed at refinanceDay so we don't include the missed EMI as paid.
-  const originalAtRefinance = computeEmiStatuses({ ...original, schedule: original.schedule }, refinanceDay, scenario);
-  const oldPaid = originalAtRefinance
+  const oldPaid = computeEmiStatuses({ ...original, schedule: original.schedule }, refinanceDay, paymentsByEmi)
     .filter((e) => e.status === 'paid')
     .map((e) => ({ ...e, fromOriginal: true }));
-  // New refinanced EMIs against current simDay (status: paid if dueDay <= simDay)
-  const newEmis = plan.schedule.map((emi) => ({
-    ...emi,
-    status: simDay >= emi.dueDay ? 'paid' : 'upcoming',
-    paidDay: simDay >= emi.dueDay ? emi.dueDay : null,
-    fromRefinanced: true,
-  }));
+  // New EMIs: derive status from refinancedPaymentsByEmi
+  const newEmis = plan.schedule.map((emi) => {
+    const paid = refinancedPaymentsByEmi && refinancedPaymentsByEmi[emi.num];
+    if (paid) return { ...emi, status: 'paid', paidDay: paid.paidOnDay, penalty: paid.withPenalty || 0, fromRefinanced: true };
+    if (simDay >= emi.dueDay) {
+      const dpd = simDay - emi.dueDay;
+      const stage = dpd < 5 ? 'soft' : dpd < 15 ? 'tele-call' : dpd < 31 ? 'field' : 'legal';
+      return { ...emi, status: 'overdue', daysOverdue: dpd, stage, fromRefinanced: true };
+    }
+    return { ...emi, status: 'upcoming', fromRefinanced: true };
+  });
   return [...oldPaid, ...newEmis];
 }
 
-// Friendly label for the calendar day (Day 0 → "Today (Aug 1)", Day 30 → "Aug 31", etc.)
-function formatSimDay(day) {
-  const start = new Date(2026, 7, 1); // Aug 1, 2026
-  const d = new Date(start.getTime() + day * 86400000);
-  const opts = { day: 'numeric', month: 'short' };
-  return d.toLocaleDateString('en-AE', opts);
-}
-
-// Map simDay → relative human label
-function relativeDayLabel(day, target, isAr) {
-  const diff = target - day;
-  if (diff > 0) return (isAr ? 'بعد ' : 'in ') + diff + (isAr ? ' يوم' : 'd');
-  if (diff < 0) return (isAr ? 'قبل ' : '') + Math.abs(diff) + (isAr ? ' يوم' : 'd ago');
-  return isAr ? 'اليوم' : 'today';
-}
-
-// Collections-stage banner content
-function collectionsBanner(stage, dpd, isAr) {
-  if (stage === 'soft') return {
-    tone: 'warn',
-    title: isAr ? `Day ${dpd} متأخّر — ادفع الآن أو أعد الجدولة` : `Day ${dpd} overdue · pay now or reschedule`,
-    sub: isAr ? 'رسوم تأخير ٠٫٥٪ — لم تُبلَّغ AECB بعد' : '0.5% late fee · not yet reported to AECB',
-  };
-  if (stage === 'tele-call') return {
-    tone: 'danger',
-    title: isAr ? `Day ${dpd} — اتّصال من فريق التحصيل` : `Day ${dpd} · Tele-call from collections`,
-    sub: isAr ? 'إعادة هيكلة متاحة · رسوم ٢٪' : 'Restructure available · 2% penalty',
-  };
-  if (stage === 'field') return {
-    tone: 'danger',
-    title: isAr ? `Day ${dpd} — إخطار رسمي` : `Day ${dpd} · Field/notice stage`,
-    sub: isAr ? 'سيُبلّغ AECB خلال ٣ أيام' : 'AECB will be notified in 3 days',
-  };
-  return {
-    tone: 'danger',
-    title: isAr ? `Day ${dpd} — إجراءات قانونية` : `Day ${dpd} · Legal stage`,
-    sub: isAr ? 'تمّ إيداع شيك السدّاد · شركة استرداد مُعيَّنة' : 'Cheque deposited · recovery partner engaged',
-  };
-}
-
-// Build narrative event log for the live phase given scenario + simDay.
-// Returns events that have already occurred up to simDay, newest first.
-function buildEvents(scenario, simDay, plan, termExtension) {
-  if (!plan) return [];
-  const all = [];
-  all.push({ day: 0, scope: 'buyer',    label: 'Plan signed · 4-mo installments', icon: 'check' });
-  all.push({ day: 0, scope: 'supplier', label: 'AED 232,500 wired · 93% advance', icon: 'bank' });
-
-  computeEmiStatuses(plan, simDay, scenario).forEach((e) => {
-    if (e.status === 'paid') {
-      all.push({ day: e.paidDay, scope: 'buyer',    label: `EMI ${e.num}/4 paid · AED ${e.amount.toLocaleString()}` + (e.penalty ? ` (+ AED ${e.penalty.toLocaleString()} penalty)` : ''), icon: 'check' });
-      all.push({ day: e.paidDay, scope: 'supplier', label: `Buyer EMI ${e.num}/4 cleared`, icon: 'check' });
-    }
-    if (e.status === 'overdue') {
-      const dpd = e.daysOverdue;
-      const banner = collectionsBanner(e.stage, dpd, false);
-      all.push({ day: e.dueDay + dpd, scope: 'buyer',    label: banner.title, icon: 'warning', tone: banner.tone });
-      all.push({ day: e.dueDay + dpd, scope: 'supplier', label: `Buyer DPD ${dpd} · stage ${e.stage}`, icon: 'warning', tone: banner.tone });
-    }
-  });
-
-  const lastEmi = plan.schedule[plan.schedule.length - 1];
-  if (simDay >= lastEmi.dueDay && scenario === 'happy') {
-    all.push({ day: lastEmi.dueDay + 1, scope: 'buyer',    label: 'Loan closed · AECB report positive · limit released', icon: 'star' });
-    all.push({ day: lastEmi.dueDay + 1, scope: 'supplier', label: 'Cycle complete', icon: 'star' });
-  }
-
-  return all.filter((e) => e.day <= simDay).sort((a, b) => b.day - a.day);
+// Compute late-fee for an unpaid overdue EMI: 0.5% of EMI per DPD, capped at 10%.
+function computeLatePenalty(emiAmount, dpd) {
+  if (dpd <= 0) return 0;
+  const pct = Math.min(0.10, 0.005 * dpd);
+  return Math.round(emiAmount * pct);
 }
 
 // ==================================================================
@@ -344,53 +301,70 @@ function buildEvents(scenario, simDay, plan, termExtension) {
 
 function DemoMode({ lang = 'en', setLang, onExit, isMobile }) {
   const [phase, setPhase] = dmS('intro');
-  const [running, setRunning] = dmS(false);
-  const [speed, setSpeed] = dmS(1);
-  const [mode, setMode] = dmS('autopilot');     // 'autopilot' | 'manual'
   const [scenario, setScenario] = dmS(DEFAULT_SCENARIO);
   const isAr = lang === 'ar';
 
-  dmE(() => { A.setSpeed(speed); }, [speed]);
-
   const patch = dmCB((p) => setScenario((s) => ({ ...s, ...(typeof p === 'function' ? p(s) : p) })), []);
 
-  // Autopilot scenario (intro narrative). Only runs when mode = autopilot AND running.
-  const cancelRef = dmR({ cancelled: false });
-  dmE(() => {
-    cancelRef.current.cancelled = false;
-    if (!running || mode !== 'autopilot') return;
-    runScenario({ phase, scenario, patch, cancelRef, setPhase, setRunning, setMode });
-    return () => { cancelRef.current.cancelled = true; };
-    // eslint-disable-next-line
-  }, [running, phase, mode]);
-
-  // Live-phase day ticker (autopilot only)
-  dmE(() => {
-    if (phase !== 'live' || !running || mode !== 'autopilot') return;
-    const id = setInterval(() => {
-      setScenario((s) => ({ ...s, simDay: Math.min(150, s.simDay + 1) }));
-    }, 1100 / speed);
-    return () => clearInterval(id);
-  }, [phase, running, mode, speed]);
-
   const reset = () => {
-    cancelRef.current.cancelled = true;
-    setRunning(false);
     setPhase('intro');
     setScenario(DEFAULT_SCENARIO);
   };
 
   const stepDay = (delta) => {
-    patch((s) => ({ simDay: Math.max(0, Math.min(150, s.simDay + delta)) }));
+    setScenario((s) => ({ ...s, simDay: Math.max(0, Math.min(200, s.simDay + delta)) }));
   };
 
-  const setSimDay = (d) => patch({ simDay: Math.max(0, Math.min(150, d)) });
+  const setSimDay = (d) => setScenario((s) => ({ ...s, simDay: Math.max(0, Math.min(200, d)) }));
 
   // Auto-clear toasts after 4.5s
   dmE(() => {
     const t = setTimeout(() => patch({ buyerToast: null, supplierToast: null }), 4500);
     return () => clearTimeout(t);
   }, [scenario.buyerToast?.title, scenario.supplierToast?.title]);
+
+  // Cross-date toasts: when simDay changes, fire alerts for any EMI dueDay
+  // that was just crossed without a payment. We only fire on forward movement.
+  const lastSimDay = dmR(scenario.simDay);
+  dmE(() => {
+    const prev = lastSimDay.current;
+    const curr = scenario.simDay;
+    if (curr > prev && scenario.plan) {
+      // Check for EMIs that just became overdue (forward scrubbing)
+      const justBecameOverdue = scenario.plan.schedule.find((emi) => {
+        if (scenario.paymentsByEmi[emi.num]) return false;          // already paid
+        return prev < emi.dueDay && curr >= emi.dueDay;
+      });
+      if (justBecameOverdue) {
+        patch({
+          buyerToast: {
+            title: isAr ? `قسط ${justBecameOverdue.num} مستحقّ — ادفع لتجنّب الرسوم` : `EMI ${justBecameOverdue.num} now due — pay to avoid late fee`,
+            sub: isAr ? `AED ${justBecameOverdue.amount.toLocaleString()} · ${formatSimDay(justBecameOverdue.dueDay)}` : `AED ${justBecameOverdue.amount.toLocaleString()} · ${formatSimDay(justBecameOverdue.dueDay)}`,
+            icon: 'bolt', tone: 'iri',
+          },
+          supplierToast: {
+            title: isAr ? `مال يجمع من المشتري · إعلامي` : `Mal collecting · informational`,
+            sub: isAr ? `قسط ${justBecameOverdue.num} مستحقّ — تحويلك آمن` : `EMI ${justBecameOverdue.num} due · your wire is safe`,
+            icon: 'info', tone: 'iri',
+          },
+        });
+      }
+      // Stage transitions: detect crossing soft → tele-call (DPD 5)
+      const overdueEmi = scenario.plan.schedule.find((emi) => !scenario.paymentsByEmi[emi.num] && curr > emi.dueDay);
+      if (overdueEmi) {
+        const prevDpd = Math.max(0, prev - overdueEmi.dueDay);
+        const currDpd = curr - overdueEmi.dueDay;
+        if (prevDpd < 5 && currDpd >= 5) {
+          patch({ buyerToast: { title: isAr ? `Day ${currDpd} · مرحلة الاتّصال` : `Day ${currDpd} · Tele-call stage`, sub: isAr ? 'إعادة هيكلة مُتاحة' : 'Restructure available · 2% penalty', icon: 'warning', tone: 'iri' } });
+        } else if (prevDpd < 15 && currDpd >= 15) {
+          patch({ buyerToast: { title: isAr ? `Day ${currDpd} · إخطار رسمي` : `Day ${currDpd} · Field/notice`, sub: isAr ? 'سيُبلّغ AECB خلال ٣ أيام' : 'AECB will be notified in 3 days', icon: 'warning', tone: 'iri' } });
+        } else if (prevDpd < 31 && currDpd >= 31) {
+          patch({ buyerToast: { title: isAr ? `Day ${currDpd} · إجراءات قانونية` : `Day ${currDpd} · Legal stage`, sub: isAr ? 'شركة استرداد مُعيَّنة' : 'Recovery partner engaged', icon: 'warning', tone: 'iri' } });
+        }
+      }
+    }
+    lastSimDay.current = curr;
+  }, [scenario.simDay]);
 
   return (
     <div dir={isAr ? 'rtl' : 'ltr'} style={{
@@ -401,37 +375,22 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile }) {
       paddingBottom: 60,
     }}>
       <DemoTopBar lang={lang} setLang={setLang} onExit={onExit}
-                  running={running} setRunning={setRunning}
-                  speed={speed} setSpeed={setSpeed}
-                  mode={mode} setMode={setMode}
                   reset={reset} phase={phase} isMobile={isMobile}/>
-
       <DemoTimeline phase={phase} setPhase={setPhase} lang={lang}/>
-
-      {phase === 'live' && (
-        <DemoLiveToolbar scenario={scenario} setScenario={(updates) => patch(updates)}
-                         setSimDay={setSimDay} stepDay={stepDay} lang={lang}
-                         mode={mode} setMode={setMode}
-                         running={running} setRunning={setRunning}/>
-      )}
-
       <DemoStage scenario={scenario} setScenario={setScenario} patch={patch}
-                 phase={phase} setPhase={setPhase}
-                 mode={mode}
+                 phase={phase} setPhase={setPhase} setSimDay={setSimDay} stepDay={stepDay}
                  lang={lang} isMobile={isMobile}/>
-
-      <DemoFooterHint phase={phase} running={running} mode={mode} lang={lang} simDay={scenario.simDay}/>
+      <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan}/>
     </div>
   );
 }
 
 // ==================================================================
-// 4. Top bar
+// 4. Top bar (simplified — no autopilot controls)
 // ==================================================================
 
-function DemoTopBar({ lang, setLang, onExit, running, setRunning, speed, setSpeed, mode, setMode, reset, phase, isMobile }) {
+function DemoTopBar({ lang, setLang, onExit, reset, phase, isMobile }) {
   const isAr = lang === 'ar';
-  const inLive = phase === 'live';
   return (
     <header style={{
       display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
@@ -449,77 +408,27 @@ function DemoTopBar({ lang, setLang, onExit, running, setRunning, speed, setSpee
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <MalLogo size={18}/>
         <span style={{ fontSize: 12, color: 'var(--mal-mid)' }}>
-          {isAr ? 'وضع العرض المُصاحَب' : 'Side-by-side demo'}
+          {isAr ? 'وضع العرض المُصاحَب' : 'Side-by-side simulator'}
         </span>
       </div>
 
       <div style={{ flex: 1 }}/>
 
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <button className="mal-pill-btn" onClick={reset}>
           {dmIco.refresh ? dmIco.refresh({ width: 12, height: 12 }) : '↻'}
           {isAr ? 'إعادة' : 'Reset'}
         </button>
-
-        {/* Mode toggle */}
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: 4, background: 'var(--mal-surface-2)', borderRadius: 999,
-        }}>
-          {[
-            { value: 'manual',    label: isAr ? 'يدوي'    : 'Manual'    },
-            { value: 'autopilot', label: isAr ? 'تلقائي' : 'Autopilot' },
-          ].map((opt) => (
-            <button key={opt.value}
-                    onClick={() => setMode(opt.value)}
-                    className={`mal-tab ${mode === opt.value ? 'active' : ''}`}
-                    aria-selected={mode === opt.value}
-                    style={{ height: 28, minWidth: 64, padding: '0 10px' }}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        {mode === 'autopilot' && (
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 4,
-            padding: 4, background: 'var(--mal-surface-2)', borderRadius: 999,
-          }}>
-            {[1, 1.5, 2].map((s) => (
-              <button key={s}
-                      onClick={() => setSpeed(s)}
-                      className={`mal-tab ${speed === s ? 'active' : ''}`}
-                      aria-selected={speed === s}
-                      style={{ height: 28, minWidth: 38, padding: '0 10px' }}>
-                {s}×
-              </button>
-            ))}
-          </div>
-        )}
-
         <Tabs value={lang} onChange={setLang} size="sm" items={[
           { value: 'en', label: 'EN' }, { value: 'ar', label: 'AR' },
         ]}/>
-
-        {mode === 'autopilot' && (
-          <button className="mal-pill-btn" onClick={() => setRunning(!running)}
-                  style={{
-                    background: running ? 'var(--mal-ink)' : 'var(--mal-primary)',
-                    color: '#fff', borderColor: 'transparent',
-                    padding: '8px 16px',
-                  }}>
-            {running
-              ? <>{dmIco.bolt ? dmIco.bolt({ width: 12, height: 12, color: '#fff' }) : '⏸'} {isAr ? 'إيقاف' : 'Pause'}</>
-              : <>{dmIco.play ? dmIco.play({ width: 12, height: 12, color: '#fff' }) : '▶'} {phase === 'intro' ? (isAr ? 'تشغيل' : 'Run autopilot') : (isAr ? 'استئناف' : 'Resume')}</>}
-          </button>
-        )}
       </div>
     </header>
   );
 }
 
 // ==================================================================
-// 5. Phase timeline (clickable navigation)
+// 5. Phase timeline (clickable)
 // ==================================================================
 
 function DemoTimeline({ phase, setPhase, lang }) {
@@ -540,8 +449,7 @@ function DemoTimeline({ phase, setPhase, lang }) {
                   color: i === idx ? '#FAF7EE' : (i < idx ? 'var(--mal-primary)' : 'var(--mal-mid)'),
                   border: '1px solid ' + (i === idx ? 'transparent' : 'var(--mal-line)'),
                   fontWeight: i === idx ? 600 : 500,
-                  letterSpacing: '.02em',
-                  flexShrink: 0,
+                  letterSpacing: '.02em', flexShrink: 0,
                 }}>
           <span className="mal-mono" style={{ fontSize: 10, opacity: .7 }}>
             {String(i + 1).padStart(2, '0')}
@@ -555,143 +463,10 @@ function DemoTimeline({ phase, setPhase, lang }) {
 }
 
 // ==================================================================
-// 6. Live-phase toolbar — scenario picker, day slider, day stepper
+// 6. Stage — two phones + central column with the dialer
 // ==================================================================
 
-function DemoLiveToolbar({ scenario, setScenario, setSimDay, stepDay, lang, mode, setMode, running, setRunning }) {
-  const isAr = lang === 'ar';
-  const sc = scenario.liveScenario || 'happy';
-  const day = scenario.simDay;
-
-  // Event marker positions on the day axis (0-150)
-  const markers = [
-    { day: 0,   label: 'Wired',   tone: 'iri' },
-    { day: 30,  label: 'EMI 1',   tone: sc === 'happy' || sc === 'late-cured' ? 'success' : 'success' },
-    { day: 60,  label: 'EMI 2',   tone: 'success' },
-    { day: 90,  label: 'EMI 3',   tone: sc === 'happy' ? 'success' : (sc === 'late-cured' ? 'warn' : 'danger') },
-    { day: 95,  label: sc === 'late-cured' ? 'Cure' : (sc === 'restructure' ? 'Tele' : null), tone: sc === 'late-cured' ? 'success' : 'danger' },
-    { day: 120, label: 'EMI 4',   tone: sc === 'restructure' ? 'danger' : 'success' },
-    { day: 121, label: 'Closed',  tone: sc === 'restructure' ? 'danger' : 'success' },
-  ].filter((m) => m.label);
-
-  return (
-    <div style={{
-      borderTop: '1px solid var(--mal-line)',
-      borderBottom: '1px solid var(--mal-line)',
-      background: 'var(--mal-paper)',
-      padding: '14px 22px',
-      display: 'flex', flexDirection: 'column', gap: 12,
-    }}>
-      {/* Row 1: scenario + day controls */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--mal-mid)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-            {isAr ? 'سيناريو' : 'Scenario'}
-          </span>
-          <select value={sc}
-                  onChange={(e) => setScenario({ liveScenario: e.target.value })}
-                  style={{
-                    background: 'var(--mal-surface)', border: '1px solid var(--mal-line)',
-                    borderRadius: 999, padding: '6px 10px', font: 'inherit',
-                    fontSize: 12, fontWeight: 500, color: 'var(--mal-ink)',
-                  }}>
-            {SCENARIOS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-          </select>
-        </div>
-
-        <div style={{ width: 1, height: 24, background: 'var(--mal-line)' }}/>
-
-        {/* Day stepper */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--mal-mid)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-            {isAr ? 'اليوم' : 'Day'}
-          </span>
-          <button className="mal-pill-btn" onClick={() => stepDay(-30)} aria-label="-30">−30</button>
-          <button className="mal-pill-btn" onClick={() => stepDay(-1)} aria-label="-1">−1</button>
-          <span style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '6px 12px', background: 'var(--mal-ink)', color: '#FAF7EE',
-            borderRadius: 999, fontSize: 13, fontWeight: 600,
-            fontFamily: 'var(--mal-font-mono)', minWidth: 96, justifyContent: 'center',
-          }}>
-            <span>Day {day}</span>
-            <span style={{ opacity: .7, fontSize: 11 }}>· {formatSimDay(day)}</span>
-          </span>
-          <button className="mal-pill-btn" onClick={() => stepDay(1)} aria-label="+1">+1</button>
-          <button className="mal-pill-btn" onClick={() => stepDay(30)} aria-label="+30">+30</button>
-        </div>
-
-        <div style={{ flex: 1 }}/>
-
-        <div style={{ fontSize: 11, color: 'var(--mal-mid)', maxWidth: 360, lineHeight: 1.5 }}>
-          {SCENARIOS.find((s) => s.id === sc)?.desc}
-        </div>
-      </div>
-
-      {/* Row 2: day slider with event markers */}
-      <div style={{ position: 'relative', height: 44, paddingTop: 6 }}>
-        {/* Track */}
-        <div style={{
-          position: 'absolute', left: 0, right: 0, top: 22,
-          height: 6, background: 'var(--mal-line)', borderRadius: 999,
-        }}>
-          {/* Filled portion */}
-          <div style={{
-            width: ((day / 150) * 100) + '%', height: '100%',
-            background: 'linear-gradient(90deg, var(--mal-primary) 0%, var(--mal-primary-3) 100%)',
-            borderRadius: 999,
-          }}/>
-        </div>
-
-        {/* Event markers */}
-        {markers.map((m) => {
-          const left = (m.day / 150) * 100;
-          const tone = m.tone === 'success' ? 'var(--mal-success)'
-                     : m.tone === 'warn' ? 'var(--mal-warn)'
-                     : m.tone === 'danger' ? 'var(--mal-danger)'
-                     : m.tone === 'iri' ? 'var(--mal-primary)' : 'var(--mal-mid)';
-          const passed = day >= m.day;
-          return (
-            <button key={m.day + m.label}
-                    onClick={() => setSimDay(m.day)}
-                    title={`Day ${m.day} · ${m.label}`}
-                    style={{
-                      all: 'unset', cursor: 'pointer',
-                      position: 'absolute', top: 16, left: `calc(${left}% - 8px)`,
-                      width: 16, height: 16, borderRadius: 999,
-                      background: passed ? tone : 'var(--mal-paper)',
-                      border: `2px solid ${tone}`,
-                      boxShadow: passed ? '0 0 0 4px ' + tone + '22' : 'none',
-                      transition: 'all .2s',
-                    }} aria-label={`Jump to Day ${m.day}: ${m.label}`}/>
-          );
-        })}
-
-        {/* Day label scale */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', marginTop: 18,
-          fontSize: 10, color: 'var(--mal-mid-2)', fontFamily: 'var(--mal-font-mono)',
-        }}>
-          {[0, 30, 60, 90, 120, 150].map((d) => <span key={d}>{d}</span>)}
-        </div>
-
-        {/* Hidden range input for click-anywhere scrubbing */}
-        <input type="range" min="0" max="150" value={day}
-               onChange={(e) => setSimDay(+e.target.value)}
-               style={{
-                 position: 'absolute', left: 0, right: 0, top: 16, height: 16,
-                 width: '100%', opacity: 0, cursor: 'pointer',
-               }}/>
-      </div>
-    </div>
-  );
-}
-
-// ==================================================================
-// 7. Stage — two phones side-by-side
-// ==================================================================
-
-function DemoStage({ scenario, setScenario, patch, phase, setPhase, mode, lang, isMobile }) {
+function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, stepDay, lang, isMobile }) {
   const stack = isMobile;
   return (
     <div style={{
@@ -699,41 +474,32 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, mode, lang, 
       alignItems: 'flex-start', justifyContent: 'center',
       padding: stack ? '8px 12px 24px' : '20px 22px 40px', flexWrap: 'wrap',
     }}>
-      <DemoPanel
-        side="buyer"
-        title="Buyer SME"
-        sub="Aisha · Crescent Trading FZE"
-        tone="lilac"
-        spotlight={scenario.spotlight === 'buyer'}
-        toast={scenario.buyerToast}
-        lang={lang}>
-        <BuyerSurface phase={phase} scenario={scenario} patch={patch} mode={mode} lang={lang}/>
+      <DemoPanel side="buyer" title="Buyer SME" sub="Aisha · Crescent Trading FZE" tone="lilac"
+                 spotlight={scenario.spotlight === 'buyer'} toast={scenario.buyerToast} lang={lang}>
+        <BuyerSurface phase={phase} scenario={scenario} patch={patch} lang={lang}/>
       </DemoPanel>
 
-      <SyncIndicator phase={phase} simDay={scenario.simDay} scenario={scenario.liveScenario} lang={lang} stack={stack}/>
+      {/* CENTRAL COLUMN: in live phase shows the CircularDayDial; otherwise
+          shows the iridescent sync-flow indicator we already had. */}
+      {!stack && (
+        phase === 'live'
+          ? <DemoCenterColumnLive scenario={scenario} setSimDay={setSimDay} stepDay={stepDay} setPhase={setPhase} patch={patch} lang={lang}/>
+          : <SyncIndicatorNarrative phase={phase} lang={lang}/>
+      )}
 
-      <DemoPanel
-        side="supplier"
-        title="Supplier SME"
-        sub="Marwan · Atlas Packaging FZ"
-        tone="sky"
-        spotlight={scenario.spotlight === 'supplier'}
-        toast={scenario.supplierToast}
-        lang={lang}>
-        <SupplierSurface phase={phase} scenario={scenario} patch={patch} mode={mode} lang={lang}/>
+      <DemoPanel side="supplier" title="Supplier SME" sub="Marwan · Atlas Packaging FZ" tone="sky"
+                 spotlight={scenario.spotlight === 'supplier'} toast={scenario.supplierToast} lang={lang}>
+        <SupplierSurface phase={phase} scenario={scenario} patch={patch} lang={lang}/>
       </DemoPanel>
     </div>
   );
 }
 
-function SyncIndicator({ phase, simDay, scenario, lang, stack }) {
+function SyncIndicatorNarrative({ phase, lang }) {
   const isAr = lang === 'ar';
-  const flowing = phase === 'issue' || phase === 'receive' || phase === 'sign' || phase === 'funded'
-                || (phase === 'live' && (simDay === 30 || simDay === 60 || simDay === 90 || simDay === 120));
+  const flowing = phase === 'issue' || phase === 'receive' || phase === 'sign' || phase === 'funded';
   const direction = (phase === 'issue' || phase === 'receive') ? 'r2l'
-                  : (phase === 'sign' || phase === 'funded' || phase === 'live') ? 'l2r' : null;
-
-  if (stack) return null;
+                  : (phase === 'sign' || phase === 'funded') ? 'l2r' : null;
   return (
     <div style={{
       width: 70, alignSelf: 'stretch', display: 'flex',
@@ -770,7 +536,254 @@ function SyncIndicator({ phase, simDay, scenario, lang, stack }) {
 }
 
 // ==================================================================
-// 8. Phone-frame Panel
+// 7. CircularDayDial — drag/scrub time
+// ==================================================================
+
+function CircularDayDial({ simDay, setSimDay, plan, paymentsByEmi, lang, maxDay = 200 }) {
+  const isAr = lang === 'ar';
+  const size = 256, cx = size / 2, cy = size / 2, r = 100;
+  const dialRef = dmR(null);
+
+  // Position on the rim (12 o'clock origin, clockwise)
+  const pct = Math.max(0, Math.min(1, simDay / maxDay));
+  const angleRad = (pct * 2 * Math.PI) - (Math.PI / 2);
+  const handleX = cx + r * Math.cos(angleRad);
+  const handleY = cy + r * Math.sin(angleRad);
+
+  // Stable mousedown handler — captures pointer movement until mouseup
+  const onPointerDown = dmCB((e) => {
+    e.preventDefault();
+    const rect = dialRef.current.getBoundingClientRect();
+    const update = (clientX, clientY) => {
+      const x = clientX - rect.left - cx;
+      const y = clientY - rect.top - cy;
+      let angle = Math.atan2(y, x) + Math.PI / 2;
+      if (angle < 0) angle += 2 * Math.PI;
+      const newPct = angle / (2 * Math.PI);
+      setSimDay(Math.round(newPct * maxDay));
+    };
+    update(e.clientX, e.clientY);
+    const onMove = (ev) => update(ev.clientX, ev.clientY);
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [setSimDay, maxDay]);
+
+  const onWheel = (e) => {
+    e.preventDefault();
+    setSimDay(simDay + (e.deltaY > 0 ? 1 : -1));
+  };
+
+  // Event markers along the rim (one per EMI dueDay)
+  const events = (plan?.schedule || []).map((emi) => {
+    const empct = emi.dueDay / maxDay;
+    if (empct > 1) return null;
+    const a = (empct * 2 * Math.PI) - (Math.PI / 2);
+    const ex = cx + r * Math.cos(a);
+    const ey = cy + r * Math.sin(a);
+    const paid = paymentsByEmi && paymentsByEmi[emi.num];
+    const status = paid ? 'paid' : (simDay >= emi.dueDay ? 'overdue' : 'upcoming');
+    return { emi, x: ex, y: ey, status };
+  }).filter(Boolean);
+
+  return (
+    <div ref={dialRef} onWheel={onWheel} style={{
+      width: size, height: size, position: 'relative', userSelect: 'none', touchAction: 'none',
+    }}>
+      <svg width={size} height={size} style={{ overflow: 'visible' }}>
+        <defs>
+          <linearGradient id="dialGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="var(--mal-primary)"/>
+            <stop offset="100%" stopColor="var(--mal-primary-3)"/>
+          </linearGradient>
+        </defs>
+        {/* Track ring */}
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--mal-line)" strokeWidth="3"/>
+        {/* Filled progress arc */}
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="url(#dialGrad)" strokeWidth="3"
+                strokeDasharray={`${pct * 2 * Math.PI * r} ${2 * Math.PI * r}`}
+                transform={`rotate(-90 ${cx} ${cy})`} strokeLinecap="round"/>
+        {/* Tick marks every 30 days */}
+        {Array.from({ length: Math.floor(maxDay / 30) + 1 }).map((_, i) => {
+          const d = i * 30;
+          if (d > maxDay) return null;
+          const a = (d / maxDay) * 2 * Math.PI - Math.PI / 2;
+          const x1 = cx + (r - 8) * Math.cos(a);
+          const y1 = cy + (r - 8) * Math.sin(a);
+          const x2 = cx + (r + 8) * Math.cos(a);
+          const y2 = cy + (r + 8) * Math.sin(a);
+          return <line key={d} x1={x1} y1={y1} x2={x2} y2={y2}
+                       stroke={d <= simDay ? 'var(--mal-primary)' : 'var(--mal-mid-2)'}
+                       strokeWidth="1.5" opacity={d <= simDay ? 1 : 0.4}/>;
+        })}
+        {/* Event markers per EMI */}
+        {events.map((ev, i) => {
+          const fill = ev.status === 'paid' ? 'var(--mal-success)'
+                     : ev.status === 'overdue' ? 'var(--mal-danger)'
+                     : 'var(--mal-paper)';
+          const stroke = ev.status === 'paid' ? 'var(--mal-success)'
+                       : ev.status === 'overdue' ? 'var(--mal-danger)'
+                       : 'var(--mal-mid-2)';
+          return (
+            <g key={i}>
+              <circle cx={ev.x} cy={ev.y} r="7" fill={fill} stroke={stroke} strokeWidth="2"/>
+              {ev.status === 'overdue' && (
+                <circle cx={ev.x} cy={ev.y} r="11" fill="none" stroke="var(--mal-danger)" strokeWidth="2" opacity="0.4">
+                  <animate attributeName="r" values="7;14;7" dur="1.6s" repeatCount="indefinite"/>
+                  <animate attributeName="opacity" values="0.5;0;0.5" dur="1.6s" repeatCount="indefinite"/>
+                </circle>
+              )}
+            </g>
+          );
+        })}
+        {/* Drag handle */}
+        <g onMouseDown={onPointerDown} style={{ cursor: 'grab' }}>
+          <circle cx={handleX} cy={handleY} r="20" fill="transparent"/>{/* hit target */}
+          <circle cx={handleX} cy={handleY} r="14" fill="var(--mal-ink)" stroke="#fff" strokeWidth="3"/>
+          <circle cx={handleX} cy={handleY} r="5" fill="#fff"/>
+        </g>
+      </svg>
+
+      {/* Center day number — re-keyed so CSS animation snaps on each change */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, width: size, height: size,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        pointerEvents: 'none',
+      }}>
+        <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 2 }}>
+          {isAr ? 'اليوم' : 'DAY'}
+        </div>
+        <div key={simDay} style={{
+          fontFamily: 'var(--mal-font-display)', fontSize: 60, fontStyle: 'italic',
+          lineHeight: 1, color: 'var(--mal-ink)',
+          animation: 'mal-day-snap .35s cubic-bezier(.4,1.6,.4,1)',
+        }}>
+          {simDay}
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--mal-mid)', marginTop: 4, fontFamily: 'var(--mal-font-mono)' }}>
+          {formatSimDay(simDay)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==================================================================
+// 8. Center column for live phase — dial + step buttons + mini event log
+// ==================================================================
+
+function DemoCenterColumnLive({ scenario, setSimDay, stepDay, setPhase, patch, lang }) {
+  const isAr = lang === 'ar';
+  const { simDay, plan, paymentsByEmi, refinancedPaymentsByEmi } = scenario;
+  const events = plan ? buildEvents(simDay, plan, plan.refinancedFrom ? refinancedPaymentsByEmi : paymentsByEmi).slice(0, 4) : [];
+
+  return (
+    <div style={{
+      width: 300, alignSelf: 'stretch', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', gap: 14, paddingTop: 56, flexShrink: 0,
+    }}>
+      <CircularDayDial simDay={simDay} setSimDay={setSimDay}
+                       plan={plan}
+                       paymentsByEmi={plan?.refinancedFrom ? refinancedPaymentsByEmi : paymentsByEmi}
+                       lang={lang}/>
+
+      {/* Step buttons */}
+      <div style={{
+        display: 'inline-flex', gap: 6,
+        background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+        borderRadius: 999, padding: 4,
+        boxShadow: 'var(--mal-sh-1)',
+      }}>
+        {[
+          { l: '−30', d: -30 },
+          { l: '−7',  d: -7 },
+          { l: '−1',  d: -1 },
+          { l: '+1',  d: 1 },
+          { l: '+7',  d: 7 },
+          { l: '+30', d: 30 },
+        ].map((b) => (
+          <button key={b.l}
+                  onClick={() => stepDay(b.d)}
+                  style={{
+                    all: 'unset', cursor: 'pointer',
+                    minWidth: 38, padding: '6px 10px', borderRadius: 999,
+                    fontSize: 12, fontWeight: 600, color: 'var(--mal-ink)',
+                    fontFamily: 'var(--mal-font-mono)',
+                    transition: 'background .14s',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--mal-surface-2)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+            {b.l}
+          </button>
+        ))}
+      </div>
+
+      {/* Snap-to buttons for key simulation moments */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', maxWidth: 280 }}>
+        {[
+          { d: 0,   label: 'Day 0',   sub: isAr ? 'بدء' : 'start' },
+          { d: 30,  label: 'Day 30',  sub: 'EMI 1' },
+          { d: 60,  label: 'Day 60',  sub: 'EMI 2' },
+          { d: 90,  label: 'Day 90',  sub: 'EMI 3' },
+          { d: 120, label: 'Day 120', sub: 'EMI 4' },
+        ].map((s) => {
+          const reached = simDay >= s.d;
+          return (
+            <button key={s.d}
+                    onClick={() => setSimDay(s.d)}
+                    style={{
+                      all: 'unset', cursor: 'pointer',
+                      padding: '4px 10px', borderRadius: 999, fontSize: 10,
+                      background: simDay === s.d ? 'var(--mal-ink)' : 'transparent',
+                      color: simDay === s.d ? '#FAF7EE' : (reached ? 'var(--mal-primary)' : 'var(--mal-mid-2)'),
+                      border: '1px solid ' + (simDay === s.d ? 'transparent' : 'var(--mal-line)'),
+                      fontWeight: 500, letterSpacing: '.02em',
+                    }}>
+              {s.label} <span style={{ opacity: .65, fontSize: 9, marginLeft: 4 }}>{s.sub}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Mini activity log */}
+      {events.length > 0 && (
+        <div style={{
+          width: '100%', maxWidth: 280, background: 'var(--mal-paper)',
+          border: '1px solid var(--mal-line)', borderRadius: 14, padding: 12,
+          boxShadow: 'var(--mal-sh-1)',
+        }}>
+          <div className="mal-caption" style={{ marginBottom: 8 }}>{isAr ? 'النشاط' : 'Activity'}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {events.slice(0, 3).map((ev, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 11 }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: 999, flexShrink: 0,
+                  background: ev.tone === 'danger' ? 'var(--mal-danger-bg)' : ev.tone === 'warn' ? 'var(--mal-warn-bg)' : ev.scope === 'supplier' ? 'var(--mal-info-bg)' : 'var(--mal-success-bg)',
+                  color: ev.tone === 'danger' ? 'var(--mal-danger)' : ev.tone === 'warn' ? 'var(--mal-warn)' : ev.scope === 'supplier' ? 'var(--mal-info)' : 'var(--mal-success)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  {dmIco[ev.icon] ? dmIco[ev.icon]({ width: 11, height: 11 }) : '•'}
+                </div>
+                <div style={{ flex: 1, lineHeight: 1.4 }}>
+                  <div style={{ color: 'var(--mal-ink)' }}>{ev.label}</div>
+                  <div className="mal-mono" style={{ fontSize: 9, color: 'var(--mal-mid-2)', marginTop: 1 }}>
+                    Day {ev.day} · {ev.scope}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==================================================================
+// 9. Phone Panel
 // ==================================================================
 
 function DemoPanel({ side, title, sub, tone, spotlight, toast, lang, children }) {
@@ -781,7 +794,6 @@ function DemoPanel({ side, title, sub, tone, spotlight, toast, lang, children })
       transition: 'transform .3s, filter .3s',
       transform: spotlight ? 'translateY(-4px) scale(1.012)' : 'none',
     }}>
-      {/* Caption */}
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10, padding: '6px 4px',
         textAlign: 'start', maxWidth: w,
@@ -794,8 +806,6 @@ function DemoPanel({ side, title, sub, tone, spotlight, toast, lang, children })
           <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{sub}</div>
         </div>
       </div>
-
-      {/* Phone */}
       <div style={{
         width: w, height: h, borderRadius: 44, background: '#0B0B14', padding: 9,
         boxShadow: spotlight
@@ -808,7 +818,6 @@ function DemoPanel({ side, title, sub, tone, spotlight, toast, lang, children })
           width: '100%', height: '100%', borderRadius: 36, background: 'var(--mal-surface)',
           overflow: 'hidden', position: 'relative', display: 'flex', flexDirection: 'column',
         }}>
-          {/* Status bar */}
           <div style={{
             height: 36, paddingInline: 22, display: 'flex', alignItems: 'center',
             justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: 'var(--mal-ink)', flexShrink: 0,
@@ -820,9 +829,7 @@ function DemoPanel({ side, title, sub, tone, spotlight, toast, lang, children })
               </span>
             </span>
           </div>
-
           {toast && <DemoToast toast={toast}/>}
-
           <div className="mal-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', position: 'relative' }}>
             {children}
           </div>
@@ -853,8 +860,7 @@ function DemoToast({ toast }) {
           background: toast.tone === 'success' ? 'var(--mal-success-bg)'
             : toast.tone === 'iri' ? 'conic-gradient(from 90deg, var(--mal-iri-1), var(--mal-iri-2), var(--mal-iri-3), var(--mal-iri-4))'
             : 'rgba(255,255,255,.12)',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
           color: toast.tone === 'success' ? 'var(--mal-success)' : '#fff',
         }}>
           {dmIco[toast.icon || 'bell'] ? dmIco[toast.icon || 'bell']({ width: 16, height: 16 }) : '🔔'}
@@ -869,10 +875,10 @@ function DemoToast({ toast }) {
 }
 
 // ==================================================================
-// 9. Buyer surface dispatcher
+// 10. Buyer surface dispatcher
 // ==================================================================
 
-function BuyerSurface({ phase, scenario, patch, mode, lang }) {
+function BuyerSurface({ phase, scenario, patch, lang }) {
   if (phase === 'intro') return <DemoIntroBuyer lang={lang}/>;
   if (phase === 'onboarding') {
     return <BuyerOnboardingFlow lang={lang}
@@ -881,14 +887,13 @@ function BuyerSurface({ phase, scenario, patch, mode, lang }) {
   }
   if (phase === 'home' || phase === 'issue') return <DemoBuyerHomeEmpty lang={lang}/>;
   if (phase === 'receive') return <DemoBuyerHomeWithInvoice lang={lang} scenario={scenario}/>;
-  if (phase === 'plan' || phase === 'sign') return <DemoBuyerPlanPicker lang={lang} scenario={scenario} patch={patch} mode={mode}/>;
+  if (phase === 'plan' || phase === 'sign') return <DemoBuyerPlanPicker lang={lang} scenario={scenario} patch={patch}/>;
   if (phase === 'funded') return <DemoBuyerJustSigned lang={lang} scenario={scenario}/>;
   if (phase === 'live') {
-    // Route within live phase
     const route = scenario.buyerRoute || 'home';
     const setBuyerRoute = (r) => patch({ buyerRoute: r });
     return <DemoBuyerLive route={route} setBuyerRoute={setBuyerRoute}
-                          scenario={scenario} patch={patch} mode={mode} lang={lang}/>;
+                          scenario={scenario} patch={patch} lang={lang}/>;
   }
   return null;
 }
@@ -946,7 +951,7 @@ function DemoBuyerHomeWithInvoice({ lang, scenario }) {
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="mal-caption">{isAr ? 'مرحباً، عيشة' : 'Hi, Aisha'}</div>
-      <div className="mal-h1" style={{ marginTop: -4 }}>{isAr ? 'تجارة الهلال (FZE)' : 'Crescent Trading FZE'}</div>
+      <div className="mal-h1" style={{ marginTop: -4 }}>{isAr ? 'تجارة الهلال' : 'Crescent Trading FZE'}</div>
       <Card padded style={{ background: 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)', color: '#fff', border: 'none', position: 'relative', overflow: 'hidden' }}>
         <div className="mal-orb" style={{ position: 'absolute', width: 220, height: 220, top: -90, insetInlineEnd: -90, opacity: .35 }}/>
         <div style={{ position: 'relative' }}>
@@ -986,19 +991,19 @@ function DemoBuyerHomeWithInvoice({ lang, scenario }) {
 }
 
 // ==================================================================
-// 10. Buyer Plan Picker (used in both narrative + manual modes)
+// 11. Plan picker + Confirm + JustSigned (used in narrative phases)
 // ==================================================================
 
-function DemoBuyerPlanPicker({ lang, scenario, patch, mode, onContinue }) {
+function DemoBuyerPlanPicker({ lang, scenario, patch }) {
   const isAr = lang === 'ar';
   const plans = [
-    { key: 'pay30',          label: isAr ? 'ادفع خلال ٣٠'        : 'Pay in 30d',        cost: '0%',       sub: isAr ? 'مجّاناً'      : 'Free' },
-    { key: 'bnpl60',         label: isAr ? 'BNPL ٦٠ يوم'         : 'BNPL 60d',          cost: '+1.8%',    sub: 'AED 4,500' },
-    { key: 'bnpl90',         label: isAr ? 'BNPL ٩٠ يوم'         : 'BNPL 90d',          cost: '+2.6%',    sub: 'AED 6,500' },
-    { key: 'inst3',          label: isAr ? 'أقساط ٣ شهور'        : 'Instalments · 3 mo', cost: '+3.0%',    sub: 'AED 7,500' },
-    { key: 'installment_4',  label: isAr ? 'أقساط ٤ شهور'        : 'Instalments · 4 mo', cost: '+3.6%',    sub: 'AED 9,000', recommended: true },
+    { key: 'pay30',         label: isAr ? 'ادفع خلال ٣٠'  : 'Pay in 30d',         cost: '0%',     sub: isAr ? 'مجّاناً' : 'Free' },
+    { key: 'bnpl60',        label: isAr ? 'BNPL ٦٠ يوم'   : 'BNPL 60d',           cost: '+1.8%',  sub: 'AED 4,500' },
+    { key: 'bnpl90',        label: isAr ? 'BNPL ٩٠ يوم'   : 'BNPL 90d',           cost: '+2.6%',  sub: 'AED 6,500' },
+    { key: 'inst3',         label: isAr ? 'أقساط ٣ شهور'  : 'Instalments · 3 mo', cost: '+3.0%',  sub: 'AED 7,500' },
+    { key: 'installment_4', label: isAr ? 'أقساط ٤ شهور'  : 'Instalments · 4 mo', cost: '+3.6%',  sub: 'AED 9,000', recommended: true },
   ];
-  const picked = scenario.plan?.type || (scenario.planPicked /* legacy */);
+  const picked = scenario.plan?.type;
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="mal-caption">{isAr ? 'فاتورة' : 'Invoice'} {scenario.invoice.id}</div>
@@ -1010,18 +1015,10 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, mode, onContinue }) {
           const selected = picked === p.key;
           return (
             <button key={p.key}
-                    onClick={() => {
-                      if (mode === 'manual') {
-                        if (p.key === 'installment_4') {
-                          patch({ plan: DEFAULT_PLAN, planPicked: p.key });
-                        } else {
-                          patch({ planPicked: p.key });
-                        }
-                      }
-                    }}
+                    onClick={() => p.key === 'installment_4' ? patch({ plan: DEFAULT_PLAN }) : null}
                     className={selected ? '' : 'mal-fade-up'}
                     style={{
-                      all: 'unset', cursor: mode === 'manual' ? 'pointer' : 'default',
+                      all: 'unset', cursor: 'pointer',
                       padding: 14, borderRadius: 14,
                       background: selected ? 'var(--mal-paper)' : 'var(--mal-surface-2)',
                       border: '1.5px solid ' + (selected ? 'var(--mal-primary)' : 'transparent'),
@@ -1052,33 +1049,10 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, mode, onContinue }) {
         })}
       </div>
 
-      {/* Need more time CTA — also from plan picker */}
-      <button onClick={() => mode === 'manual' && patch({ buyerRoute: 'extend-hero' })} style={{
-        all: 'unset', cursor: mode === 'manual' ? 'pointer' : 'default',
-        padding: '12px 14px',
-        background: 'linear-gradient(135deg, #2A1F6F 0%, #5B3FB2 60%, #C97AB6 100%)',
-        color: '#fff', borderRadius: 14,
-        display: 'flex', alignItems: 'center', gap: 12,
-        position: 'relative', overflow: 'hidden',
-      }}>
-        <div className="mal-orb" style={{ width: 26, height: 26, animation: 'mal-orb-spin 18s linear infinite' }}/>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, opacity: .85 }}>{isAr ? 'جديد · مال' : 'New · Mal'}</div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>
-            {isAr ? 'تحتاج وقتاً أطول؟ مدّد لـ ١٢ شهر' : 'Need more time? Extend up to 12 months'}
-          </div>
-        </div>
-        {dmIco.arrow ? dmIco.arrow({ color: '#fff', width: 14 }) : '→'}
-      </button>
-
-      {(scenario.plan || picked) && (
+      {scenario.plan && (
         <Button kind="primary" size="lg" full
-                onClick={() => mode === 'manual' && patch({ buyerRoute: 'confirm' })}
-                icon={scenario.signing ? 'check' : 'lock'}
-                style={{
-                  background: scenario.signed ? 'var(--mal-success)' : undefined,
-                  pointerEvents: mode === 'manual' ? 'auto' : 'none',
-                }}>
+                onClick={() => patch({ buyerRoute: 'confirm' })}
+                icon={scenario.signing ? 'check' : 'lock'}>
           {scenario.signed
             ? (isAr ? 'تمّ التوقيع' : 'Signed')
             : (scenario.signing ? (isAr ? 'جارٍ التوقيع…' : 'Signing…')
@@ -1100,99 +1074,104 @@ function DemoBuyerJustSigned({ lang, scenario }) {
       <div style={{ color: 'var(--mal-mid)', fontSize: 13, maxWidth: 260, lineHeight: 1.5 }}>
         {isAr
           ? 'سنحوّل لأطلس خلال ٤ ساعات. أوّل قسط في ٣٠ نوفمبر — AED 64,750.'
-          : 'Atlas gets paid within 4 hours. Your first instalment is 30 Nov — AED 64,750.'}
+          : 'Atlas gets paid within 4 hours. First instalment is 30 Nov — AED 64,750.'}
       </div>
     </div>
   );
 }
 
 // ==================================================================
-// 11. BUYER LIVE PHASE — day-driven home + EMI confirms + extends
+// 12. BUYER LIVE PHASE — day-driven home + Pay buttons + extends
 // ==================================================================
 
-function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, mode, lang }) {
-  const isAr = lang === 'ar';
-
-  // Ensure plan exists when entering live phase (manual mode may not have set it).
-  // Run in effect so we don't setState during render.
+function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
+  // Ensure plan exists when entering live phase
   dmE(() => {
     if (!scenario.plan) patch({ plan: DEFAULT_PLAN });
   }, [scenario.plan]);
   if (!scenario.plan) return <DemoBuyerHomeWithInvoice lang={lang} scenario={scenario}/>;
 
-  if (route === 'home') return <DemoBuyerLiveHome lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute} mode={mode} patch={patch}/>;
-  if (route === 'plan-picker') return <DemoBuyerPlanPicker lang={lang} scenario={scenario} patch={patch} mode={mode}/>;
-  if (route === 'confirm') return <DemoBuyerConfirm lang={lang} scenario={scenario} patch={patch} mode={mode}/>;
-  if (route === 'loan-detail') return <DemoBuyerLoanDetail lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute} mode={mode}/>;
+  if (route === 'home')        return <DemoBuyerLiveHome lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute} patch={patch}/>;
+  if (route === 'plan-picker') return <DemoBuyerPlanPicker lang={lang} scenario={scenario} patch={patch}/>;
+  if (route === 'confirm') {
+    return <DemoBuyerConfirm lang={lang} scenario={scenario} patch={patch}/>;
+  }
+  if (route === 'loan-detail') return <DemoBuyerLoanDetail lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute}/>;
 
-  // Term-extension routes — reuse the existing buyer-extend components
-  if (route === 'extend-hero') {
-    return <BuyerExtendHero lang={lang} setRoute={(r) => setBuyerRoute(r)} viewport="mobile"/>;
-  }
-  if (route === 'extend-pick') {
-    return <BuyerExtendPicker lang={lang} setRoute={(r) => setBuyerRoute(r)} viewport="mobile"/>;
-  }
-  if (route === 'extend-agree') {
-    return <BuyerExtendAgreement lang={lang} setRoute={(r) => setBuyerRoute(r)} viewport="mobile"/>;
-  }
+  // Term-extension routes
+  if (route === 'extend-hero')    return <BuyerExtendHero lang={lang} setRoute={setBuyerRoute} viewport="mobile"/>;
+  if (route === 'extend-pick')    return <BuyerExtendPicker lang={lang} setRoute={setBuyerRoute} viewport="mobile"/>;
+  if (route === 'extend-agree')   return <BuyerExtendAgreement lang={lang} setRoute={setBuyerRoute} viewport="mobile"/>;
   if (route === 'extend-confirm') {
     return <BuyerExtendConfirm lang={lang} setRoute={(r) => {
       if (r === 'extend-success') {
-        // Mark term extension active on scenario
-        patch({
-          termExtension: {
-            principal: 250000, tenorMonths: 6, aprPct: 11.5, emi: 44063,
-            startDay: scenario.simDay, signedAt: new Date().toISOString(),
-          },
-        });
+        patch({ termExtension: { principal: 250000, tenorMonths: 6, aprPct: 11.5, emi: 44063, startDay: scenario.simDay, signedAt: new Date().toISOString() } });
       }
       setBuyerRoute(r);
     }} viewport="mobile"/>;
   }
-  if (route === 'extend-success') {
-    return <BuyerExtendSuccess lang={lang} setRoute={(r) => setBuyerRoute(r === 'home' ? 'home' : 'extend-active')} viewport="mobile"/>;
-  }
-  if (route === 'extend-active') {
-    return <BuyerExtendActive lang={lang} setRoute={(r) => setBuyerRoute(r)} viewport="mobile"/>;
-  }
-  if (route === 'extend-detail') {
-    return <BuyerExtendDetail lang={lang} setRoute={(r) => setBuyerRoute(r)} viewport="mobile"/>;
-  }
-  if (route === 'extend-settle') {
-    return <BuyerExtendSettle lang={lang} setRoute={(r) => setBuyerRoute(r === 'home' ? 'home' : r)} viewport="mobile"/>;
-  }
+  if (route === 'extend-success') return <BuyerExtendSuccess lang={lang} setRoute={(r) => setBuyerRoute(r === 'home' ? 'home' : 'extend-active')} viewport="mobile"/>;
+  if (route === 'extend-active')  return <BuyerExtendActive lang={lang} setRoute={setBuyerRoute} viewport="mobile"/>;
+  if (route === 'extend-detail')  return <BuyerExtendDetail lang={lang} setRoute={setBuyerRoute} viewport="mobile"/>;
+  if (route === 'extend-settle')  return <BuyerExtendSettle lang={lang} setRoute={(r) => setBuyerRoute(r === 'home' ? 'home' : r)} viewport="mobile"/>;
 
-  // Mid-loan refinance — "Convert remaining to longer EMI"
+  // Refinance routes
   if (route === 'refinance-hero')    return <DemoRefinanceHero    lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute}/>;
-  if (route === 'refinance-pick')    return <DemoRefinancePicker  lang={lang} scenario={scenario} patch={patch} setBuyerRoute={setBuyerRoute} mode={mode}/>;
-  if (route === 'refinance-confirm') return <DemoRefinanceConfirm lang={lang} scenario={scenario} patch={patch} setBuyerRoute={setBuyerRoute} mode={mode}/>;
+  if (route === 'refinance-pick')    return <DemoRefinancePicker  lang={lang} scenario={scenario} patch={patch} setBuyerRoute={setBuyerRoute}/>;
+  if (route === 'refinance-confirm') return <DemoRefinanceConfirm lang={lang} scenario={scenario} patch={patch} setBuyerRoute={setBuyerRoute}/>;
   if (route === 'refinance-success') return <DemoRefinanceSuccess lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute}/>;
 
-  return <DemoBuyerLiveHome lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute} mode={mode} patch={patch}/>;
+  return <DemoBuyerLiveHome lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute} patch={patch}/>;
 }
 
-function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, mode, patch }) {
+// Buyer's main day-aware home — renders limit, EMI ladder with Pay buttons,
+// overdue banners and refinance/extension CTAs derived from current state.
+function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
   const isAr = lang === 'ar';
-  const { simDay, plan, liveScenario, termExtension } = scenario;
+  const { simDay, plan, paymentsByEmi, refinancedPaymentsByEmi, termExtension } = scenario;
   const isRefinanced = !!plan?.refinancedFrom;
-  // For schedule display: merged statuses if refinanced, else regular
+  const activePayments = isRefinanced ? refinancedPaymentsByEmi : paymentsByEmi;
   const statuses = isRefinanced
-    ? computeMergedStatuses(plan, simDay, liveScenario)
-    : computeEmiStatuses(plan, simDay, liveScenario);
+    ? computeMergedStatuses(plan, simDay, paymentsByEmi, refinancedPaymentsByEmi)
+    : computeEmiStatuses(plan, simDay, paymentsByEmi);
   const overdue = findOverdue(statuses);
   const nextUpcoming = findNextUpcoming(statuses);
   const paidCount = statuses.filter((e) => e.status === 'paid').length;
   const totalCount = statuses.length;
-  const isClosed = paidCount === totalCount;
-  // Used amount = original principal minus EMIs paid (rough)
+  const isClosed = paidCount === totalCount && totalCount > 0;
+
   const originalPrincipal = isRefinanced ? plan.refinancedFrom.principal : plan.principal;
   const totalPaidAmount = statuses.filter(e => e.status === 'paid').reduce((s, e) => s + (e.amount || 0), 0);
   const usedAmount = Math.max(0, originalPrincipal - totalPaidAmount);
   const availableLimit = 850000 - usedAmount;
   const utilisationPct = Math.round((usedAmount / 850000) * 100);
 
-  const showExtendCta = shouldShowExtendCta(plan, simDay, liveScenario, !!termExtension);
-  const showRefinanceCta = !isRefinanced && canRefinanceNow(plan, simDay, liveScenario, isRefinanced);
+  const showExtendCta = shouldShowExtendCta(plan, simDay, activePayments, !!termExtension);
+  const showRefinanceCta = !isRefinanced && canRefinanceNow(plan, simDay, paymentsByEmi, isRefinanced);
+
+  // Pay an EMI handler (used by Pay buttons on each row)
+  const payEmi = (emiNum, dueDay, amount) => {
+    const dpd = Math.max(0, simDay - dueDay);
+    const penalty = computeLatePenalty(amount, dpd);
+    const updates = isRefinanced
+      ? { refinancedPaymentsByEmi: { ...refinancedPaymentsByEmi, [emiNum]: { paidOnDay: simDay, withPenalty: penalty } } }
+      : { paymentsByEmi:           { ...paymentsByEmi,           [emiNum]: { paidOnDay: simDay, withPenalty: penalty } } };
+    patch({
+      ...updates,
+      buyerToast: {
+        title: dpd > 0
+          ? (isAr ? `قسط ${emiNum} مدفوع · رسم ${penalty} د.إ` : `EMI ${emiNum} paid · AED ${penalty.toLocaleString()} late fee`)
+          : (isAr ? `قسط ${emiNum} مدفوع` : `EMI ${emiNum} paid`),
+        sub: `AED ${(amount + penalty).toLocaleString()}`,
+        icon: 'check', tone: 'success',
+      },
+      supplierToast: {
+        title: isAr ? `قسط ${emiNum} مكتمل` : `Buyer EMI ${emiNum} cleared`,
+        sub: isAr ? 'دورتك تستمرّ' : 'Cycle continues',
+        icon: 'check', tone: 'success',
+      },
+    });
+  };
 
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1215,10 +1194,9 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, mode, patch }) {
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: '#fff', flexShrink: 0,
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 36, height: 36, borderRadius: 10, background: '#fff',
                 color: banner.tone === 'danger' ? 'var(--mal-danger)' : 'var(--mal-warn)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
                 {dmIco.warning ? dmIco.warning({ width: 18, height: 18 }) : '⚠'}
               </div>
@@ -1229,16 +1207,12 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, mode, patch }) {
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--mal-ink)', marginTop: 2 }}>{banner.sub}</div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
-                  <Button kind="primary" size="sm" icon="bolt">
-                    {isAr ? 'ادفع الآن' : 'Pay now'}
+                  <Button kind="primary" size="sm" icon="bolt"
+                          onClick={() => payEmi(overdue.num, overdue.dueDay, overdue.amount)}>
+                    {isAr ? 'ادفع الآن' : `Pay AED ${(overdue.amount + computeLatePenalty(overdue.amount, overdue.daysOverdue)).toLocaleString()}`}
                   </Button>
-                  {overdue.stage === 'soft' && (
-                    <Button kind="ghost" size="sm">
-                      {isAr ? 'أعد الجدولة' : 'Reschedule'}
-                    </Button>
-                  )}
-                  {(overdue.stage === 'tele-call' || overdue.stage === 'field') && (
-                    <Button kind="ghost" size="sm">
+                  {(overdue.stage === 'tele-call' || overdue.stage === 'field') && !isRefinanced && (
+                    <Button kind="ghost" size="sm" onClick={() => setBuyerRoute('refinance-hero')}>
                       {isAr ? 'إعادة هيكلة' : 'Restructure'}
                     </Button>
                   )}
@@ -1265,10 +1239,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, mode, patch }) {
             AED {availableLimit.toLocaleString()}
           </div>
           <div style={{ height: 6, background: 'rgba(255,255,255,.18)', borderRadius: 999, marginTop: 12, overflow: 'hidden' }}>
-            <div style={{
-              width: utilisationPct + '%', height: '100%',
-              background: '#fff', transition: 'width .5s',
-            }}/>
+            <div style={{ width: utilisationPct + '%', height: '100%', background: '#fff', transition: 'width .5s' }}/>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 11, opacity: .85 }}>
             <span>{isAr ? 'مستخدم' : 'In use'} AED {Math.max(0, usedAmount).toLocaleString()}</span>
@@ -1277,132 +1248,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, mode, patch }) {
         </div>
       </Card>
 
-      {/* Active term extension card (if any) */}
-      {termExtension && (
-        <Card padded onClick={() => setBuyerRoute('extend-detail')} style={{
-          cursor: 'pointer',
-          background: 'linear-gradient(135deg, var(--mal-primary-50) 0%, var(--mal-paper) 100%)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div className="mal-orb" style={{ width: 36, height: 36 }}/>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, color: 'var(--mal-primary)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600 }}>
-                {isAr ? 'قرض تمديد نشِط' : 'Active term extension'}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>
-                AED {termExtension.principal.toLocaleString()} · {termExtension.tenorMonths}{isAr ? ' شهر' : ' mo'}
-              </div>
-              <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
-                {isAr ? 'القسط' : 'EMI'} AED {termExtension.emi.toLocaleString()}/{isAr ? 'شهر' : 'mo'} · {termExtension.aprPct}% APR
-              </div>
-            </div>
-            {dmIco.arrow ? dmIco.arrow({ width: 14, height: 14, color: 'var(--mal-mid)' }) : '→'}
-          </div>
-        </Card>
-      )}
-
-      {/* Active 4-mo installment plan with EMI ladder */}
-      <Card padded>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-          <div className="mal-caption">{isAr ? 'الخطة الحالية' : 'Active plan'} · {scenario.invoice.id}</div>
-          {!isClosed && nextUpcoming && (
-            <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
-              {isAr ? 'القسط التالي' : 'Next'} {relativeDayLabel(simDay, nextUpcoming.dueDay, isAr)}
-            </span>
-          )}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-          <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 26, fontStyle: 'italic' }}>
-            {plan.tenorMonths}{isAr ? ' شهر · أقساط' : '-mo installments'}
-          </span>
-          <Pill tone={isClosed ? 'success' : (overdue ? 'danger' : 'info')} dot>
-            {isClosed ? (isAr ? 'مُغلق' : 'Closed')
-              : overdue ? (isAr ? 'متأخّر' : 'Overdue')
-              : (isAr ? 'في الوقت' : 'On track')}
-          </Pill>
-        </div>
-
-        {/* EMI rows. Post-refinance, original EMIs are labelled differently
-            from the new schedule, with a divider between the two groups. */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {statuses.map((e, i) => {
-            // Group context for labels
-            const origCount = isRefinanced ? plan.refinancedFrom.tenorMonths : totalCount;
-            const newCount  = isRefinanced ? plan.tenorMonths : totalCount;
-            const groupLabel = e.fromOriginal
-              ? (isAr ? `قبل الجدولة · القسط ${e.num} من ${origCount}` : `Before reschedule · EMI ${e.num} of ${origCount}`)
-              : e.fromRefinanced
-              ? (isAr ? `جديد · القسط ${e.num} من ${newCount}` : `New · EMI ${e.num} of ${newCount}`)
-              : (isAr ? `القسط ${e.num} من ${totalCount}` : `EMI ${e.num} of ${totalCount}`);
-            // Stable, unique key — survives both the original-vs-new ambiguity
-            const key = `${e.fromOriginal ? 'orig' : e.fromRefinanced ? 'new' : 'orig'}-${e.num}-${e.dueDay}`;
-            // Visual divider before the first refinanced EMI
-            const isFirstRefinanced = isRefinanced && e.fromRefinanced && (i === 0 || !statuses[i - 1].fromRefinanced);
-            return (
-              <React.Fragment key={key}>
-                {isFirstRefinanced && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '6px 0', fontSize: 11, color: 'var(--mal-primary)',
-                    fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.06em',
-                  }}>
-                    <span style={{ flex: 1, height: 1, background: 'var(--mal-primary-50)' }}/>
-                    <span>{isAr ? 'الجدول الجديد' : 'New schedule'}</span>
-                    <span style={{ flex: 1, height: 1, background: 'var(--mal-primary-50)' }}/>
-                  </div>
-                )}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '10px 12px', borderRadius: 12,
-                  background: e.status === 'overdue' ? 'var(--mal-danger-bg)'
-                            : e.status === 'paid' ? 'var(--mal-success-bg)'
-                            : 'var(--mal-surface-2)',
-                  border: e.status === 'upcoming' && nextUpcoming && nextUpcoming.num === e.num && (e.fromRefinanced || !isRefinanced)
-                    ? '1.5px solid var(--mal-primary)' : 'none',
-                  opacity: e.fromOriginal ? 0.85 : 1,
-                }}>
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 999,
-                    background: e.status === 'paid' ? 'var(--mal-success)'
-                              : e.status === 'overdue' ? 'var(--mal-danger)'
-                              : '#fff',
-                    color: e.status === 'upcoming' ? 'var(--mal-mid)' : '#fff',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    flexShrink: 0, fontSize: 12, fontWeight: 600,
-                    boxShadow: e.status === 'upcoming' ? 'inset 0 0 0 1px var(--mal-line)' : 'none',
-                  }}>
-                    {e.status === 'paid'
-                      ? (dmIco.check ? dmIco.check({ width: 13, height: 13, color: '#fff' }) : '✓')
-                      : e.status === 'overdue'
-                      ? (dmIco.warning ? dmIco.warning({ width: 13, height: 13, color: '#fff' }) : '!')
-                      : e.num}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{groupLabel}</div>
-                    <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
-                      {e.status === 'paid'
-                        ? (isAr ? `دُفع · ${formatSimDay(e.paidDay)}` : `Paid · ${formatSimDay(e.paidDay)}`)
-                        : e.status === 'overdue'
-                        ? (isAr ? `متأخّر بـ ${e.daysOverdue} يوم` : `${e.daysOverdue}d overdue · stage ${e.stage}`)
-                        : (isAr ? `يستحق ${formatSimDay(e.dueDay)}` : `Due ${formatSimDay(e.dueDay)}`)}
-                    </div>
-                  </div>
-                  <span className="mal-num" style={{ fontSize: 13, fontWeight: 500 }}>
-                    AED {e.amount.toLocaleString()}
-                  </span>
-                </div>
-              </React.Fragment>
-            );
-          })}
-        </div>
-
-        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--mal-mid)' }}>
-          <span>{isAr ? 'مدفوع' : 'Paid'}: AED {(paidCount * plan.emiAmount).toLocaleString()}</span>
-          <span>{isAr ? 'متبقّي' : 'Remaining'}: AED {((totalCount - paidCount) * plan.emiAmount).toLocaleString()}</span>
-        </div>
-      </Card>
-
-      {/* AECB "rescheduled" soft flag — visible whenever the loan is refinanced */}
+      {/* AECB rescheduled soft flag */}
       {isRefinanced && (
         <Card padded style={{
           background: 'var(--mal-info-bg)', borderColor: 'var(--mal-info)', borderWidth: 1,
@@ -1429,10 +1275,128 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, mode, patch }) {
         </Card>
       )}
 
-      {/* "Need more time?" CTA — only when chronologically appropriate */}
+      {/* Active 4-mo installment plan with EMI ladder and Pay buttons */}
+      <Card padded>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div className="mal-caption">{isAr ? 'الخطة الحالية' : 'Active plan'} · {scenario.invoice.id}</div>
+          {!isClosed && nextUpcoming && (
+            <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+              {isAr ? 'القسط التالي' : 'Next'} {relativeDayLabel(simDay, nextUpcoming.dueDay, isAr)}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+          <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 26, fontStyle: 'italic' }}>
+            {plan.tenorMonths}{isAr ? ' شهر · أقساط' : '-mo installments'}
+          </span>
+          <Pill tone={isClosed ? 'success' : (overdue ? 'danger' : 'info')} dot>
+            {isClosed ? (isAr ? 'مُغلق' : 'Closed')
+              : overdue ? (isAr ? 'متأخّر' : 'Overdue')
+              : (isAr ? 'في الوقت' : 'On track')}
+          </Pill>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {statuses.map((e, i) => {
+            const origCount = isRefinanced ? plan.refinancedFrom.tenorMonths : totalCount;
+            const newCount  = isRefinanced ? plan.tenorMonths : totalCount;
+            const groupLabel = e.fromOriginal
+              ? (isAr ? `قبل الجدولة · القسط ${e.num} من ${origCount}` : `Before reschedule · EMI ${e.num} of ${origCount}`)
+              : e.fromRefinanced
+              ? (isAr ? `جديد · القسط ${e.num} من ${newCount}` : `New · EMI ${e.num} of ${newCount}`)
+              : (isAr ? `القسط ${e.num} من ${totalCount}` : `EMI ${e.num} of ${totalCount}`);
+            const key = `${e.fromOriginal ? 'orig' : e.fromRefinanced ? 'new' : 'orig'}-${e.num}-${e.dueDay}`;
+            const isFirstRefinanced = isRefinanced && e.fromRefinanced && (i === 0 || !statuses[i - 1].fromRefinanced);
+            // Pay button visibility: original plan EMIs only payable when not refinanced;
+            // refinanced EMIs payable when in refinanced schedule. Already paid / fromOriginal preserved EMIs hide button.
+            const canPay = e.status !== 'paid' && !e.fromOriginal &&
+              ((isRefinanced && e.fromRefinanced) || !isRefinanced);
+            const isSoonOrLate = e.status === 'overdue' ||
+                                 (e.status === 'upcoming' && (e.dueDay - simDay) <= 7);
+            const dpd = Math.max(0, simDay - e.dueDay);
+            const penalty = computeLatePenalty(e.amount, dpd);
+            return (
+              <React.Fragment key={key}>
+                {isFirstRefinanced && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 0', fontSize: 11, color: 'var(--mal-primary)',
+                    fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.06em',
+                  }}>
+                    <span style={{ flex: 1, height: 1, background: 'var(--mal-primary-50)' }}/>
+                    <span>{isAr ? 'الجدول الجديد' : 'New schedule'}</span>
+                    <span style={{ flex: 1, height: 1, background: 'var(--mal-primary-50)' }}/>
+                  </div>
+                )}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '10px 12px', borderRadius: 12,
+                  background: e.status === 'overdue' ? 'var(--mal-danger-bg)'
+                            : e.status === 'paid' ? 'var(--mal-success-bg)'
+                            : 'var(--mal-surface-2)',
+                  border: e.status === 'upcoming' && nextUpcoming && nextUpcoming.num === e.num && (e.fromRefinanced || !isRefinanced)
+                    ? '1.5px solid var(--mal-primary)' : 'none',
+                  opacity: e.fromOriginal ? 0.85 : 1,
+                  flexWrap: 'wrap',
+                }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 999,
+                    background: e.status === 'paid' ? 'var(--mal-success)'
+                              : e.status === 'overdue' ? 'var(--mal-danger)'
+                              : '#fff',
+                    color: e.status === 'upcoming' ? 'var(--mal-mid)' : '#fff',
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    flexShrink: 0, fontSize: 12, fontWeight: 600,
+                    boxShadow: e.status === 'upcoming' ? 'inset 0 0 0 1px var(--mal-line)' : 'none',
+                  }}>
+                    {e.status === 'paid'
+                      ? (dmIco.check ? dmIco.check({ width: 13, height: 13, color: '#fff' }) : '✓')
+                      : e.status === 'overdue'
+                      ? (dmIco.warning ? dmIco.warning({ width: 13, height: 13, color: '#fff' }) : '!')
+                      : e.num}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 100 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{groupLabel}</div>
+                    <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+                      {e.status === 'paid'
+                        ? (isAr ? `دُفع · ${formatSimDay(e.paidDay)}` : `Paid · ${formatSimDay(e.paidDay)}`) + (e.penalty ? ' (+' + e.penalty + ')' : '')
+                        : e.status === 'overdue'
+                        ? (isAr ? `متأخّر بـ ${e.daysOverdue} يوم` : `${e.daysOverdue}d overdue · stage ${e.stage}`)
+                        : (isAr ? `يستحق ${formatSimDay(e.dueDay)}` : `Due ${formatSimDay(e.dueDay)}`)}
+                    </div>
+                  </div>
+                  <span className="mal-num" style={{ fontSize: 13, fontWeight: 500 }}>
+                    AED {e.amount.toLocaleString()}
+                  </span>
+                  {/* Pay button — visible only when actionable */}
+                  {canPay && isSoonOrLate && (
+                    <button onClick={() => payEmi(e.num, e.dueDay, e.amount)} style={{
+                      all: 'unset', cursor: 'pointer',
+                      padding: '6px 12px', borderRadius: 999,
+                      background: e.status === 'overdue' ? 'var(--mal-danger)' : 'var(--mal-ink)',
+                      color: '#FAF7EE', fontSize: 11, fontWeight: 600, letterSpacing: '.02em',
+                    }}>
+                      {e.status === 'overdue'
+                        ? (isAr ? `ادفع +${penalty}` : `Pay + ${penalty}`)
+                        : (isAr ? 'ادفع الآن' : 'Pay early')}
+                    </button>
+                  )}
+                </div>
+              </React.Fragment>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--mal-mid)' }}>
+          <span>{isAr ? 'مدفوع' : 'Paid'}: AED {totalPaidAmount.toLocaleString()}</span>
+          <span>{isAr ? 'متبقّي' : 'Remaining'}: AED {(plan.principal - totalPaidAmount).toLocaleString()}</span>
+        </div>
+      </Card>
+
+      {/* Need more time CTA */}
       {showExtendCta && (
-        <button onClick={() => mode === 'manual' && setBuyerRoute('extend-hero')} style={{
-          all: 'unset', cursor: mode === 'manual' ? 'pointer' : 'default',
+        <button onClick={() => setBuyerRoute('extend-hero')} style={{
+          all: 'unset', cursor: 'pointer',
           padding: '14px 16px', borderRadius: 14,
           background: 'linear-gradient(135deg, #2A1F6F 0%, #5B3FB2 60%, #C97AB6 100%)',
           color: '#fff',
@@ -1448,17 +1412,17 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, mode, patch }) {
               {isAr ? 'تحتاج وقتاً أطول؟ مدّد لـ ١٢ شهر' : 'Need more time? Extend up to 12 months'}
             </div>
             <div style={{ fontSize: 11, opacity: .8, marginTop: 2 }}>
-              {isAr ? 'قرض جديد على فاتورة جديدة · UAE Pass' : 'New unsecured loan on a new invoice · UAE Pass'}
+              {isAr ? 'قرض جديد على فاتورة جديدة · UAE Pass' : 'New unsecured loan · UAE Pass'}
             </div>
           </div>
           {dmIco.arrow ? dmIco.arrow({ color: '#fff' }) : '→'}
         </button>
       )}
 
-      {/* Mid-loan "Convert remaining to EMI" — refinance CTA */}
+      {/* Refinance CTA */}
       {showRefinanceCta && (
-        <button onClick={() => mode === 'manual' && setBuyerRoute('refinance-hero')} style={{
-          all: 'unset', cursor: mode === 'manual' ? 'pointer' : 'default',
+        <button onClick={() => setBuyerRoute('refinance-hero')} style={{
+          all: 'unset', cursor: 'pointer',
           padding: '14px 16px', borderRadius: 14,
           background: 'var(--mal-paper)',
           border: '1.5px solid var(--mal-primary)',
@@ -1484,40 +1448,12 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, mode, patch }) {
           {dmIco.arrow ? dmIco.arrow({ color: 'var(--mal-primary)' }) : '→'}
         </button>
       )}
-
-      {/* Recent activity */}
-      {(() => {
-        const events = buildEvents(liveScenario, simDay, plan, termExtension).filter((e) => e.scope === 'buyer').slice(0, 4);
-        if (!events.length) return null;
-        return (
-          <Card padded>
-            <div className="mal-caption" style={{ marginBottom: 8 }}>{isAr ? 'النشاط الأخير' : 'Recent activity'}</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {events.map((ev, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{
-                    width: 26, height: 26, borderRadius: 999, flexShrink: 0,
-                    background: ev.tone === 'danger' ? 'var(--mal-danger-bg)' : ev.tone === 'warn' ? 'var(--mal-warn-bg)' : 'var(--mal-success-bg)',
-                    color: ev.tone === 'danger' ? 'var(--mal-danger)' : ev.tone === 'warn' ? 'var(--mal-warn)' : 'var(--mal-success)',
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {dmIco[ev.icon] ? dmIco[ev.icon]({ width: 13, height: 13 }) : '•'}
-                  </div>
-                  <div style={{ flex: 1, fontSize: 12, color: 'var(--mal-ink)' }}>{ev.label}</div>
-                  <span className="mal-mono" style={{ fontSize: 10, color: 'var(--mal-mid-2)' }}>
-                    Day {ev.day}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </Card>
-        );
-      })()}
     </div>
   );
 }
 
-function DemoBuyerConfirm({ lang, scenario, patch, mode }) {
+// Buyer's confirm screen (UAE Pass signature) used after picking a plan
+function DemoBuyerConfirm({ lang, scenario, patch }) {
   const isAr = lang === 'ar';
   const [signing, setSigning] = dmS(false);
   dmE(() => {
@@ -1547,32 +1483,17 @@ function DemoBuyerConfirm({ lang, scenario, patch, mode }) {
           </div>
         </div>
       </Card>
-      <Card padded>
-        {[
-          [isAr ? 'إلى' : 'To',                 'Atlas Packaging FZ'],
-          [isAr ? 'الخصم' : 'Auto-debit',        'ENBD ****4291'],
-          [isAr ? 'القسط الأوّل' : 'First EMI',  formatSimDay(30)],
-          [isAr ? 'القسط الأخير' : 'Final EMI',  formatSimDay(120)],
-        ].map(([k, v], i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: i ? '1px solid var(--mal-line-2)' : 'none', fontSize: 13 }}>
-            <span style={{ color: 'var(--mal-mid)' }}>{k}</span>
-            <span style={{ fontWeight: 500 }}>{v}</span>
-          </div>
-        ))}
-      </Card>
-      <Button kind="primary" size="lg" full onClick={() => mode === 'manual' && setSigning(true)}
-              icon={signing ? 'check' : 'lock'}
-              style={{ pointerEvents: mode === 'manual' ? 'auto' : 'none' }}>
+      <Button kind="primary" size="lg" full onClick={() => setSigning(true)}
+              icon={signing ? 'check' : 'lock'}>
         {signing ? (isAr ? 'جارٍ التوقيع…' : 'Signing…') : (isAr ? 'وقّع بهوية رقمية' : 'Sign with UAE Pass')}
       </Button>
     </div>
   );
 }
 
-function DemoBuyerLoanDetail({ lang, scenario, setBuyerRoute, mode }) {
+function DemoBuyerLoanDetail({ lang, scenario, setBuyerRoute }) {
   const isAr = lang === 'ar';
-  const { simDay, plan, liveScenario } = scenario;
-  const statuses = computeEmiStatuses(plan, simDay, liveScenario);
+  const { plan } = scenario;
   return (
     <div>
       <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--mal-line)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1588,7 +1509,7 @@ function DemoBuyerLoanDetail({ lang, scenario, setBuyerRoute, mode }) {
             AED {plan.principal.toLocaleString()}
           </div>
           <div style={{ fontSize: 12, color: 'var(--mal-mid)', marginTop: 4 }}>
-            {plan.tenorMonths}{isAr ? ' شهر' : ' mo'} · 3.6% fee · AED {plan.emiAmount.toLocaleString()}/{isAr ? 'شهر' : 'mo'}
+            {plan.tenorMonths}{isAr ? ' شهر' : ' mo'} · AED {plan.emiAmount.toLocaleString()}/{isAr ? 'شهر' : 'mo'}
           </div>
         </Card>
       </div>
@@ -1597,12 +1518,12 @@ function DemoBuyerLoanDetail({ lang, scenario, setBuyerRoute, mode }) {
 }
 
 // ==================================================================
-// 11b. Refinance flow — "Convert remaining to longer EMI"
+// 13. Refinance flow
 // ==================================================================
 
 function DemoRefinanceHero({ lang, scenario, setBuyerRoute }) {
   const isAr = lang === 'ar';
-  const remaining = computeRemainingPrincipal(scenario.plan, scenario.simDay, scenario.liveScenario);
+  const remaining = computeRemainingPrincipal(scenario.plan, scenario.simDay, scenario.paymentsByEmi);
   return (
     <div>
       <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--mal-line)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1628,35 +1549,16 @@ function DemoRefinanceHero({ lang, scenario, setBuyerRoute }) {
             </div>
           </div>
         </Card>
-
-        <Card padded>
-          <div className="mal-caption" style={{ marginBottom: 12 }}>{isAr ? 'كيف تعمل' : 'How it works'}</div>
-          {[
-            { n: 1, title: isAr ? 'اختر مدّة جديدة' : 'Pick a new tenor', sub: isAr ? '٣ · ٦ · ٩ · ١٢ شهر' : '3 · 6 · 9 · 12 mo' },
-            { n: 2, title: isAr ? 'وقّع بـ UAE Pass' : 'Sign with UAE Pass', sub: isAr ? 'رسم ١٫٥٪ على الرصيد' : '1.5% processing fee on remaining' },
-            { n: 3, title: isAr ? 'الجدول الجديد يبدأ' : 'New schedule starts', sub: isAr ? 'AECB: «معاد الجدولة» — ليس تعثّراً' : 'AECB: \"rescheduled\" — not a default' },
-          ].map((s, i) => (
-            <div key={i} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i ? '1px solid var(--mal-line-2)' : 'none' }}>
-              <div style={{ width: 24, height: 24, borderRadius: 999, background: 'var(--mal-primary-50)', color: 'var(--mal-primary)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 600, flexShrink: 0 }}>{s.n}</div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{s.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>{s.sub}</div>
-              </div>
-            </div>
-          ))}
-        </Card>
-
         <Card padded style={{ background: 'var(--mal-info-bg)', borderColor: 'var(--mal-info)', borderWidth: 1 }}>
           <div style={{ display: 'flex', gap: 10 }}>
             {dmIco.info ? dmIco.info({ width: 16, height: 16, color: 'var(--mal-info)' }) : 'ℹ'}
             <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', lineHeight: 1.5 }}>
               {isAr
-                ? 'ليست تعثّراً. AECB يُسجّل الجدولة الجديدة كعلامة ناعمة فقط، تُمحى تلقائياً مع آخر قسط.'
-                : 'Not a default. AECB records the new schedule as a soft notation only, cleared automatically when the final EMI lands.'}
+                ? 'ليست تعثّراً. AECB يُسجّل الجدولة الجديدة كعلامة ناعمة فقط.'
+                : 'Not a default. AECB records the new schedule as a soft notation only.'}
             </div>
           </div>
         </Card>
-
         <Button kind="primary" size="lg" full iconRight="arrow" onClick={() => setBuyerRoute('refinance-pick')}>
           {isAr ? 'اختر مدّة جديدة' : 'Pick a new tenor'}
         </Button>
@@ -1665,11 +1567,12 @@ function DemoRefinanceHero({ lang, scenario, setBuyerRoute }) {
   );
 }
 
-function DemoRefinancePicker({ lang, scenario, patch, setBuyerRoute, mode }) {
+function DemoRefinancePicker({ lang, scenario, patch, setBuyerRoute }) {
   const isAr = lang === 'ar';
-  const remaining = computeRemainingPrincipal(scenario.plan, scenario.simDay, scenario.liveScenario);
+  const remaining = computeRemainingPrincipal(scenario.plan, scenario.simDay, scenario.paymentsByEmi);
   const [tenor, setTenor] = dmS(6);
-  const newPlan = dmM(() => buildRefinancedPlan(scenario.plan, scenario.simDay, scenario.liveScenario, tenor), [scenario.plan, scenario.simDay, scenario.liveScenario, tenor]);
+  const newPlan = dmM(() => buildRefinancedPlan(scenario.plan, scenario.simDay, scenario.paymentsByEmi, tenor),
+                     [scenario.plan, scenario.simDay, scenario.paymentsByEmi, tenor]);
   return (
     <div>
       <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--mal-line)', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1699,20 +1602,17 @@ function DemoRefinancePicker({ lang, scenario, patch, setBuyerRoute, mode }) {
             <span>{tenor}{isAr ? ' شهر' : ' mo'} · {isAr ? 'رسم' : 'fee'} AED {newPlan.processingFee.toLocaleString()}</span>
           </div>
         </Card>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {[3, 6, 9, 12].map((t) => {
-            const sample = buildRefinancedPlan(scenario.plan, scenario.simDay, scenario.liveScenario, t);
+            const sample = buildRefinancedPlan(scenario.plan, scenario.simDay, scenario.paymentsByEmi, t);
             const isPicked = tenor === t;
             return (
-              <button key={t}
-                      onClick={() => mode === 'manual' && setTenor(t)}
-                      style={{
-                        all: 'unset', cursor: mode === 'manual' ? 'pointer' : 'default',
-                        padding: 14, borderRadius: 14,
-                        background: isPicked ? 'var(--mal-paper)' : 'var(--mal-surface-2)',
-                        border: '1.5px solid ' + (isPicked ? 'var(--mal-primary)' : 'transparent'),
-                      }}>
+              <button key={t} onClick={() => setTenor(t)} style={{
+                all: 'unset', cursor: 'pointer',
+                padding: 14, borderRadius: 14,
+                background: isPicked ? 'var(--mal-paper)' : 'var(--mal-surface-2)',
+                border: '1.5px solid ' + (isPicked ? 'var(--mal-primary)' : 'transparent'),
+              }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 22, fontStyle: 'italic' }}>{t}{isAr ? ' شهر' : ' mo'}</span>
                   {t === 3 && <Pill tone="ink" dot>{isAr ? 'أقلّ تكلفة' : 'Best rate'}</Pill>}
@@ -1728,18 +1628,8 @@ function DemoRefinancePicker({ lang, scenario, patch, setBuyerRoute, mode }) {
             );
           })}
         </div>
-
-        <Card padded style={{ background: 'var(--mal-surface-2)', border: 'none' }}>
-          <div className="mal-caption">{isAr ? 'الجدول الجديد' : 'New schedule'}</div>
-          <div style={{ fontSize: 12, color: 'var(--mal-mid)', marginTop: 6, lineHeight: 1.6 }}>
-            {isAr
-              ? `يبدأ في ${formatSimDay(newPlan.startDay)} · ${tenor} قسط متساوٍ كل شهر`
-              : `Starts ${formatSimDay(newPlan.startDay)} · ${tenor} equal EMIs, monthly`}
-          </div>
-        </Card>
-
         <Button kind="primary" size="lg" full iconRight="arrow"
-                onClick={() => mode === 'manual' && (patch({ refinanceDraft: newPlan }), setBuyerRoute('refinance-confirm'))}>
+                onClick={() => { patch({ refinanceDraft: newPlan }); setBuyerRoute('refinance-confirm'); }}>
           {isAr ? 'متابعة' : 'Continue'}
         </Button>
       </div>
@@ -1747,16 +1637,16 @@ function DemoRefinancePicker({ lang, scenario, patch, setBuyerRoute, mode }) {
   );
 }
 
-function DemoRefinanceConfirm({ lang, scenario, patch, setBuyerRoute, mode }) {
+function DemoRefinanceConfirm({ lang, scenario, patch, setBuyerRoute }) {
   const isAr = lang === 'ar';
   const newPlan = scenario.refinanceDraft;
   const [signing, setSigning] = dmS(false);
   dmE(() => {
     if (signing && newPlan) {
       const t = setTimeout(() => {
-        // Apply the refinance: replace plan with refinanced version
         patch({
           plan: newPlan,
+          refinancedPaymentsByEmi: {},
           refinanceDraft: null,
           buyerRoute: 'refinance-success',
           buyerToast: { title: 'Loan rescheduled', sub: `New EMI AED ${newPlan.emiAmount.toLocaleString()}/mo · ${newPlan.tenorMonths}-mo`, icon: 'check', tone: 'success' },
@@ -1767,7 +1657,6 @@ function DemoRefinanceConfirm({ lang, scenario, patch, setBuyerRoute, mode }) {
       return () => clearTimeout(t);
     }
   }, [signing]);
-
   if (!newPlan) {
     return (
       <div style={{ padding: 18 }}>
@@ -1797,11 +1686,11 @@ function DemoRefinanceConfirm({ lang, scenario, patch, setBuyerRoute, mode }) {
         </Card>
         <Card padded>
           {[
-            [isAr ? 'رسوم المعالجة'   : 'Processing fee',   `AED ${newPlan.processingFee.toLocaleString()}`],
-            [isAr ? 'إجمالي التكلفة'  : 'Total cost',       `AED ${newPlan.totalCost.toLocaleString()}`],
-            [isAr ? 'القسط الأوّل'    : 'First EMI',        formatSimDay(newPlan.startDay)],
-            [isAr ? 'القسط الأخير'    : 'Final EMI',        formatSimDay(newPlan.startDay + (newPlan.tenorMonths - 1) * 30)],
-            [isAr ? 'تأثير AECB'      : 'AECB notation',    isAr ? 'علم ناعم — ليس تعثّراً' : 'Soft flag — not a default'],
+            [isAr ? 'رسوم المعالجة' : 'Processing fee', `AED ${newPlan.processingFee.toLocaleString()}`],
+            [isAr ? 'إجمالي التكلفة' : 'Total cost',    `AED ${newPlan.totalCost.toLocaleString()}`],
+            [isAr ? 'القسط الأوّل'   : 'First EMI',     formatSimDay(newPlan.startDay)],
+            [isAr ? 'القسط الأخير'   : 'Final EMI',     formatSimDay(newPlan.startDay + (newPlan.tenorMonths - 1) * 30)],
+            [isAr ? 'تأثير AECB'     : 'AECB notation', isAr ? 'علم ناعم — ليس تعثّراً' : 'Soft flag — not a default'],
           ].map(([k, v], i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: i ? '1px solid var(--mal-line-2)' : 'none', fontSize: 13 }}>
               <span style={{ color: 'var(--mal-mid)' }}>{k}</span>
@@ -1809,10 +1698,8 @@ function DemoRefinanceConfirm({ lang, scenario, patch, setBuyerRoute, mode }) {
             </div>
           ))}
         </Card>
-        <Button kind="primary" size="lg" full
-                onClick={() => mode === 'manual' && setSigning(true)}
-                icon={signing ? 'check' : 'lock'}
-                style={{ pointerEvents: mode === 'manual' ? 'auto' : 'none' }}>
+        <Button kind="primary" size="lg" full onClick={() => setSigning(true)}
+                icon={signing ? 'check' : 'lock'}>
           {signing ? (isAr ? 'جارٍ التوقيع…' : 'Signing…') : (isAr ? 'وقّع لإعادة الجدولة' : 'Sign to reschedule')}
         </Button>
       </div>
@@ -1834,30 +1721,27 @@ function DemoRefinanceSuccess({ lang, scenario, setBuyerRoute }) {
           ? `قسطك الجديد AED ${plan.emiAmount.toLocaleString()} / شهر يبدأ في ${formatSimDay(plan.startDay)}.`
           : `Your new EMI is AED ${plan.emiAmount.toLocaleString()} / mo, starting ${formatSimDay(plan.startDay)}.`}
       </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <Button kind="secondary" onClick={() => setBuyerRoute('home')}>{isAr ? 'إلى الرئيسية' : 'Back home'}</Button>
-        <Button kind="primary" onClick={() => setBuyerRoute('home')}>{isAr ? 'عرض الجدول' : 'View schedule'}</Button>
-      </div>
+      <Button kind="primary" onClick={() => setBuyerRoute('home')}>{isAr ? 'عرض الجدول' : 'View schedule'}</Button>
     </div>
   );
 }
 
 // ==================================================================
-// 12. SUPPLIER side
+// 14. SUPPLIER side
 // ==================================================================
 
-function SupplierSurface({ phase, scenario, patch, mode, lang }) {
+function SupplierSurface({ phase, scenario, patch, lang }) {
   if (phase === 'intro') return <DemoIntroSupplier lang={lang}/>;
   if (phase === 'onboarding') {
     return <SupplierOnboardingFlow lang={lang}
                                    controlledStep={scenario.supplierStep}
                                    onStepChange={(n) => patch({ supplierStep: n })}/>;
   }
-  if (phase === 'home') return <DemoSupplierHome lang={lang} funded={false}/>;
-  if (phase === 'issue') return <DemoSupplierIssueInvoice lang={lang} scenario={scenario}/>;
+  if (phase === 'home') return <DemoSupplierHome lang={lang}/>;
+  if (phase === 'issue') return <DemoSupplierIssueInvoice lang={lang} scenario={scenario} patch={patch}/>;
   if (phase === 'receive' || phase === 'plan' || phase === 'sign') return <DemoSupplierAwaiting lang={lang} scenario={scenario}/>;
   if (phase === 'funded') return <DemoSupplierFunded lang={lang} scenario={scenario}/>;
-  if (phase === 'live') return <DemoSupplierLive lang={lang} scenario={scenario} patch={patch} mode={mode}/>;
+  if (phase === 'live') return <DemoSupplierLive lang={lang} scenario={scenario} patch={patch}/>;
   return null;
 }
 
@@ -1882,7 +1766,7 @@ function DemoIntroSupplier({ lang }) {
   );
 }
 
-function DemoSupplierHome({ lang, funded }) {
+function DemoSupplierHome({ lang }) {
   const isAr = lang === 'ar';
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1903,33 +1787,44 @@ function DemoSupplierHome({ lang, funded }) {
   );
 }
 
-function DemoSupplierIssueInvoice({ lang, scenario }) {
+// Manual issue invoice — pre-filled draft, click to issue
+function DemoSupplierIssueInvoice({ lang, scenario, patch }) {
   const isAr = lang === 'ar';
+  const issued = !!scenario.invoice.issuedAt;
+  const draftBuyer = scenario.draftBuyer || 'Crescent Trading FZE';
+  const draftAmount = scenario.draftAmount || '250,000';
+  const draftDescription = scenario.draftDescription || 'Industrial packaging — Q4 2026';
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 26, fontStyle: 'italic' }}>
         {isAr ? 'فاتورة جديدة' : 'New invoice'}
       </div>
       <Field label={isAr ? 'إلى مشترٍ' : 'Buyer'}>
-        <div className="mal-input" style={{ paddingInline: 14, height: 44, display: 'flex', alignItems: 'center', background: 'var(--mal-paper)' }}>
-          <span style={{ fontFamily: 'var(--mal-font-mono)', fontSize: 13.5 }}>{scenario.draftBuyer}</span>
-          <span style={{ display: 'inline-block', width: 1.5, height: 18, marginInlineStart: 1, background: 'var(--mal-primary)', animation: 'mal-cursor-blink 1.1s steps(2) infinite', opacity: scenario.draftBuyer ? 1 : 0.5 }}/>
+        <div className="mal-input" style={{ paddingInline: 14, height: 44, display: 'flex', alignItems: 'center', background: 'var(--mal-paper)', fontFamily: 'var(--mal-font-mono)', fontSize: 13.5 }}>
+          {draftBuyer}
         </div>
       </Field>
       <Field label={isAr ? 'القيمة (AED)' : 'Amount (AED)'}>
-        <div className="mal-input" style={{ paddingInline: 14, height: 44, display: 'flex', alignItems: 'center', background: 'var(--mal-paper)' }}>
-          <span style={{ fontFamily: 'var(--mal-font-mono)', fontSize: 13.5 }}>{scenario.draftAmount}</span>
-          <span style={{ display: 'inline-block', width: 1.5, height: 18, marginInlineStart: 1, background: 'var(--mal-primary)', animation: 'mal-cursor-blink 1.1s steps(2) infinite', opacity: scenario.draftAmount ? 1 : 0.5 }}/>
+        <div className="mal-input" style={{ paddingInline: 14, height: 44, display: 'flex', alignItems: 'center', background: 'var(--mal-paper)', fontFamily: 'var(--mal-font-mono)', fontSize: 13.5 }}>
+          {draftAmount}
         </div>
       </Field>
       <Field label={isAr ? 'الوصف' : 'Description'}>
-        <div className="mal-input" style={{ paddingInline: 14, minHeight: 44, padding: '12px 14px', background: 'var(--mal-paper)', fontFamily: 'var(--mal-font-mono)', fontSize: 13.5 }}>
-          {scenario.draftDescription || ' '}
+        <div className="mal-input" style={{ paddingInline: 14, padding: '12px 14px', background: 'var(--mal-paper)', fontFamily: 'var(--mal-font-mono)', fontSize: 13.5 }}>
+          {draftDescription}
         </div>
       </Field>
-      <Button kind="primary" size="lg" full icon={scenario.invoice.issuedAt ? 'check' : 'send'}
-              style={{ background: scenario.invoice.issuedAt ? 'var(--mal-success)' : undefined, pointerEvents: 'none' }}>
-        {scenario.invoice.issuedAt ? (isAr ? 'تمّ الإصدار' : 'Issued') : (isAr ? 'أصدر الفاتورة' : 'Issue invoice')}
+      <Button kind="primary" size="lg" full
+              icon={issued ? 'check' : 'send'}
+              onClick={() => !issued && patch({
+                invoice: { ...scenario.invoice, issuedAt: new Date().toISOString() },
+                buyerToast: {
+                  title: isAr ? 'فاتورة جديدة من أطلس' : 'New invoice from Atlas',
+                  sub: `${scenario.invoice.id} · AED 250,000`, icon: 'invoice', tone: 'iri',
+                },
+              })}
+              style={{ background: issued ? 'var(--mal-success)' : undefined }}>
+        {issued ? (isAr ? 'تمّ الإصدار' : 'Issued') : (isAr ? 'أصدر الفاتورة' : 'Issue invoice')}
       </Button>
     </div>
   );
@@ -1985,19 +1880,22 @@ function DemoSupplierFunded({ lang, scenario }) {
   );
 }
 
-// Live supplier — shows the buyer journey from the supplier's POV
-function DemoSupplierLive({ lang, scenario, patch, mode }) {
+// Live supplier panel — buyer-journey timeline + informational soft alerts
+function DemoSupplierLive({ lang, scenario, patch }) {
   const isAr = lang === 'ar';
-  const { simDay, plan, liveScenario } = scenario;
-  const statuses = plan ? computeEmiStatuses(plan, simDay, liveScenario) : [];
+  const { simDay, plan, paymentsByEmi, refinancedPaymentsByEmi } = scenario;
+  const isRefinanced = !!plan?.refinancedFrom;
+  const activePayments = isRefinanced ? refinancedPaymentsByEmi : paymentsByEmi;
+  const statuses = plan
+    ? (isRefinanced
+        ? computeMergedStatuses(plan, simDay, paymentsByEmi, refinancedPaymentsByEmi)
+        : computeEmiStatuses(plan, simDay, paymentsByEmi))
+    : [];
   const overdue = findOverdue(statuses);
   const paidCount = statuses.filter((e) => e.status === 'paid').length;
   const totalCount = statuses.length;
-  const isClosed = paidCount === totalCount;
-  const buyerEvents = plan ? buildEvents(liveScenario, simDay, plan, scenario.termExtension).filter((e) => e.scope === 'supplier') : [];
-
-  // Total received YTD = 232500 (Day 0 wire) + paid EMIs are NOT to supplier — they're to Mal
-  // For supplier: they got paid Day 0 once and that's it. So balance shows 232500.
+  const isClosed = paidCount === totalCount && totalCount > 0;
+  const events = plan ? buildEvents(simDay, plan, activePayments).filter((e) => e.scope === 'supplier') : [];
   const balanceReceived = scenario.invoice.issuedAt || simDay >= 0 ? 232500 : 0;
 
   return (
@@ -2014,27 +1912,21 @@ function DemoSupplierLive({ lang, scenario, patch, mode }) {
         </div>
       </div>
 
-      {/* Buyer-side default ≠ supplier exposure. In non-recourse mode the
-          supplier was already paid Day 0 and Mal carries the credit risk. So
-          this notice is INFORMATIONAL only — soft tone, not a red alarm. */}
+      {/* Soft informational notice when buyer is overdue (non-recourse) */}
       {overdue && (
         <Card padded style={{
-          background: 'var(--mal-info-bg)',
-          borderColor: 'var(--mal-info)', borderWidth: 1,
+          background: 'var(--mal-info-bg)', borderColor: 'var(--mal-info)', borderWidth: 1,
         }}>
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{
-              width: 36, height: 36, borderRadius: 10, background: '#fff',
-              color: 'var(--mal-info)',
+              width: 36, height: 36, borderRadius: 10, background: '#fff', color: 'var(--mal-info)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
               {dmIco.info ? dmIco.info({ width: 18, height: 18 }) : 'ℹ'}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-info)' }}>
-                {isAr
-                  ? 'مال يجمع من المشتري · إعلاميّ فقط'
-                  : 'Mal is collecting from buyer · informational only'}
+                {isAr ? 'مال يجمع من المشتري · إعلاميّ فقط' : 'Mal is collecting from buyer · informational only'}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
                 {isAr
@@ -2046,16 +1938,12 @@ function DemoSupplierLive({ lang, scenario, patch, mode }) {
         </Card>
       )}
 
-      {/* Buyer rescheduled their loan — supplier sees a friendly note */}
-      {scenario.plan?.refinancedFrom && (
-        <Card padded style={{
-          background: 'var(--mal-primary-50)',
-          borderColor: 'var(--mal-primary-3)', borderWidth: 1,
-        }}>
+      {/* Buyer rescheduled — informational */}
+      {isRefinanced && (
+        <Card padded style={{ background: 'var(--mal-primary-50)', borderColor: 'var(--mal-primary-3)', borderWidth: 1 }}>
           <div style={{ display: 'flex', gap: 12 }}>
             <div style={{
-              width: 36, height: 36, borderRadius: 10, background: '#fff',
-              color: 'var(--mal-primary)',
+              width: 36, height: 36, borderRadius: 10, background: '#fff', color: 'var(--mal-primary)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             }}>
               {dmIco.refresh ? dmIco.refresh({ width: 18, height: 18 }) : '↻'}
@@ -2066,8 +1954,8 @@ function DemoSupplierLive({ lang, scenario, patch, mode }) {
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
                 {isAr
-                  ? 'الدورة تستمر طبيعيّاً · تحويلك ثابت. مدّة سداد المشتري الآن أطول، لكن لا تأثير على نقدك.'
-                  : 'Cycle continues normally · your wire stays funded. Buyer\'s payback is now longer, but it doesn\'t change your cash.'}
+                  ? 'الدورة تستمر طبيعيّاً · تحويلك ثابت.'
+                  : 'Cycle continues normally · your wire stays funded.'}
               </div>
             </div>
           </div>
@@ -2084,12 +1972,11 @@ function DemoSupplierLive({ lang, scenario, patch, mode }) {
         </div>
       </Card>
 
-      {/* Buyer payment journey */}
       <Card padded>
         <div className="mal-caption" style={{ marginBottom: 8 }}>{isAr ? 'رحلة المشتري' : 'Buyer journey'} ({plan?.tenorMonths || 4}{isAr ? ' شهر' : ' mo'})</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {statuses.map((e) => (
-            <div key={e.num} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {statuses.map((e, i) => (
+            <div key={`s-${e.fromOriginal ? 'o' : e.fromRefinanced ? 'n' : ''}-${e.num}-${e.dueDay}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
                 width: 22, height: 22, borderRadius: 999, flexShrink: 0,
                 background: e.status === 'paid' ? 'var(--mal-success)' : e.status === 'overdue' ? 'var(--mal-danger)' : 'var(--mal-line)',
@@ -2100,7 +1987,9 @@ function DemoSupplierLive({ lang, scenario, patch, mode }) {
                   : e.status === 'overdue' ? '!' : e.num}
               </div>
               <div style={{ flex: 1, fontSize: 12 }}>
-                {isAr ? `القسط ${e.num}` : `EMI ${e.num}`}
+                {e.fromOriginal ? (isAr ? `أوّلي · قسط ${e.num}` : `Original EMI ${e.num}`)
+                  : e.fromRefinanced ? (isAr ? `جديد · قسط ${e.num}` : `New EMI ${e.num}`)
+                  : (isAr ? `قسط ${e.num}` : `EMI ${e.num}`)}
                 {e.status === 'paid' && <span style={{ color: 'var(--mal-mid)' }}> · {formatSimDay(e.paidDay)}</span>}
                 {e.status === 'overdue' && <span style={{ color: 'var(--mal-danger)' }}> · {e.daysOverdue}d late</span>}
               </div>
@@ -2112,17 +2001,16 @@ function DemoSupplierLive({ lang, scenario, patch, mode }) {
         </div>
       </Card>
 
-      {/* Supplier-side activity feed */}
-      {buyerEvents.length > 0 && (
+      {events.length > 0 && (
         <Card padded>
           <div className="mal-caption" style={{ marginBottom: 8 }}>{isAr ? 'النشاط' : 'Activity'}</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {buyerEvents.slice(0, 4).map((ev, i) => (
+            {events.slice(0, 4).map((ev, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
                   width: 26, height: 26, borderRadius: 999, flexShrink: 0,
-                  background: ev.tone === 'danger' ? 'var(--mal-danger-bg)' : ev.tone === 'warn' ? 'var(--mal-warn-bg)' : 'var(--mal-success-bg)',
-                  color: ev.tone === 'danger' ? 'var(--mal-danger)' : ev.tone === 'warn' ? 'var(--mal-warn)' : 'var(--mal-success)',
+                  background: ev.tone === 'iri' ? 'var(--mal-info-bg)' : 'var(--mal-success-bg)',
+                  color: ev.tone === 'iri' ? 'var(--mal-info)' : 'var(--mal-success)',
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   {dmIco[ev.icon] ? dmIco[ev.icon]({ width: 13, height: 13 }) : '•'}
@@ -2163,143 +2051,25 @@ function CountUpReveal({ value }) {
 // Footer hint
 // ==================================================================
 
-function DemoFooterHint({ phase, running, mode, lang, simDay }) {
+function DemoFooterHint({ phase, lang, simDay, plan }) {
   const isAr = lang === 'ar';
   return (
     <div style={{
       maxWidth: 880, marginInline: 'auto', textAlign: 'center',
       padding: '0 22px', color: 'var(--mal-mid)', fontSize: 12, lineHeight: 1.6,
     }}>
-      {phase === 'live' && mode === 'manual' && (
+      {phase === 'live' && (
         isAr
-          ? '🎮 الوضع اليدوي. حرّك اليوم بالأسهم أو اسحب الشريط. اضغط على لوحة المشتري للوصول إلى تفاصيل القرض، التمديد، الإعادة، إلخ.'
-          : '🎮 Manual mode. Step through days with the arrows or drag the slider. Click into the buyer panel for loan detail, extension, restructure, etc.')
-      }
-      {phase === 'live' && mode === 'autopilot' && (
+          ? '🎮 اسحب الزرّ على الدائرة في الوسط لتحريك التاريخ. اضغط «ادفع» على كل قسط على لوحة المشتري — إذا لم تدفع وانتقلت لتاريخ لاحق، يظهر التعثّر تلقائيّاً.'
+          : '🎮 Drag the handle on the central dial to move the date. Click "Pay" on each EMI in the buyer panel — skip a Pay and scrub forward to see the overdue / collections stages emerge automatically.'
+      )}
+      {phase !== 'live' && (
         isAr
-          ? `▶ الوضع التلقائي · اليوم يتقدّم بـ ١ يوم لكل ${(1.1).toFixed(1)} ثانية. اختر سيناريو من الأعلى لرؤية الفروقات.`
-          : `▶ Autopilot · 1 day per ~1.1s at 1×. Switch scenario above to see different lifecycle paths.`)
-      }
-      {phase === 'intro' && mode === 'autopilot' && (
-        isAr
-          ? '⏵ اضغط «تشغيل» لمشاهدة المشتري والمورّد يتزامنان. ثمّ اضغط «يدوي» للسيطرة بنفسك.'
-          : '⏵ Press Run to watch both panels sync, then switch to Manual to drive each panel yourself.')
-      }
-      {phase === 'intro' && mode === 'manual' && (
-        isAr
-          ? '🎮 الوضع اليدوي. اضغط على «الإعداد» في الجدول الزمني أعلاه لبدء تشغيل الإعداد بنفسك.'
-          : '🎮 Manual mode. Click "Onboarding" in the timeline above to step through the flow yourself.')
-      }
+          ? '🎮 اضغط على المراحل في الجدول الزمني أعلاه للتنقّل بين الشاشات. عند الوصول لـ «حيّ · يوميّاً»، تظهر الدائرة في الوسط للتحكّم بالوقت.'
+          : '🎮 Click any phase pill above to navigate. When you reach "Live · Day-by-day", the central dial appears for time control.'
+      )}
     </div>
   );
-}
-
-// ==================================================================
-// Autopilot — narrative engine for the intro phase. Lands on phase=live
-// with simDay=1, plan signed, ready for user scrubbing.
-// ==================================================================
-
-async function runScenario({ phase, scenario, patch, cancelRef, setPhase, setRunning, setMode }) {
-  const cancel = () => cancelRef.current.cancelled;
-
-  const handlers = {
-    intro: async () => {
-      patch({ spotlight: null });
-      await A.wait(900);
-      setPhase('onboarding');
-    },
-    onboarding: async () => {
-      patch({ spotlight: null, buyerStep: 0, supplierStep: 0 });
-      const total = 13;
-      for (let i = 1; i <= total; i++) {
-        if (cancel()) return;
-        const frac = i / total;
-        const bs = Math.min(10, Math.round(frac * 10));
-        const ss = Math.min(7, Math.round(frac * 7));
-        patch({ buyerStep: bs, supplierStep: ss });
-        const hero = bs === 9 || bs === 10;
-        await A.wait(hero ? 2000 : 1300);
-      }
-      if (cancel()) return;
-      patch({ buyerToast: { title: 'Account opened', sub: 'AED 850K limit · Tier A', icon: 'check', tone: 'success' },
-              supplierToast: { title: 'You\'re ready', sub: 'CC us on any invoice — wire in 4h', icon: 'bolt', tone: 'iri' } });
-      await A.wait(2200);
-      patch({ buyerToast: null, supplierToast: null });
-      setPhase('home');
-    },
-    home: async () => {
-      patch({ spotlight: 'supplier' });
-      await A.wait(900);
-      patch({ supplierToast: { title: 'Issue your first invoice', sub: 'Pre-filled from your top buyer · Crescent', icon: 'invoice', tone: 'iri' } });
-      await A.wait(2400);
-      patch({ supplierToast: null });
-      setPhase('issue');
-    },
-    issue: async () => {
-      patch({ spotlight: 'supplier', draftBuyer: '', draftAmount: '', draftDescription: '' });
-      await A.wait(700);
-      await A.typewrite((v) => patch({ draftBuyer: v }), 'Crescent Trading FZE', { perChar: 36 });
-      if (cancel()) return;
-      await A.wait(280);
-      await A.typewrite((v) => patch({ draftAmount: v }), '250,000', { perChar: 60 });
-      if (cancel()) return;
-      await A.wait(280);
-      await A.typewrite((v) => patch({ draftDescription: v }), 'Industrial packaging — Q4 2026', { perChar: 32 });
-      if (cancel()) return;
-      await A.wait(700);
-      patch((s) => ({ invoice: { ...s.invoice, issuedAt: new Date().toISOString() } }));
-      await A.wait(800);
-      patch({
-        buyerToast: { title: 'New invoice from Atlas Packaging', sub: 'INV-2026-0418 · AED 250,000 · due 30 Oct', icon: 'invoice', tone: 'iri' },
-        spotlight: 'buyer',
-      });
-      await A.wait(2200);
-      setPhase('receive');
-    },
-    receive: async () => {
-      patch({ spotlight: 'buyer', buyerToast: null });
-      await A.wait(2200);
-      setPhase('plan');
-    },
-    plan: async () => {
-      patch({ spotlight: 'buyer', planPicked: null });
-      await A.wait(900);
-      patch({ planPicked: 'installment_4', plan: DEFAULT_PLAN });
-      await A.wait(1700);
-      setPhase('sign');
-    },
-    sign: async () => {
-      patch({ spotlight: 'buyer', signing: true });
-      await A.wait(1400);
-      patch({ signed: true, signing: false });
-      await A.wait(700);
-      patch({
-        supplierToast: { title: 'Buyer signed · 4-mo installments', sub: 'Wire incoming — AED 232,500 (93%)', icon: 'bolt', tone: 'iri' },
-        spotlight: 'supplier',
-      });
-      await A.wait(2200);
-      setPhase('funded');
-    },
-    funded: async () => {
-      patch({ spotlight: 'supplier', supplierToast: null });
-      await A.wait(2400);
-      patch({
-        buyerToast: { title: 'Atlas was paid', sub: 'AED 232,500 wired · first instalment in 30 days', icon: 'check', tone: 'success' },
-        supplierToast: { title: 'AED 232,500 wired', sub: 'Arriving in your ENBD account · 4h SLA', icon: 'bank', tone: 'success' },
-      });
-      await A.wait(2400);
-      // Land in live phase at Day 1
-      patch({ simDay: 1, buyerToast: null, supplierToast: null });
-      setPhase('live');
-    },
-    live: async () => {
-      // Day ticker is handled by the separate effect in DemoMode.
-      // Nothing to do here.
-    },
-  };
-
-  const handler = handlers[phase];
-  if (handler) await handler();
 }
 
 window.DemoMode = DemoMode;
