@@ -78,54 +78,47 @@ function SectionFinancial({ lang, isMobile }) {
 
   return (
     <div className="mal-section-page" dir={isAr ? 'rtl' : 'ltr'}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-        <div>
-          <h1 className="mal-fade-up" style={{
-            fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-            fontSize: isMobile ? 36 : 48, lineHeight: 1.0, letterSpacing: '-0.02em',
-            margin: '0 0 6px',
-          }}>{isAr ? 'الاقتصاد' : 'Economics'}</h1>
-          <div data-tour-id="econ-source" style={{ color: 'var(--mal-mid)', fontSize: 13, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span>
-              {isAr ? 'المصدر: ' : 'Source of truth: '}
-              <a href={`models/${data.meta.workbook}`} download={data.meta.workbook}
-                 style={{ color: 'var(--mal-ink)', textDecoration: 'underline',
-                          textDecorationColor: 'var(--mal-line)', textUnderlineOffset: 3 }}>
-                {data.meta.workbook}
-              </a>
-            </span>
+      {/* Top row: dropdown + Excel download (left) · tour button (right) */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between',
+        alignItems: 'center', gap: 16, flexWrap: 'wrap',
+        marginBottom: 22,
+      }}>
+        <div data-tour-id="econ-selector" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <FinGroupedProductSelector
+            catalogue={catalogue}
+            productId={activeProductId}
+            onPickProduct={setActiveProductId}
+            isAr={isAr} isMobile={isMobile}/>
+          {isLive && (
             <a href={`models/${data.meta.workbook}`} download={data.meta.workbook}
+               title={`${data.meta.workbook} · ${data.meta.sheets} sheets · synced ${data.meta.lastUpdated}`}
                style={{
-                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                 padding: '2px 8px', borderRadius: 999,
-                 fontSize: 11, fontWeight: 500,
-                 color: 'var(--mal-ink)',
-                 border: '1px solid var(--mal-line)',
+                 display: 'inline-flex', alignItems: 'center', gap: 8,
+                 padding: '8px 14px', borderRadius: 999,
                  background: 'var(--mal-paper)',
+                 border: '1px solid var(--mal-line)',
+                 color: 'var(--mal-ink)',
+                 fontSize: 12.5, fontWeight: 600,
                  textDecoration: 'none',
+                 transition: 'border-color .15s, transform .15s',
                }}
-               onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--mal-ink)'; }}
-               onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--mal-line)'; }}>
-              ↓ {isAr ? 'تحميل إكسل' : 'Excel'}
+               onMouseEnter={(e) => {
+                 e.currentTarget.style.borderColor = '#107C41';
+                 e.currentTarget.style.transform = 'translateY(-1px)';
+               }}
+               onMouseLeave={(e) => {
+                 e.currentTarget.style.borderColor = 'var(--mal-line)';
+                 e.currentTarget.style.transform = 'translateY(0)';
+               }}>
+              <ExcelIcon/>
+              <span>{isAr ? 'تحميل إكسل' : 'Download Excel'}</span>
             </a>
-            <span>
-              · {data.meta.sheets} {isAr ? 'ورقة' : 'sheets'} ·
-              {isAr ? ' آخر مزامنة ' : ' last sync '}{data.meta.lastUpdated}
-            </span>
-          </div>
+          )}
         </div>
         {TourBtn && isLive && (
           <TourBtn lang={lang} onStart={() => setTourOpen(true)}/>
         )}
-      </div>
-
-      {/* Grouped product selector (inline variant) */}
-      <div data-tour-id="econ-selector" style={{ marginBottom: 22 }}>
-        <FinGroupedProductSelector
-          catalogue={catalogue}
-          productId={activeProductId}
-          onPickProduct={setActiveProductId}
-          isAr={isAr} isMobile={isMobile}/>
       </div>
 
       {isLive && <P1Workbench data={data} isMobile={isMobile} isAr={isAr}/>}
@@ -298,6 +291,17 @@ function buildEconomicsTourSteps(data, isAr) {
       ],
       position: 'center', selector: null },
   ];
+}
+
+// Microsoft Excel logo — small inline SVG, official Excel green (#107C41)
+function ExcelIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="0.5" y="0.5" width="15" height="15" rx="2" fill="#107C41"/>
+      <path d="M5.0 4.5 L7.6 8 L5.0 11.5 H6.6 L8.4 8.95 L10.2 11.5 H11.8 L9.2 8 L11.8 4.5 H10.2 L8.4 7.05 L6.6 4.5 Z"
+            fill="#FFFFFF"/>
+    </svg>
+  );
 }
 
 function StatusPill({ children, tone }) {
