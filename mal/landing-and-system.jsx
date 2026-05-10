@@ -10,17 +10,13 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
 
   const SECTIONS = [
     { id: 'strategy',  num: '01', label: isAr ? 'الاستراتيجية' : 'Strategy',
-      gradient: 'linear-gradient(135deg, #1A2238 0%, #2A1F6F 60%, #4A3FA0 100%)', dark: true,
       accent: 'linear-gradient(135deg, #C9B7E8, #B6CFE8 70%, #FBD9B5)' },
     { id: 'prototype', num: '02', label: isAr ? 'النموذج' : 'Prototype',
-      gradient: 'linear-gradient(135deg, #1A1B2E 0%, #2C2257 60%, #5247A0 100%)', dark: true,
       accent: 'linear-gradient(135deg, #B6CFE8, #C9B7E8 70%, #F0B7C2)' },
     { id: 'financial', num: '03', label: isAr ? 'النمذجة المالية' : 'Financial Modeling',
-      gradient: 'linear-gradient(135deg, #1F1A2E 0%, #3D2459 60%, #8A4A8B 100%)', dark: true,
       accent: 'linear-gradient(135deg, #FBD9B5, #F0B7C2 60%, #C9B7E8)' },
     { id: 'ai',        num: '04', label: isAr ? 'مبادرات الذكاء' : 'AI Initiatives',
-      gradient: 'linear-gradient(135deg, #0A0A1A 0%, #2A1F6F 60%, #5A47C2 100%)', dark: true,
-      accent: 'linear-gradient(135deg, #2A1F6F, #5A47C2 70%, #C9B7E8)' },
+      accent: 'linear-gradient(135deg, #C658FD, #8B41E1 60%, #C9B7E8)' },
   ];
 
   return (
@@ -158,49 +154,41 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
         all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
         animationDelay: (120 + index * 70) + 'ms',
         position: 'relative', overflow: 'hidden',
-        background: section.dark ? section.gradient : 'var(--mal-paper)',
-        border: '1px solid ' + (section.dark ? 'transparent' : 'var(--mal-line)'),
+        background: '#D0DDEE',                       /* mal.ai pill tint */
+        border: '1px solid rgba(10,10,26,.06)',
         borderRadius: 22,
         padding: isMobile ? '24px 22px' : '28px 26px',
         minHeight: isMobile ? 180 : 280,
-        transition: 'transform .3s cubic-bezier(.4,0,.2,1), box-shadow .3s, border-color .3s',
+        transition: 'transform .3s cubic-bezier(.4,0,.2,1), box-shadow .3s, border-color .3s, background .3s',
         display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-        color: section.dark ? '#FAF7EE' : 'var(--mal-ink)',
+        color: '#0A0A0A',                            /* black text */
         textAlign: 'start',
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-6px)';
-        e.currentTarget.style.boxShadow = section.dark
-          ? '0 24px 70px -20px rgba(42,31,111,.55)'
-          : '0 18px 50px -20px rgba(60,50,140,.25)';
-        if (!section.dark) e.currentTarget.style.borderColor = 'var(--mal-primary-3)';
+        e.currentTarget.style.boxShadow = '0 18px 50px -20px rgba(10,10,26,.30)';
+        e.currentTarget.style.background = '#DCE6F2';
         const arrow = e.currentTarget.querySelector('.mal-card-arrow');
         if (arrow) arrow.style.transform = 'translateX(' + (isAr ? '-8px' : '8px') + ')';
         const halo = e.currentTarget.querySelector('.mal-card-halo');
-        if (halo) { halo.style.transform = 'scale(1.3)'; halo.style.opacity = '0.85'; }
+        if (halo) { halo.style.transform = 'scale(1.25)'; halo.style.opacity = '0.7'; }
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = '';
         e.currentTarget.style.boxShadow = '';
-        if (!section.dark) e.currentTarget.style.borderColor = 'var(--mal-line)';
+        e.currentTarget.style.background = '#D0DDEE';
         const arrow = e.currentTarget.querySelector('.mal-card-arrow');
         if (arrow) arrow.style.transform = '';
         const halo = e.currentTarget.querySelector('.mal-card-halo');
-        if (halo) { halo.style.transform = ''; halo.style.opacity = '0.5'; }
+        if (halo) { halo.style.transform = ''; halo.style.opacity = '0.4'; }
       }}>
       {/* Iridescent accent halo */}
       <div className="mal-card-halo" aria-hidden style={{
         position: 'absolute', top: -100, insetInlineEnd: -100,
         width: 280, height: 280, borderRadius: '50%',
-        background: section.accent || section.gradient,
-        filter: 'blur(36px)', opacity: 0.42,
+        background: section.accent,
+        filter: 'blur(40px)', opacity: 0.4,
         transition: 'transform .55s cubic-bezier(.4,0,.2,1), opacity .55s',
-        pointerEvents: 'none',
-      }}/>
-      {/* Soft inner glow */}
-      <div aria-hidden style={{
-        position: 'absolute', inset: 0,
-        background: 'radial-gradient(circle at 20% 100%, rgba(255,255,255,.12), transparent 55%)',
         pointerEvents: 'none',
       }}/>
 
@@ -209,7 +197,7 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
         position: 'relative', zIndex: 2,
         fontFamily: 'var(--mal-font-mono)',
         fontSize: 12, letterSpacing: '.16em',
-        color: section.dark ? 'rgba(250,247,238,.7)' : 'var(--mal-mid)',
+        color: 'rgba(10,10,26,.55)',
         fontWeight: 500,
       }}>
         {section.num}
@@ -223,16 +211,17 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
       }}>
         <div style={{
           fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-          fontSize: isMobile ? 30 : 34, lineHeight: 1.0,
+          fontSize: isMobile ? 30 : 36, lineHeight: 1.0,
           letterSpacing: '-0.02em',
+          color: '#0A0A0A',
         }}>
           {section.label}
         </div>
         <span className="mal-card-arrow" aria-hidden style={{
           width: 36, height: 36, borderRadius: 999,
-          background: section.dark ? 'rgba(250,247,238,.2)' : 'var(--mal-surface-2)',
+          background: 'rgba(10,10,26,.08)',
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          color: section.dark ? '#FAF7EE' : 'var(--mal-primary)',
+          color: '#0A0A0A',
           fontSize: 18, transition: 'transform .3s cubic-bezier(.4,0,.2,1)',
           transform: isAr ? 'scaleX(-1)' : 'none',
           flexShrink: 0,
