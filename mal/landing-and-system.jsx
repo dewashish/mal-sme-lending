@@ -9,13 +9,20 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
   const isMobile = viewport === 'mobile';
 
   const SECTIONS = [
+    // Each card: a darker tinted shade than the body (#C2D1E6), with a
+    // distinct hue tilt so the four are visually separable. Black text
+    // throughout. Iridescent halo provides a brand accent.
     { id: 'strategy',  num: '01', label: isAr ? 'الاستراتيجية' : 'Strategy',
+      tint: '#9CB0D2',  hover: '#8AA1C8',
       accent: 'linear-gradient(135deg, #C9B7E8, #B6CFE8 70%, #FBD9B5)' },
     { id: 'prototype', num: '02', label: isAr ? 'النموذج' : 'Prototype',
+      tint: '#A8A0CC',  hover: '#9890C0',
       accent: 'linear-gradient(135deg, #B6CFE8, #C9B7E8 70%, #F0B7C2)' },
     { id: 'financial', num: '03', label: isAr ? 'النمذجة المالية' : 'Financial Modeling',
+      tint: '#C8AAB6',  hover: '#BC9BAA',
       accent: 'linear-gradient(135deg, #FBD9B5, #F0B7C2 60%, #C9B7E8)' },
     { id: 'ai',        num: '04', label: isAr ? 'مبادرات الذكاء' : 'AI Initiatives',
+      tint: '#8090B5',  hover: '#6E80A8',
       accent: 'linear-gradient(135deg, #C658FD, #8B41E1 60%, #C9B7E8)' },
   ];
 
@@ -104,13 +111,14 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
             letterSpacing: '-0.04em',
             lineHeight: 0.9,
             margin: 0,
+            color: '#0A0A0A',
           }}>
-            <span className="mal-iri-text">Mal</span>
+            <span>Mal</span>
             <span style={{
               display: 'block',
               fontSize: isMobile ? 14 : 18, fontStyle: 'normal',
               fontFamily: 'var(--mal-font-mono)', letterSpacing: '.18em',
-              textTransform: 'uppercase', color: 'var(--mal-mid)',
+              textTransform: 'uppercase', color: 'rgba(10,10,10,.6)',
               fontWeight: 500, marginTop: isMobile ? 8 : 14,
             }}>
               {isAr ? 'إقراض المنشآت الصغيرة والمتوسطة' : 'Mal · SME Lending'}
@@ -154,8 +162,8 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
         all: 'unset', cursor: 'pointer', boxSizing: 'border-box',
         animationDelay: (120 + index * 70) + 'ms',
         position: 'relative', overflow: 'hidden',
-        background: '#D0DDEE',                       /* mal.ai pill tint */
-        border: '1px solid rgba(10,10,26,.06)',
+        background: section.tint,
+        border: '1px solid rgba(10,10,26,.08)',
         borderRadius: 22,
         padding: isMobile ? '24px 22px' : '28px 26px',
         minHeight: isMobile ? 180 : 280,
@@ -166,8 +174,8 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-6px)';
-        e.currentTarget.style.boxShadow = '0 18px 50px -20px rgba(10,10,26,.30)';
-        e.currentTarget.style.background = '#DCE6F2';
+        e.currentTarget.style.boxShadow = '0 18px 50px -20px rgba(10,10,26,.35)';
+        e.currentTarget.style.background = section.hover;
         const arrow = e.currentTarget.querySelector('.mal-card-arrow');
         if (arrow) arrow.style.transform = 'translateX(' + (isAr ? '-8px' : '8px') + ')';
         const halo = e.currentTarget.querySelector('.mal-card-halo');
@@ -176,7 +184,7 @@ function SectionCard({ section, index, isAr, isMobile, onClick }) {
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = '';
         e.currentTarget.style.boxShadow = '';
-        e.currentTarget.style.background = '#D0DDEE';
+        e.currentTarget.style.background = section.tint;
         const arrow = e.currentTarget.querySelector('.mal-card-arrow');
         if (arrow) arrow.style.transform = '';
         const halo = e.currentTarget.querySelector('.mal-card-halo');
