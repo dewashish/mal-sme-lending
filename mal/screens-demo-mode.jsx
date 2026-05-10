@@ -111,6 +111,7 @@ const DEFAULT_SCENARIO = {
   simDay: 0,
   paymentsByEmi: {},                  // { 1: { paidOnDay, withPenalty }, 2: {...} }
   refinancedPaymentsByEmi: {},        // EMIs paid on the refinanced schedule
+  extensionPaymentsByEmi: {},         // EMIs paid on the term extension's schedule
 
   // Routes within live phase
   buyerRoute: 'home',
@@ -1273,7 +1274,7 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
         // Signing the extension means Mal *takes over* the original invoice:
         // every unpaid EMI of the current plan flips to "settled by Mal via
         // extension". Penalty 0 (covered by the extension's own pricing).
-        // Buyer now owes Mal under the new term-extension schedule.
+        // The extension itself becomes a 6-mo loan with its own schedule.
         patch((s) => {
           const newPaid = { ...(s.paymentsByEmi || {}) };
           (s.plan?.schedule || []).forEach((emi) => {
@@ -1285,15 +1286,34 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
               };
             }
           });
+          // Build the extension's 6-month EMI schedule starting one month
+          // after the sign date.
+          const tenor = 6;
+          const emi = 44063;
+          const startDay = s.simDay;
+          const schedule = Array.from({ length: tenor }, (_, i) => ({
+            num: i + 1,
+            dueDay: startDay + (i + 1) * 30,
+            amount: emi,
+          }));
           return {
             paymentsByEmi: newPaid,
             termExtension: {
-              principal: 250000, tenorMonths: 6, aprPct: 11.5, emi: 44063,
-              startDay: s.simDay, signedAt: new Date().toISOString(),
+              type: 'term_extension_6mo',
+              label: '6-mo term extension',
+              principal: 250000,
+              tenorMonths: tenor,
+              aprPct: 11.5,
+              emi: emi,
+              emiAmount: emi,           // mirror plan shape
+              startDay,
+              schedule,
+              signedAt: new Date().toISOString(),
             },
+            extensionPaymentsByEmi: {},
             buyerToast: {
               title: 'Original invoice settled by Mal',
-              sub: `New 6-mo term loan begins · AED 44,063/mo`,
+              sub: `New ${tenor}-mo term loan begins · AED ${emi.toLocaleString()}/mo`,
               icon: 'check', tone: 'success',
             },
           };
@@ -1320,7 +1340,7 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
 // overdue banners and refinance/extension CTAs derived from current state.
 function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
   const isAr = lang === 'ar';
-  const { simDay, plan, paymentsByEmi, refinancedPaymentsByEmi, termExtension } = scenario;
+  const { simDay, plan, paymentsByEmi, refinancedPaymentsByEmi, termExtension, extensionPaymentsByEmi } = scenario;
   const isRefinanced = !!plan?.refinancedFrom;
   const activePayments = isRefinanced ? refinancedPaymentsByEmi : paymentsByEmi;
   const statuses = isRefinanced
@@ -1332,38 +1352,74 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
   const totalCount = statuses.length;
   const isClosed = paidCount === totalCount && totalCount > 0;
 
+  // Plan-side outstanding (only counts EMIs that AREN'T flagged settledByExtension —
+  // those are absorbed by the extension and shouldn't double-count utilization).
   const originalPrincipal = isRefinanced ? plan.refinancedFrom.principal : plan.principal;
-  const totalPaidAmount = statuses.filter(e => e.status === 'paid').reduce((s, e) => s + (e.amount || 0), 0);
-  const usedAmount = Math.max(0, originalPrincipal - totalPaidAmount);
+  const planTotalPaidAmount = statuses
+    .filter(e => e.status === 'paid')
+    .reduce((s, e) => s + (e.amount || 0), 0);
+  const planRemainingForLimit = isClosed
+    ? 0
+    : Math.max(0, originalPrincipal - planTotalPaidAmount);
+
+  // Extension-side outstanding
+  const extStatuses = termExtension
+    ? computeEmiStatuses(termExtension, simDay, extensionPaymentsByEmi)
+    : [];
+  const extOverdue   = findOverdue(extStatuses);
+  const extNextUpcoming = findNextUpcoming(extStatuses);
+  const extPaidCount = extStatuses.filter((e) => e.status === 'paid').length;
+  const extTotalCount = extStatuses.length;
+  const extIsClosed  = termExtension && extPaidCount === extTotalCount && extTotalCount > 0;
+  const extPaidAmount = extStatuses
+    .filter(e => e.status === 'paid')
+    .reduce((s, e) => s + (e.amount || 0), 0);
+  const extRemainingForLimit = !termExtension || extIsClosed
+    ? 0
+    : Math.max(0, termExtension.principal - extPaidAmount);
+
+  // Combined utilization across all active obligations
+  const usedAmount = planRemainingForLimit + extRemainingForLimit;
+  const allClosed = isClosed && (!termExtension || extIsClosed);
   const availableLimit = 850000 - usedAmount;
   const utilisationPct = Math.round((usedAmount / 850000) * 100);
 
-  const showExtendCta = shouldShowExtendCta(plan, simDay, activePayments, !!termExtension);
-  const showRefinanceCta = !isRefinanced && canRefinanceNow(plan, simDay, paymentsByEmi, isRefinanced);
+  const showExtendCta = !termExtension && shouldShowExtendCta(plan, simDay, activePayments, !!termExtension);
+  const showRefinanceCta = !isRefinanced && !termExtension && canRefinanceNow(plan, simDay, paymentsByEmi, isRefinanced);
 
-  // Pay an EMI handler (used by Pay buttons on each row)
-  const payEmi = (emiNum, dueDay, amount) => {
+  // Pay an EMI handler — works for plan, refinanced plan, and extension.
+  const payEmi = (emiNum, dueDay, amount, source) => {
     const dpd = Math.max(0, simDay - dueDay);
     const penalty = computeLatePenalty(amount, dpd);
-    const updates = isRefinanced
-      ? { refinancedPaymentsByEmi: { ...refinancedPaymentsByEmi, [emiNum]: { paidOnDay: simDay, withPenalty: penalty } } }
-      : { paymentsByEmi:           { ...paymentsByEmi,           [emiNum]: { paidOnDay: simDay, withPenalty: penalty } } };
+    let updates;
+    if (source === 'extension') {
+      updates = { extensionPaymentsByEmi: { ...extensionPaymentsByEmi, [emiNum]: { paidOnDay: simDay, withPenalty: penalty } } };
+    } else if (isRefinanced) {
+      updates = { refinancedPaymentsByEmi: { ...refinancedPaymentsByEmi, [emiNum]: { paidOnDay: simDay, withPenalty: penalty } } };
+    } else {
+      updates = { paymentsByEmi: { ...paymentsByEmi, [emiNum]: { paidOnDay: simDay, withPenalty: penalty } } };
+    }
+    const sourceLabel = source === 'extension' ? (isAr ? 'تمديد' : 'extension') : (isAr ? 'خطة' : 'plan');
     patch({
       ...updates,
       buyerToast: {
         title: dpd > 0
-          ? (isAr ? `قسط ${emiNum} مدفوع · رسم ${penalty} د.إ` : `EMI ${emiNum} paid · AED ${penalty.toLocaleString()} late fee`)
-          : (isAr ? `قسط ${emiNum} مدفوع` : `EMI ${emiNum} paid`),
+          ? (isAr ? `قسط ${sourceLabel} ${emiNum} مدفوع · رسم ${penalty} د.إ` : `${source === 'extension' ? 'Extension' : 'Plan'} EMI ${emiNum} paid · AED ${penalty.toLocaleString()} late fee`)
+          : (isAr ? `قسط ${sourceLabel} ${emiNum} مدفوع` : `${source === 'extension' ? 'Extension' : 'Plan'} EMI ${emiNum} paid`),
         sub: `AED ${(amount + penalty).toLocaleString()}`,
         icon: 'check', tone: 'success',
       },
-      supplierToast: {
+      supplierToast: source === 'extension' ? null : {
         title: isAr ? `قسط ${emiNum} مكتمل` : `Buyer EMI ${emiNum} cleared`,
         sub: isAr ? 'دورتك تستمرّ' : 'Cycle continues',
         icon: 'check', tone: 'success',
       },
     });
   };
+
+  // Compatibility shim — the existing plan-card overdue banner uses payEmi
+  // without a `source` arg, so default to plan.
+  const payEmiPlan = (n, d, a) => payEmi(n, d, a, 'plan');
 
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1400,7 +1456,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
                 <div style={{ fontSize: 11, color: 'var(--mal-ink)', marginTop: 2 }}>{banner.sub}</div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <Button kind="primary" size="sm" icon="bolt"
-                          onClick={() => payEmi(overdue.num, overdue.dueDay, overdue.amount)}>
+                          onClick={() => payEmiPlan(overdue.num, overdue.dueDay, overdue.amount)}>
                     {isAr ? 'ادفع الآن' : `Pay AED ${(overdue.amount + computeLatePenalty(overdue.amount, overdue.daysOverdue)).toLocaleString()}`}
                   </Button>
                   {(overdue.stage === 'tele-call' || overdue.stage === 'field') && !isRefinanced && (
@@ -1415,9 +1471,9 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         );
       })()}
 
-      {/* Limit hero */}
+      {/* Limit hero — combined utilization across plan + extension */}
       <Card padded style={{
-        background: isClosed
+        background: allClosed
           ? 'linear-gradient(135deg, #1F7A4F 0%, #2A1F6F 100%)'
           : 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)',
         color: '#fff', border: 'none', position: 'relative', overflow: 'hidden',
@@ -1425,7 +1481,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         <div className="mal-orb" style={{ position: 'absolute', width: 220, height: 220, top: -90, insetInlineEnd: -90, opacity: .35 }}/>
         <div style={{ position: 'relative' }}>
           <div style={{ fontSize: 11, opacity: .7, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-            {isClosed ? (isAr ? 'الحدّ — أُعيد إطلاقه' : 'Limit released') : (isAr ? 'الحد المتاح' : 'Available limit')}
+            {allClosed ? (isAr ? 'الحدّ — أُعيد إطلاقه' : 'Limit released') : (isAr ? 'الحد المتاح' : 'Available limit')}
           </div>
           <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 36, fontStyle: 'italic', marginTop: 6 }}>
             AED {availableLimit.toLocaleString()}
@@ -1437,6 +1493,13 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
             <span>{isAr ? 'مستخدم' : 'In use'} AED {Math.max(0, usedAmount).toLocaleString()}</span>
             <span>{utilisationPct}%</span>
           </div>
+          {/* Breakdown — shows source of utilization when both are active */}
+          {planRemainingForLimit > 0 && extRemainingForLimit > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, opacity: .65 }}>
+              <span>{isAr ? 'خطة' : 'Plan'} AED {planRemainingForLimit.toLocaleString()}</span>
+              <span>{isAr ? 'تمديد' : 'Extension'} AED {extRemainingForLimit.toLocaleString()}</span>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -1467,7 +1530,20 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         </Card>
       )}
 
-      {/* Active 4-mo installment plan with EMI ladder and Pay buttons */}
+      {/* Active loans section header */}
+      <div style={{
+        display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+        marginTop: 4, marginBottom: -4,
+      }}>
+        <div className="mal-caption">{isAr ? 'القروض النشطة' : 'Active loans'}</div>
+        <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+          {(plan && !isClosed ? 1 : 0) + (termExtension && !extIsClosed ? 1 : 0) + ' '}
+          {isAr ? 'نشط' : 'active'}
+          {(isClosed && !termExtension) || (allClosed && termExtension) ? ` · ${isAr ? 'الكلّ مُغلق' : 'all closed'}` : ''}
+        </span>
+      </div>
+
+      {/* Active plan card with EMI ladder and Pay buttons */}
       <Card padded>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
           <div className="mal-caption">{isAr ? 'الخطة الحالية' : 'Active plan'} · {scenario.invoice.id}</div>
@@ -1567,7 +1643,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
                   </span>
                   {/* Pay button — visible only when actionable */}
                   {canPay && isSoonOrLate && (
-                    <button onClick={() => payEmi(e.num, e.dueDay, e.amount)} style={{
+                    <button onClick={() => payEmiPlan(e.num, e.dueDay, e.amount)} style={{
                       all: 'unset', cursor: 'pointer',
                       padding: '6px 12px', borderRadius: 999,
                       background: e.status === 'overdue' ? 'var(--mal-danger)' : 'var(--mal-ink)',
@@ -1585,10 +1661,143 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         </div>
 
         <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--mal-mid)' }}>
-          <span>{isAr ? 'مدفوع' : 'Paid'}: AED {totalPaidAmount.toLocaleString()}</span>
-          <span>{isAr ? 'متبقّي' : 'Remaining'}: AED {(plan.principal - totalPaidAmount).toLocaleString()}</span>
+          <span>{isAr ? 'مدفوع' : 'Paid'}: AED {planTotalPaidAmount.toLocaleString()}</span>
+          <span>{isAr ? 'متبقّي' : 'Remaining'}: AED {Math.max(0, plan.principal - planTotalPaidAmount).toLocaleString()}</span>
         </div>
       </Card>
+
+      {/* Extension card — full EMI ladder with Pay buttons */}
+      {termExtension && (() => {
+        const banner = extOverdue ? collectionsBanner(extOverdue.stage, extOverdue.daysOverdue, isAr) : null;
+        return (
+          <Card padded style={{
+            background: 'linear-gradient(180deg, var(--mal-paper) 0%, var(--mal-primary-50) 100%)',
+            borderColor: 'var(--mal-primary-3)', borderWidth: 1,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div className="mal-caption" style={{ color: 'var(--mal-primary)' }}>
+                {isAr ? 'قرض تمديد · نشط' : 'Term extension · active'} · {scenario.invoice.id}
+              </div>
+              {!extIsClosed && extNextUpcoming && (
+                <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+                  {isAr ? 'القسط التالي' : 'Next'} {relativeDayLabel(simDay, extNextUpcoming.dueDay, isAr)}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+              <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 24, fontStyle: 'italic' }}>
+                {termExtension.label}
+              </span>
+              <Pill tone={extIsClosed ? 'success' : (extOverdue ? 'danger' : 'info')} dot>
+                {extIsClosed ? (isAr ? 'مُغلق' : 'Closed')
+                  : extOverdue ? (isAr ? 'متأخّر' : 'Overdue')
+                  : (isAr ? 'في الوقت' : 'On track')}
+              </Pill>
+              <span style={{ fontSize: 11, color: 'var(--mal-mid)', marginLeft: 'auto' }}>
+                {termExtension.aprPct}% APR
+              </span>
+            </div>
+
+            {extOverdue && banner && (
+              <div style={{
+                padding: '8px 12px', borderRadius: 10, marginBottom: 10,
+                background: banner.tone === 'danger' ? 'var(--mal-danger-bg)' : 'var(--mal-warn-bg)',
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: banner.tone === 'danger' ? 'var(--mal-danger)' : 'var(--mal-warn)' }}>
+                  {banner.title}
+                </div>
+                <div style={{ fontSize: 10.5, color: 'var(--mal-ink)', marginTop: 2 }}>{banner.sub}</div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {extStatuses.map((e) => {
+                const dpd = Math.max(0, simDay - e.dueDay);
+                const penalty = computeLatePenalty(e.amount, dpd);
+                const canPay = e.status !== 'paid';
+                const isSoonOrLate = e.status === 'overdue' || (e.status === 'upcoming' && (e.dueDay - simDay) <= 7);
+                return (
+                  <div key={`ext-${e.num}-${e.dueDay}`} style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '10px 12px', borderRadius: 12,
+                    background: e.status === 'overdue' ? 'var(--mal-danger-bg)'
+                              : e.status === 'paid' ? 'var(--mal-success-bg)'
+                              : 'var(--mal-paper)',
+                    border: e.status === 'upcoming' && extNextUpcoming && extNextUpcoming.num === e.num
+                      ? '1.5px solid var(--mal-primary)' : '1px solid var(--mal-line-2)',
+                    flexWrap: 'wrap',
+                  }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 999,
+                      background: e.status === 'paid' ? 'var(--mal-success)'
+                                : e.status === 'overdue' ? 'var(--mal-danger)'
+                                : '#fff',
+                      color: e.status === 'upcoming' ? 'var(--mal-mid)' : '#fff',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, fontSize: 12, fontWeight: 600,
+                      boxShadow: e.status === 'upcoming' ? 'inset 0 0 0 1px var(--mal-line)' : 'none',
+                    }}>
+                      {e.status === 'paid'
+                        ? (dmIco.check ? dmIco.check({ width: 13, height: 13, color: '#fff' }) : '✓')
+                        : e.status === 'overdue'
+                        ? (dmIco.warning ? dmIco.warning({ width: 13, height: 13, color: '#fff' }) : '!')
+                        : e.num}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 100 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>
+                        {isAr ? `قسط التمديد ${e.num} من ${extTotalCount}` : `Extension EMI ${e.num} of ${extTotalCount}`}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+                        {e.status === 'paid'
+                          ? (isAr ? `دُفع · ${formatSimDay(e.paidDay)}` : `Paid · ${formatSimDay(e.paidDay)}`) + (e.penalty ? ' (+' + e.penalty + ')' : '')
+                          : e.status === 'overdue'
+                          ? (isAr ? `متأخّر بـ ${e.daysOverdue} يوم` : `${e.daysOverdue}d overdue · stage ${e.stage}`)
+                          : (isAr ? `يستحق ${formatSimDay(e.dueDay)}` : `Due ${formatSimDay(e.dueDay)}`)}
+                      </div>
+                    </div>
+                    <span className="mal-num" style={{ fontSize: 13, fontWeight: 500 }}>
+                      AED {e.amount.toLocaleString()}
+                    </span>
+                    {canPay && isSoonOrLate && (
+                      <button onClick={() => payEmi(e.num, e.dueDay, e.amount, 'extension')} style={{
+                        all: 'unset', cursor: 'pointer',
+                        padding: '6px 12px', borderRadius: 999,
+                        background: e.status === 'overdue' ? 'var(--mal-danger)' : 'var(--mal-ink)',
+                        color: '#FAF7EE', fontSize: 11, fontWeight: 600, letterSpacing: '.02em',
+                      }}>
+                        {e.status === 'overdue'
+                          ? (isAr ? `ادفع +${penalty}` : `Pay + ${penalty}`)
+                          : (isAr ? 'ادفع الآن' : 'Pay early')}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--mal-mid)' }}>
+              <span>{isAr ? 'مدفوع' : 'Paid'}: AED {extPaidAmount.toLocaleString()}</span>
+              <span>{isAr ? 'متبقّي' : 'Remaining'}: AED {Math.max(0, termExtension.principal - extPaidAmount).toLocaleString()}</span>
+            </div>
+
+            {!extIsClosed && (
+              <button onClick={() => setBuyerRoute('extend-settle')} style={{
+                all: 'unset', cursor: 'pointer',
+                marginTop: 10,
+                padding: '8px 12px', borderRadius: 10,
+                background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+                fontSize: 12, fontWeight: 500, color: 'var(--mal-primary)',
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                transition: 'transform .15s, border-color .15s',
+              }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--mal-primary-3)'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--mal-line)'; e.currentTarget.style.transform = ''; }}>
+                {isAr ? 'سدّد المتبقّي مبكراً' : 'Settle remaining early'} →
+              </button>
+            )}
+          </Card>
+        );
+      })()}
 
       {/* Need more time CTA */}
       {showExtendCta && (
