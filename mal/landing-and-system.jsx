@@ -73,7 +73,7 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
             fontWeight: 500, marginInlineStart: isMobile ? 14 : 28,
             verticalAlign: isMobile ? 'middle' : '40%',
           }}>
-            {isAr ? 'منصّة الإقراض للمنشآت الإماراتية' : 'UAE SME Lending Platform'}
+            {isAr ? 'إقراض المنشآت الصغيرة والمتوسطة' : 'SME Landing'}
           </span>
         </h1>
 
@@ -97,7 +97,7 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
         position: 'relative', zIndex: 2,
         fontFamily: 'var(--mal-font-mono)', letterSpacing: '.06em',
       }}>
-        © 2026 Mal · {isAr ? 'مايو ٢٠٢٦' : 'May 2026'}
+        © 2026 Mal · {isAr ? 'مايو ٢٠٢٦' : 'May 2026'} · Dewashish Dey
       </footer>
     </div>
   );
