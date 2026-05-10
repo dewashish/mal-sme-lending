@@ -352,7 +352,7 @@ function computeLatePenalty(emiAmount, dpd) {
 // 3. DemoMode root
 // ==================================================================
 
-function DemoMode({ lang = 'en', setLang, onExit, isMobile }) {
+function DemoMode({ lang = 'en', setLang, onExit, isMobile, embedded = false }) {
   const [phase, setPhase] = dmS('intro');
   const [scenario, setScenario] = dmS(DEFAULT_SCENARIO);
   const isAr = lang === 'ar';
@@ -471,8 +471,10 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile }) {
       fontFamily: isAr ? 'var(--mal-font-ar)' : 'var(--mal-font-ui)',
       paddingBottom: 60,
     }}>
-      <DemoTopBar lang={lang} setLang={setLang} onExit={onExit}
-                  reset={reset} phase={phase} isMobile={isMobile}/>
+      {!embedded && (
+        <DemoTopBar lang={lang} setLang={setLang} onExit={onExit}
+                    reset={reset} phase={phase} isMobile={isMobile}/>
+      )}
       {/* Mobile uses the top horizontal scroller; desktop uses the floating
           left dotnav (position: fixed — does not consume layout space). */}
       {isMobile && <DemoTimelineHorizontal phase={phase} setPhase={setPhase} lang={lang}/>}

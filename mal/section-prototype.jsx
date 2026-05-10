@@ -81,7 +81,7 @@ function SectionPrototype({ lang, isMobile }) {
       <div style={{ minHeight: 'calc(100vh - 56px)' }}>
         {!product.available && <ComingSoon product={product} isAr={isAr}/>}
         {product.available && entryId === 'demo' && (
-          <DemoMode lang={lang} setLang={() => {}} isMobile={isMobile} onExit={() => {}}/>
+          <DemoMode embedded lang={lang} setLang={() => {}} isMobile={isMobile} onExit={() => {}}/>
         )}
         {product.available && entryId !== 'demo' && entryId && (
           <PersonaMount persona={entryId} lang={lang} isMobile={isMobile}/>
