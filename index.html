@@ -74,142 +74,74 @@
     to   { opacity: 0; }
   }
   /* ============================================================
-     Sidebar rail — cfodeck-inspired collapse-and-expand
-     Default: thin column of dashes (36px wide).
-     Hover anywhere on the rail: expands to 220px with labels.
+     Floating left dotnav (cfodeck-faithful)
+     Vertical column of horizontal dashes, pinned to the left edge,
+     vertically centered. Whole nav fades from .55 → .95 on hover.
+     Per-dash hover shows a sliding label tooltip to the right.
      ============================================================ */
-  .mal-rail {
-    --rail-w-collapsed: 36px;
-    --rail-w-expanded: 220px;
-    width: var(--rail-w-collapsed);
-    padding: 18px 10px 24px;
-    border-inline-end: 1px solid var(--mal-line);
-    background: transparent;
-    overflow-y: auto;
-    overflow-x: hidden;
-    transition: width .28s cubic-bezier(.4,0,.2,1);
-  }
-  .mal-rail:hover { width: var(--rail-w-expanded); }
-  .mal-rail-cap {
-    font-size: 10px; font-weight: 500; letter-spacing: .12em;
-    text-transform: uppercase; color: var(--mal-mid-2);
-    padding-inline-start: 6px; margin-bottom: 14px;
-    opacity: 0; white-space: nowrap;
-    transition: opacity .22s ease .04s;
-  }
-  .mal-rail:hover .mal-rail-cap { opacity: 1; }
-  .mal-rail-list {
-    position: relative;
-    display: flex; flex-direction: column; gap: 6px;
-    padding-block: 4px;
-  }
-  .mal-rail-spine, .mal-rail-spine-fill {
-    position: absolute;
-    inset-inline-start: 7px;
-    top: 14px; bottom: 14px;
-    width: 2px; border-radius: 2px;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .22s ease, inset-inline-start .28s cubic-bezier(.4,0,.2,1);
-  }
-  .mal-rail:hover .mal-rail-spine,
-  .mal-rail:hover .mal-rail-spine-fill {
-    opacity: 1;
+  .mal-dotnav {
+    position: fixed;
     inset-inline-start: 16px;
+    top: 50%; transform: translateY(-50%);
+    z-index: 55;
+    display: flex; flex-direction: column; gap: 10px;
+    opacity: .55;
+    transition: opacity .25s ease;
+    padding: 14px 8px;
+    background: rgba(250, 247, 238, .55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid var(--mal-line);
+    border-radius: 999px;
   }
-  .mal-rail-spine { background: var(--mal-line); }
-  .mal-rail-spine-fill {
-    background: linear-gradient(180deg, var(--mal-primary) 0%, var(--mal-primary-3) 100%);
-    bottom: auto;
-    transition: opacity .22s ease, height .35s ease, inset-inline-start .28s cubic-bezier(.4,0,.2,1);
+  .mal-dotnav:hover { opacity: .98; }
+  .mal-dotnav-btn {
+    width: 22px; height: 6px;
+    background: var(--mal-mid-2);
+    border: 0; cursor: pointer;
+    border-radius: 999px;
+    position: relative;
+    transition: width .25s ease, background .2s ease, transform .2s ease;
+    padding: 0;
+    display: block;
   }
-  /* Each rail item */
-  .mal-rail-item {
-    all: unset; cursor: pointer; box-sizing: border-box;
-    display: flex; align-items: center; gap: 12px;
-    padding: 6px 4px;
-    border-radius: 10px; position: relative; z-index: 1;
-    transition: transform .18s ease, background .2s ease, border-color .2s ease, box-shadow .2s ease, padding .22s ease;
-    border: 1px solid transparent;
-  }
-  /* The dash/dot indicator */
-  .mal-rail-dash {
-    flex-shrink: 0;
-    display: inline-flex; align-items: center; justify-content: center;
-    background: var(--mal-line);
-    height: 4px; width: 16px; border-radius: 999px;
-    color: #fff; font-size: 0;        /* hide check icon when collapsed */
-    transition: width .28s cubic-bezier(.4,0,.2,1),
-                height .25s cubic-bezier(.4,0,.2,1),
-                background .2s ease,
-                box-shadow .25s ease,
-                font-size .15s ease;
-  }
-  .mal-rail-item-past .mal-rail-dash {
+  .mal-dotnav-btn:hover {
     background: var(--mal-primary-3);
+    transform: scaleY(1.2);
   }
-  .mal-rail-item-active .mal-rail-dash {
-    width: 26px;
+  .mal-dotnav-past { background: var(--mal-primary-3); }
+  .mal-dotnav-active {
     background: var(--mal-primary);
-    box-shadow: 0 0 0 3px var(--mal-primary-50);
-  }
-  /* Expanded: dashes morph into dots */
-  .mal-rail:hover .mal-rail-dash {
-    width: 14px; height: 14px; border-radius: 999px;
-    font-size: 9px;                  /* re-show check icon */
-    background: var(--mal-paper);
-    border: 2px solid var(--mal-line);
-    box-sizing: border-box;
-  }
-  .mal-rail:hover .mal-rail-item-past .mal-rail-dash {
-    background: var(--mal-primary-3);
-    border-color: var(--mal-primary-3);
-  }
-  .mal-rail:hover .mal-rail-item-active .mal-rail-dash {
-    background: var(--mal-primary);
-    border-color: var(--mal-primary);
+    width: 30px;
     box-shadow: 0 0 0 4px var(--mal-primary-50);
   }
-  /* Meta column — number + label, fade-in on hover */
-  .mal-rail-meta {
-    display: inline-flex; flex-direction: column; gap: 2px;
-    min-width: 0; flex: 1;
-    opacity: 0; transform: translateX(-6px);
-    transition: opacity .22s ease .04s, transform .22s ease .04s;
-    pointer-events: none;
+  /* Tooltip via ::after — slides in from the right (or left in RTL) */
+  .mal-dotnav-btn[data-label]::after {
+    content: attr(data-label);
+    position: absolute;
+    inset-inline-start: calc(100% + 14px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-6px);
+    font-family: var(--mal-font-mono);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--mal-paper);
+    background: var(--mal-ink);
+    padding: 6px 10px;
+    border-radius: 6px;
     white-space: nowrap;
-  }
-  [dir="rtl"] .mal-rail-meta { transform: translateX(6px); }
-  .mal-rail:hover .mal-rail-meta {
-    opacity: 1; transform: translateX(0);
-    pointer-events: auto;
-  }
-  .mal-rail-num {
-    font-size: 10px; font-family: var(--mal-font-mono);
-    color: var(--mal-mid-2); letter-spacing: .04em; line-height: 1;
-  }
-  .mal-rail-label {
-    font-size: 12.5px; line-height: 1.2;
-    color: var(--mal-mid); font-weight: 500;
-  }
-  .mal-rail-item-past .mal-rail-label   { color: var(--mal-ink); }
-  .mal-rail-item-active .mal-rail-label { color: var(--mal-ink); font-weight: 600; }
-  /* Per-item hover bulge — only meaningful when rail is expanded */
-  .mal-rail:hover .mal-rail-item:hover {
-    padding: 8px 10px;
-    background: var(--mal-paper);
-    border-color: var(--mal-primary-3);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .18s ease, transform .18s ease;
     box-shadow: var(--mal-sh-2);
-    transform: translateX(2px) scale(1.015);
   }
-  [dir="rtl"] .mal-rail:hover .mal-rail-item:hover {
-    transform: translateX(-2px) scale(1.015);
+  [dir="rtl"] .mal-dotnav-btn[data-label]::after {
+    transform: translateY(-50%) translateX(6px);
   }
-  .mal-rail:hover .mal-rail-item-active {
-    padding: 8px 10px;
-    background: var(--mal-paper);
-    border-color: var(--mal-primary-3);
-    box-shadow: var(--mal-sh-2);
+  .mal-dotnav-btn:hover[data-label]::after {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
   }
   /* Plan picker rows: hover bulge */
   .mal-plan-row:hover {

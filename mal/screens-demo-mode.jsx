@@ -418,22 +418,14 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile }) {
     }}>
       <DemoTopBar lang={lang} setLang={setLang} onExit={onExit}
                   reset={reset} phase={phase} isMobile={isMobile}/>
-      {/* Mobile timeline collapses to top; desktop uses left sidebar */}
+      {/* Mobile uses the top horizontal scroller; desktop uses the floating
+          left dotnav (position: fixed — does not consume layout space). */}
       {isMobile && <DemoTimelineHorizontal phase={phase} setPhase={setPhase} lang={lang}/>}
-      <div style={{
-        display: 'flex',
-        flexDirection: isMobile ? 'column' : 'row',
-        alignItems: 'flex-start',
-        minHeight: isMobile ? 0 : 'calc(100vh - 80px)',
-      }}>
-        {!isMobile && <DemoTimelineSidebar phase={phase} setPhase={setPhase} lang={lang}/>}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <DemoStage scenario={scenario} setScenario={setScenario} patch={patch}
-                     phase={phase} setPhase={setPhase} setSimDay={setSimDay} stepDay={stepDay}
-                     lang={lang} isMobile={isMobile}/>
-          <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan}/>
-        </div>
-      </div>
+      {!isMobile && <DemoTimelineSidebar phase={phase} setPhase={setPhase} lang={lang}/>}
+      <DemoStage scenario={scenario} setScenario={setScenario} patch={patch}
+                 phase={phase} setPhase={setPhase} setSimDay={setSimDay} stepDay={stepDay}
+                 lang={lang} isMobile={isMobile}/>
+      <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan}/>
     </div>
   );
 }
@@ -484,54 +476,29 @@ function DemoTopBar({ lang, setLang, onExit, reset, phase, isMobile }) {
 // 5. Phase timeline (clickable)
 // ==================================================================
 
-// Vertical sidebar timeline (desktop), cfodeck-inspired collapse-and-expand
-// rail. Default state: a slim 36px column with each phase rendered as a
-// short horizontal dash. Active phase = wider, branded dash. On hover, the
-// rail expands to 220px and the labels fade in. Click any item to jump.
+// Floating vertical dotnav (cfodeck-faithful). A thin bar of horizontal
+// dashes pinned to the left edge, vertically centered. Whole nav fades
+// from .55 → .95 on rail-hover; each individual dash, when hovered, shows
+// a label tooltip that slides in from the right.
 function DemoTimelineSidebar({ phase, setPhase, lang }) {
   const isAr = lang === 'ar';
   const idx = DM_PHASES.findIndex((p) => p.id === phase);
   return (
-    <aside className="mal-rail" style={{
-      flexShrink: 0,
-      position: 'sticky', top: 64,
-      maxHeight: 'calc(100vh - 64px)',
-    }}>
-      <div className="mal-rail-cap">
-        {isAr ? 'رحلة' : 'Journey'}
-      </div>
-      <div className="mal-rail-list">
-        {/* Spine: vertical line behind the dots, only visible when expanded */}
-        <div aria-hidden className="mal-rail-spine"/>
-        <div aria-hidden className="mal-rail-spine-fill" style={{
-          height: `calc(${idx / Math.max(1, DM_PHASES.length - 1) * 100}% )`,
-        }}/>
-        {DM_PHASES.map((p, i) => {
-          const active = i === idx;
-          const past   = i < idx;
-          const state = active ? 'active' : past ? 'past' : 'upcoming';
-          return (
-            <button key={p.id}
-                    onClick={() => setPhase(p.id)}
-                    className={`mal-rail-item mal-rail-item-${state}`}
-                    aria-label={`Phase ${i + 1}: ${p.label}`}
-                    title={p.label}>
-              {/* Dash/dot indicator — morphs between collapsed dash and expanded dot */}
-              <span className="mal-rail-dash" aria-hidden>
-                {past && (dmIco.check
-                  ? dmIco.check({ width: 9, height: 9, color: '#fff' })
-                  : '✓')}
-              </span>
-              {/* Number + label — only visible when rail is expanded */}
-              <span className="mal-rail-meta" aria-hidden>
-                <span className="mal-rail-num">{String(i + 1).padStart(2, '0')}</span>
-                <span className="mal-rail-label">{p.label}</span>
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </aside>
+    <nav className="mal-dotnav" aria-label="Phase navigation">
+      {DM_PHASES.map((p, i) => {
+        const active = i === idx;
+        const past   = i < idx;
+        const state = active ? 'active' : past ? 'past' : 'upcoming';
+        const label = `${String(i + 1).padStart(2, '0')} · ${p.label}`;
+        return (
+          <button key={p.id}
+                  onClick={() => setPhase(p.id)}
+                  className={`mal-dotnav-btn mal-dotnav-${state}`}
+                  data-label={label}
+                  aria-label={label}/>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -578,7 +545,9 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
     <div style={{
       display: 'flex', flexDirection: stack ? 'column' : 'row', gap: 26,
       alignItems: 'flex-start', justifyContent: 'center',
-      padding: stack ? '8px 12px 24px' : '20px 22px 40px', flexWrap: 'wrap',
+      // Reserve 80px on the left for the floating dotnav (only on desktop)
+      padding: stack ? '8px 12px 24px' : '20px 22px 40px 90px',
+      flexWrap: 'wrap',
     }}>
       <DemoPanel side="buyer" title="Buyer SME" sub="Aisha · Crescent Trading FZE" tone="lilac"
                  spotlight={scenario.spotlight === 'buyer'} toast={scenario.buyerToast} lang={lang}>
@@ -892,7 +861,7 @@ function DemoCenterColumnLive({ scenario, setSimDay, stepDay, setPhase, patch, l
 // ==================================================================
 
 function DemoPanel({ side, title, sub, tone, spotlight, toast, lang, children }) {
-  const w = 380, h = 760;
+  const w = 380, h = 820;
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center',
