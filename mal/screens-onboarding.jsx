@@ -331,42 +331,103 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
   );
 
   // ── 9 · Decision Loading ──────────────────────────────────
-  if (step === 'decision') return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760, padding: 24, gap: 20 }}>
-      <div style={{ height: 200, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 24 }}>
-        <div className="mal-orb" style={{ width: 160, height: 160, animation: 'mal-orb-spin 5s linear infinite' }}/>
-      </div>
-      <div style={{ textAlign: 'center' }}>
-        <div className="mal-display-md" style={{ fontStyle: 'italic' }}>{isAr ? 'نُحلّل ملفك…' : 'Analysing your file…'}</div>
-        <div style={{ color: 'var(--mal-mid)', fontSize: 13, marginTop: 8 }}>{isAr ? 'عادةً ما يستغرق ٣٠ ثانية' : 'Typically takes 30 seconds'}</div>
-      </div>
-      <Card padded style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {[
-          { l: isAr ? 'سحب AECB' : 'AECB pull', s: 'done' },
-          { l: isAr ? 'تحليل ١٢ شهراً بنكي' : '12-mo cash-flow scoring', s: 'done' },
-          { l: isAr ? 'محرّك سياسة الائتمان' : 'Credit policy engine', s: 'load' },
-          { l: isAr ? 'مراجعة مستندات' : 'Document review', s: 'wait' },
-          { l: isAr ? 'القرار النهائي' : 'Final decision', s: 'wait' },
-        ].map((r, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
-            {r.s === 'done' && Ico.check({ width: 16, height: 16, stroke: 'var(--mal-success)' })}
-            {r.s === 'load' && <div style={{ width: 14, height: 14, border: '2px solid var(--mal-primary-3)', borderTopColor: 'transparent', borderRadius: 999, animation: 'mal-spin 1s linear infinite' }}/>}
-            {r.s === 'wait' && <div style={{ width: 14, height: 14, border: '1.5px solid var(--mal-line)', borderRadius: 999 }}/>}
-            <span style={{ color: r.s === 'wait' ? 'var(--mal-mid-2)' : 'var(--mal-ink)' }}>{r.l}</span>
-            {r.s === 'load' && <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--mal-mid)' }}>{isAr ? 'جارٍ' : 'running'}</span>}
-          </div>
-        ))}
-      </Card>
-      <div style={{ marginTop: 'auto', textAlign: 'center', fontSize: 11, color: 'var(--mal-mid)' }}>
-        {isAr ? 'سنرسل إشعاراً فور الاكتمال — يمكنك إغلاق التطبيق.' : 'We\'ll notify you when it\'s done — you can close the app.'}
-      </div>
-    </div>
-  );
+  if (step === 'decision') {
+    return <DecisionStep isAr={isAr} onDone={next}/>;
+  }
 
   // ── 10 · Limit Reveal (the hero) ──────────────────────────
   if (step === 'limit') return <HeroLimit lang={lang} onContinue={onDone || next}/>;
 
   return null;
+}
+
+// Decision step — CSS-only staggered animation. Each row reveals at its
+// own delay; no React state, so re-mounts don't break it. After ~4.5s
+// total the Continue button fades in and is clickable.
+function DecisionStep({ isAr, onDone }) {
+  const ROWS = [
+    { l: isAr ? 'سحب AECB'                  : 'AECB pull' },
+    { l: isAr ? 'تحليل ١٢ شهراً بنكي'        : '12-mo cash-flow scoring' },
+    { l: isAr ? 'محرّك سياسة الائتمان'      : 'Credit policy engine' },
+    { l: isAr ? 'مراجعة مستندات'            : 'Document review' },
+    { l: isAr ? 'القرار النهائي'             : 'Final decision' },
+  ];
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760, padding: 24, gap: 20 }}>
+      <div style={{ height: 180, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 16 }}>
+        <div className="mal-orb" style={{ width: 150, height: 150, animation: 'mal-orb-spin 4s linear infinite' }}/>
+      </div>
+      <div style={{ textAlign: 'center' }}>
+        <div className="mal-display-md" style={{ fontStyle: 'italic' }}>
+          {isAr ? 'نُحلّل ملفك…' : 'Analysing your file…'}
+        </div>
+        <div style={{ color: 'var(--mal-mid)', fontSize: 13, marginTop: 8 }}>
+          {isAr ? 'استغرق هذا ٤–٥ ثوانٍ في العادة' : 'This usually takes 4–5 seconds'}
+        </div>
+      </div>
+      <Card padded style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {ROWS.map((r, i) => (
+          <div key={i} className="mal-decision-row" style={{
+            display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
+            position: 'relative',
+            // Row stays at 'wait' state, then transitions to 'done' via two
+            // overlay layers each animated with its own delay.
+          }}>
+            <div style={{ width: 16, height: 16, position: 'relative', flexShrink: 0 }}>
+              {/* Wait/load circle — visible by default, fades out after row's delay */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                width: 14, height: 14,
+                border: '2px solid var(--mal-primary-3)',
+                borderTopColor: 'transparent',
+                borderRadius: 999,
+                animation: 'mal-spin 1s linear infinite, mal-decision-fade-out .3s ease forwards',
+                animationDelay: `0s, ${0.3 + i * 0.85}s`,
+              }}/>
+              {/* Done check — invisible by default, fades in at row's delay */}
+              <div style={{
+                position: 'absolute', inset: 0,
+                width: 16, height: 16,
+                opacity: 0,
+                animation: 'mal-decision-fade-in .35s ease forwards',
+                animationDelay: `${0.4 + i * 0.85}s`,
+                color: 'var(--mal-success)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {Ico.check({ width: 16, height: 16, stroke: 'var(--mal-success)' })}
+              </div>
+            </div>
+            <span style={{ color: 'var(--mal-ink)' }}>{r.l}</span>
+            {/* "running" label that fades out as "done" fades in */}
+            <span style={{
+              marginLeft: 'auto', fontSize: 11, color: 'var(--mal-mid)',
+              animation: 'mal-decision-fade-out .3s ease forwards',
+              animationDelay: `${0.3 + i * 0.85}s`,
+            }}>{isAr ? 'جارٍ' : 'running'}</span>
+            <span style={{
+              position: 'absolute', insetInlineEnd: 0,
+              marginLeft: 'auto', fontSize: 11, color: 'var(--mal-success)',
+              opacity: 0,
+              animation: 'mal-decision-fade-in .35s ease forwards',
+              animationDelay: `${0.4 + i * 0.85}s`,
+            }}>{isAr ? 'تمّ' : 'done'}</span>
+          </div>
+        ))}
+      </Card>
+      <div style={{ marginTop: 'auto', position: 'relative' }}>
+        {/* Continue button — appears after all rows complete (~5s) */}
+        <div style={{
+          opacity: 0,
+          animation: 'mal-decision-fade-in .4s ease forwards',
+          animationDelay: '5s',
+        }}>
+          <Button kind="primary" size="lg" full iconRight="arrow" onClick={onDone}>
+            {isAr ? 'عرض حدّك الائتماني' : 'Reveal your limit'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ============================================================

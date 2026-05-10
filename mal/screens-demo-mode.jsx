@@ -476,7 +476,7 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
     }}>
       <DemoPanel side="buyer" title="Buyer SME" sub="Aisha · Crescent Trading FZE" tone="lilac"
                  spotlight={scenario.spotlight === 'buyer'} toast={scenario.buyerToast} lang={lang}>
-        <BuyerSurface phase={phase} scenario={scenario} patch={patch} lang={lang}/>
+        <BuyerSurface phase={phase} setPhase={setPhase} scenario={scenario} patch={patch} lang={lang}/>
       </DemoPanel>
 
       {/* CENTRAL COLUMN: in live phase shows the CircularDayDial; otherwise
@@ -489,7 +489,7 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
 
       <DemoPanel side="supplier" title="Supplier SME" sub="Marwan · Atlas Packaging FZ" tone="sky"
                  spotlight={scenario.spotlight === 'supplier'} toast={scenario.supplierToast} lang={lang}>
-        <SupplierSurface phase={phase} scenario={scenario} patch={patch} lang={lang}/>
+        <SupplierSurface phase={phase} setPhase={setPhase} scenario={scenario} patch={patch} lang={lang}/>
       </DemoPanel>
     </div>
   );
@@ -878,17 +878,20 @@ function DemoToast({ toast }) {
 // 10. Buyer surface dispatcher
 // ==================================================================
 
-function BuyerSurface({ phase, scenario, patch, lang }) {
-  if (phase === 'intro') return <DemoIntroBuyer lang={lang}/>;
+function BuyerSurface({ phase, setPhase, scenario, patch, lang }) {
+  if (phase === 'intro') return <DemoIntroBuyer lang={lang} onProceed={() => setPhase('onboarding')}/>;
   if (phase === 'onboarding') {
     return <BuyerOnboardingFlow lang={lang}
                                 controlledStep={scenario.buyerStep}
-                                onStepChange={(n) => patch({ buyerStep: n })}/>;
+                                onStepChange={(n) => patch({ buyerStep: n })}
+                                onDone={() => setPhase('home')}/>;
   }
   if (phase === 'home' || phase === 'issue') return <DemoBuyerHomeEmpty lang={lang}/>;
-  if (phase === 'receive') return <DemoBuyerHomeWithInvoice lang={lang} scenario={scenario}/>;
-  if (phase === 'plan' || phase === 'sign') return <DemoBuyerPlanPicker lang={lang} scenario={scenario} patch={patch}/>;
-  if (phase === 'funded') return <DemoBuyerJustSigned lang={lang} scenario={scenario}/>;
+  if (phase === 'receive') return <DemoBuyerHomeWithInvoice lang={lang} scenario={scenario} onProceed={() => setPhase('plan')}/>;
+  if (phase === 'plan' || phase === 'sign') return <DemoBuyerPlanPicker lang={lang} scenario={scenario} patch={patch}
+                                                                         onSign={() => setPhase('sign')}
+                                                                         onSigned={() => setPhase('funded')}/>;
+  if (phase === 'funded') return <DemoBuyerJustSigned lang={lang} scenario={scenario} onProceed={() => setPhase('live')}/>;
   if (phase === 'live') {
     const route = scenario.buyerRoute || 'home';
     const setBuyerRoute = (r) => patch({ buyerRoute: r });
@@ -898,10 +901,10 @@ function BuyerSurface({ phase, scenario, patch, lang }) {
   return null;
 }
 
-function DemoIntroBuyer({ lang }) {
+function DemoIntroBuyer({ lang, onProceed }) {
   const isAr = lang === 'ar';
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ height: '100%', minHeight: 720, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #FAF7EE 0%, #EFEAFF 60%, #FAF7EE 100%)' }}/>
       <div style={{ position: 'absolute', top: 60, insetInlineEnd: -60, width: 280, height: 280, opacity: .5 }}>
         <div className="mal-orb" style={{ width: '100%', height: '100%', animation: 'mal-orb-spin 22s linear infinite' }}/>
@@ -911,9 +914,15 @@ function DemoIntroBuyer({ lang }) {
         <h1 className="mal-display" style={{ fontSize: 44, fontStyle: 'italic', lineHeight: 1, marginTop: 28, marginBottom: 12 }}>
           {isAr ? <>رأس مال<br/><span className="mal-iri-text">يتحرّك معك.</span></> : <>Capital that<br/><span className="mal-iri-text">moves with you.</span></>}
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--mal-mid)', maxWidth: 280, lineHeight: 1.5 }}>
-          {isAr ? 'افتح حسابك في ١٠ دقائق.' : 'Open your account in 10 minutes.'}
+        <p style={{ fontSize: 13, color: 'var(--mal-mid)', maxWidth: 280, lineHeight: 1.5, marginBottom: 24 }}>
+          {isAr ? 'افتح حسابك في ١٠ دقائق. ادفع موردينك الآن، اقبض من عملائك مبكراً.' : 'Open your account in 10 minutes. Pay suppliers now, get paid by buyers earlier.'}
         </p>
+        <Button kind="primary" size="lg" full iconRight="arrow" onClick={onProceed}>
+          {isAr ? 'افتح حساباً' : 'Get started'}
+        </Button>
+        <div style={{ fontSize: 11, color: 'var(--mal-mid)', textAlign: 'center', marginTop: 14 }}>
+          ADGM FSRA · UAE Pass · AECB
+        </div>
       </div>
     </div>
   );
@@ -946,7 +955,7 @@ function DemoBuyerHomeEmpty({ lang }) {
   );
 }
 
-function DemoBuyerHomeWithInvoice({ lang, scenario }) {
+function DemoBuyerHomeWithInvoice({ lang, scenario, onProceed }) {
   const isAr = lang === 'ar';
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -963,9 +972,10 @@ function DemoBuyerHomeWithInvoice({ lang, scenario }) {
           </div>
         </div>
       </Card>
-      <Card padded style={{
+      <Card padded onClick={onProceed} style={{
         borderColor: 'var(--mal-primary-3)', borderWidth: 1.5,
         animation: 'mal-fade-up .4s ease-out',
+        cursor: 'pointer',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{
@@ -986,6 +996,9 @@ function DemoBuyerHomeWithInvoice({ lang, scenario }) {
           <Pill tone="warn" dot>{isAr ? 'إجراء' : 'Action'}</Pill>
         </div>
       </Card>
+      <Button kind="primary" size="lg" full iconRight="arrow" onClick={onProceed}>
+        {isAr ? 'افتح الفاتورة' : 'Open invoice'}
+      </Button>
     </div>
   );
 }
@@ -994,7 +1007,7 @@ function DemoBuyerHomeWithInvoice({ lang, scenario }) {
 // 11. Plan picker + Confirm + JustSigned (used in narrative phases)
 // ==================================================================
 
-function DemoBuyerPlanPicker({ lang, scenario, patch }) {
+function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
   const isAr = lang === 'ar';
   const plans = [
     { key: 'pay30',         label: isAr ? 'ادفع خلال ٣٠'  : 'Pay in 30d',         cost: '0%',     sub: isAr ? 'مجّاناً' : 'Free' },
@@ -1004,6 +1017,18 @@ function DemoBuyerPlanPicker({ lang, scenario, patch }) {
     { key: 'installment_4', label: isAr ? 'أقساط ٤ شهور'  : 'Instalments · 4 mo', cost: '+3.6%',  sub: 'AED 9,000', recommended: true },
   ];
   const picked = scenario.plan?.type;
+  const [signing, setSigning] = dmS(false);
+  // Once signed, advance phase to 'funded' after a brief animation
+  dmE(() => {
+    if (signing) {
+      const t = setTimeout(() => {
+        patch({ signed: true, signing: false });
+        setSigning(false);
+        onSigned && onSigned();
+      }, 1300);
+      return () => clearTimeout(t);
+    }
+  }, [signing]);
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="mal-caption">{isAr ? 'فاتورة' : 'Invoice'} {scenario.invoice.id}</div>
@@ -1015,7 +1040,15 @@ function DemoBuyerPlanPicker({ lang, scenario, patch }) {
           const selected = picked === p.key;
           return (
             <button key={p.key}
-                    onClick={() => p.key === 'installment_4' ? patch({ plan: DEFAULT_PLAN }) : null}
+                    onClick={() => {
+                      // For demo, the "installment_4" path drives the lifecycle.
+                      // Other plans (cash / shorter installments) just track selection.
+                      if (p.key === 'installment_4') {
+                        patch({ plan: DEFAULT_PLAN });
+                      } else {
+                        patch({ plan: { type: p.key, label: p.label } });
+                      }
+                    }}
                     className={selected ? '' : 'mal-fade-up'}
                     style={{
                       all: 'unset', cursor: 'pointer',
@@ -1051,19 +1084,17 @@ function DemoBuyerPlanPicker({ lang, scenario, patch }) {
 
       {scenario.plan && (
         <Button kind="primary" size="lg" full
-                onClick={() => patch({ buyerRoute: 'confirm' })}
-                icon={scenario.signing ? 'check' : 'lock'}>
-          {scenario.signed
-            ? (isAr ? 'تمّ التوقيع' : 'Signed')
-            : (scenario.signing ? (isAr ? 'جارٍ التوقيع…' : 'Signing…')
-              : (isAr ? 'وقّع بهوية رقمية' : 'Sign with UAE Pass'))}
+                onClick={() => { if (!signing) { onSign && onSign(); setSigning(true); } }}
+                icon={signing ? 'check' : 'lock'}>
+          {signing ? (isAr ? 'جارٍ التوقيع…' : 'Signing…')
+            : (isAr ? 'وقّع بهوية رقمية' : 'Sign with UAE Pass')}
         </Button>
       )}
     </div>
   );
 }
 
-function DemoBuyerJustSigned({ lang, scenario }) {
+function DemoBuyerJustSigned({ lang, scenario, onProceed }) {
   const isAr = lang === 'ar';
   return (
     <div style={{ padding: 24, minHeight: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, textAlign: 'center' }}>
@@ -1073,9 +1104,12 @@ function DemoBuyerJustSigned({ lang, scenario }) {
       </div>
       <div style={{ color: 'var(--mal-mid)', fontSize: 13, maxWidth: 260, lineHeight: 1.5 }}>
         {isAr
-          ? 'سنحوّل لأطلس خلال ٤ ساعات. أوّل قسط في ٣٠ نوفمبر — AED 64,750.'
-          : 'Atlas gets paid within 4 hours. First instalment is 30 Nov — AED 64,750.'}
+          ? 'تمّ تحويل ٢٣٢٬٥٠٠ د.إ لأطلس. القسط الأوّل في يوم ٣٠.'
+          : 'AED 232,500 wired to Atlas. First instalment on Day 30.'}
       </div>
+      <Button kind="primary" size="lg" iconRight="arrow" onClick={onProceed}>
+        {isAr ? 'متابعة' : 'Continue'}
+      </Button>
     </div>
   );
 }
@@ -1730,25 +1764,26 @@ function DemoRefinanceSuccess({ lang, scenario, setBuyerRoute }) {
 // 14. SUPPLIER side
 // ==================================================================
 
-function SupplierSurface({ phase, scenario, patch, lang }) {
-  if (phase === 'intro') return <DemoIntroSupplier lang={lang}/>;
+function SupplierSurface({ phase, setPhase, scenario, patch, lang }) {
+  if (phase === 'intro') return <DemoIntroSupplier lang={lang} onProceed={() => setPhase('onboarding')}/>;
   if (phase === 'onboarding') {
     return <SupplierOnboardingFlow lang={lang}
                                    controlledStep={scenario.supplierStep}
-                                   onStepChange={(n) => patch({ supplierStep: n })}/>;
+                                   onStepChange={(n) => patch({ supplierStep: n })}
+                                   onDone={() => setPhase('home')}/>;
   }
-  if (phase === 'home') return <DemoSupplierHome lang={lang}/>;
-  if (phase === 'issue') return <DemoSupplierIssueInvoice lang={lang} scenario={scenario} patch={patch}/>;
+  if (phase === 'home') return <DemoSupplierHome lang={lang} onIssue={() => setPhase('issue')}/>;
+  if (phase === 'issue') return <DemoSupplierIssueInvoice lang={lang} scenario={scenario} patch={patch} onIssued={() => setPhase('receive')}/>;
   if (phase === 'receive' || phase === 'plan' || phase === 'sign') return <DemoSupplierAwaiting lang={lang} scenario={scenario}/>;
   if (phase === 'funded') return <DemoSupplierFunded lang={lang} scenario={scenario}/>;
   if (phase === 'live') return <DemoSupplierLive lang={lang} scenario={scenario} patch={patch}/>;
   return null;
 }
 
-function DemoIntroSupplier({ lang }) {
+function DemoIntroSupplier({ lang, onProceed }) {
   const isAr = lang === 'ar';
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ height: '100%', minHeight: 720, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #FAF7EE 0%, #DCE8F8 60%, #FAF7EE 100%)' }}/>
       <div style={{ position: 'absolute', top: 60, insetInlineEnd: -60, width: 280, height: 280, opacity: .55 }}>
         <div className="mal-orb" style={{ width: '100%', height: '100%', animation: 'mal-orb-spin 26s linear infinite' }}/>
@@ -1758,15 +1793,21 @@ function DemoIntroSupplier({ lang }) {
         <h1 className="mal-display" style={{ fontSize: 42, fontStyle: 'italic', lineHeight: 1, marginTop: 28, marginBottom: 12 }}>
           {isAr ? <>اقبض اليوم،<br/><span className="mal-iri-text">لا الشهر القادم.</span></> : <>Get paid today,<br/><span className="mal-iri-text">not next month.</span></>}
         </h1>
-        <p style={{ fontSize: 13, color: 'var(--mal-mid)', maxWidth: 280, lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: 'var(--mal-mid)', maxWidth: 280, lineHeight: 1.5, marginBottom: 24 }}>
           {isAr ? 'أصدر فاتورة. اعتمدها مال. تحويل خلال ٤ ساعات.' : 'Issue an invoice. Mal funds it. Wire in 4 hours.'}
         </p>
+        <Button kind="primary" size="lg" full iconRight="arrow" onClick={onProceed}>
+          {isAr ? 'افتح حساباً' : 'Get started'}
+        </Button>
+        <div style={{ fontSize: 11, color: 'var(--mal-mid)', textAlign: 'center', marginTop: 14 }}>
+          ADGM FSRA · UAE Pass · Peppol
+        </div>
       </div>
     </div>
   );
 }
 
-function DemoSupplierHome({ lang }) {
+function DemoSupplierHome({ lang, onIssue }) {
   const isAr = lang === 'ar';
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1782,13 +1823,19 @@ function DemoSupplierHome({ lang }) {
         <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 36, fontStyle: 'italic', marginTop: 4 }}>
           AED 339,400
         </div>
+        <div style={{ fontSize: 12, color: 'var(--mal-mid)', marginTop: 4 }}>
+          {isAr ? 'أصدر فاتورة لتبدأ' : 'Issue your first invoice to start'}
+        </div>
       </Card>
+      <Button kind="primary" size="lg" full icon="bolt" onClick={onIssue}>
+        {isAr ? 'أصدر فاتورة جديدة' : 'Issue a new invoice'}
+      </Button>
     </div>
   );
 }
 
-// Manual issue invoice — pre-filled draft, click to issue
-function DemoSupplierIssueInvoice({ lang, scenario, patch }) {
+// Manual issue invoice — pre-filled draft, click to issue + advance phase
+function DemoSupplierIssueInvoice({ lang, scenario, patch, onIssued }) {
   const isAr = lang === 'ar';
   const issued = !!scenario.invoice.issuedAt;
   const draftBuyer = scenario.draftBuyer || 'Crescent Trading FZE';
@@ -1814,15 +1861,30 @@ function DemoSupplierIssueInvoice({ lang, scenario, patch }) {
           {draftDescription}
         </div>
       </Field>
+      <Card padded style={{ background: 'var(--mal-info-bg)', border: 'none' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+          {dmIco.info ? dmIco.info({ width: 14, height: 14, color: 'var(--mal-info)' }) : 'ℹ'}
+          <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', lineHeight: 1.5 }}>
+            {isAr
+              ? 'بعد الإصدار: نُحوّل لك ٩٣٪ خلال ٤ ساعات (AED 232,500). الـ ٧٪ تبقى محتجزة (AED 17,500) وتُحرَّر فور سداد المشتري في يوم ٣٠.'
+              : 'After issuing: we wire you 93% (AED 232,500) within 4 hours. The 7% holdback (AED 17,500) is released the moment the buyer settles on Day 30.'}
+          </div>
+        </div>
+      </Card>
       <Button kind="primary" size="lg" full
               icon={issued ? 'check' : 'send'}
-              onClick={() => !issued && patch({
-                invoice: { ...scenario.invoice, issuedAt: new Date().toISOString() },
-                buyerToast: {
-                  title: isAr ? 'فاتورة جديدة من أطلس' : 'New invoice from Atlas',
-                  sub: `${scenario.invoice.id} · AED 250,000`, icon: 'invoice', tone: 'iri',
-                },
-              })}
+              onClick={() => {
+                if (!issued) {
+                  patch({
+                    invoice: { ...scenario.invoice, issuedAt: new Date().toISOString() },
+                    buyerToast: {
+                      title: isAr ? 'فاتورة جديدة من أطلس' : 'New invoice from Atlas',
+                      sub: `${scenario.invoice.id} · AED 250,000`, icon: 'invoice', tone: 'iri',
+                    },
+                  });
+                  onIssued && onIssued();
+                }
+              }}
               style={{ background: issued ? 'var(--mal-success)' : undefined }}>
         {issued ? (isAr ? 'تمّ الإصدار' : 'Issued') : (isAr ? 'أصدر الفاتورة' : 'Issue invoice')}
       </Button>
@@ -1880,23 +1942,40 @@ function DemoSupplierFunded({ lang, scenario }) {
   );
 }
 
-// Live supplier panel — buyer-journey timeline + informational soft alerts
-function DemoSupplierLive({ lang, scenario, patch }) {
+// Live supplier panel — FACTORING view, not EMI tracker.
+//
+// Mental model: Atlas sold the AED 250K invoice to Mal at Day 0 in a
+// non-recourse factoring deal. Atlas already received 93% (AED 232,500) on
+// Day 0. The 7% (AED 17,500) holdback releases the moment buyer "settles"
+// with Mal — which here means buyer enrolled in any plan, since Mal then
+// commits to absorb the buyer-side timing risk. If buyer never settles
+// (no plan signed by the original due date + grace), the holdback is
+// retained by Mal as the loss buffer; supplier keeps the 93%.
+function DemoSupplierLive({ lang, scenario }) {
   const isAr = lang === 'ar';
-  const { simDay, plan, paymentsByEmi, refinancedPaymentsByEmi } = scenario;
-  const isRefinanced = !!plan?.refinancedFrom;
-  const activePayments = isRefinanced ? refinancedPaymentsByEmi : paymentsByEmi;
-  const statuses = plan
-    ? (isRefinanced
-        ? computeMergedStatuses(plan, simDay, paymentsByEmi, refinancedPaymentsByEmi)
-        : computeEmiStatuses(plan, simDay, paymentsByEmi))
-    : [];
-  const overdue = findOverdue(statuses);
-  const paidCount = statuses.filter((e) => e.status === 'paid').length;
-  const totalCount = statuses.length;
-  const isClosed = paidCount === totalCount && totalCount > 0;
-  const events = plan ? buildEvents(simDay, plan, activePayments).filter((e) => e.scope === 'supplier') : [];
-  const balanceReceived = scenario.invoice.issuedAt || simDay >= 0 ? 232500 : 0;
+  const { simDay, plan, signed } = scenario;
+  const ADVANCE = 232500;          // 93% of 250K
+  const HOLDBACK = 17500;          // 7% of 250K
+  const TOTAL = ADVANCE + HOLDBACK;
+  const DUE_DAY = 30;              // original invoice due date
+  const GRACE_DAYS = 30;           // hold the holdback for 30d past due before forfeit
+
+  // Settlement event: buyer entered ANY plan with Mal (signed=true) by/before
+  // due date. Mal then absorbs the buyer-side risk; holdback is released to
+  // supplier on the original due date.
+  const settled = !!(plan && signed);
+
+  // Holdback status:
+  //   pending   — before due date, awaiting buyer settlement
+  //   released  — settled, holdback wired to supplier on due date
+  //   held      — past due, buyer hasn't settled, within grace
+  //   forfeit   — past due + grace, supplier keeps the 93% only
+  let holdbackStatus = 'pending';
+  if (settled && simDay >= DUE_DAY) holdbackStatus = 'released';
+  else if (!settled && simDay > DUE_DAY && simDay <= DUE_DAY + GRACE_DAYS) holdbackStatus = 'held';
+  else if (!settled && simDay > DUE_DAY + GRACE_DAYS) holdbackStatus = 'forfeit';
+
+  const totalReceived = holdbackStatus === 'released' ? TOTAL : ADVANCE;
 
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -1904,124 +1983,228 @@ function DemoSupplierLive({ lang, scenario, patch }) {
         <Avatar name="MA" tone="sky" size={36}/>
         <div>
           <div style={{ fontSize: 13, fontWeight: 500 }}>Atlas Packaging FZ</div>
-          <div style={{ fontSize: 11, color: overdue ? 'var(--mal-info)' : isClosed ? 'var(--mal-success)' : 'var(--mal-mid)' }}>
-            {overdue ? (isAr ? 'مال يجمع من المشتري · إعلاميّ' : 'Mal collecting from buyer · informational')
-              : isClosed ? (isAr ? 'دورة مكتملة' : 'Cycle complete')
+          <div style={{ fontSize: 11,
+                        color: holdbackStatus === 'released' ? 'var(--mal-success)'
+                             : holdbackStatus === 'held' ? 'var(--mal-info)'
+                             : holdbackStatus === 'forfeit' ? 'var(--mal-mid)' : 'var(--mal-mid)' }}>
+            {holdbackStatus === 'released' ? (isAr ? 'فاتورة مُسدّدة بالكامل' : 'Invoice fully settled')
+              : holdbackStatus === 'held' ? (isAr ? 'في انتظار تسوية المشتري' : 'Awaiting buyer settlement')
+              : holdbackStatus === 'forfeit' ? (isAr ? 'انتهت مهلة الإحتجاز' : 'Holdback forfeit window passed')
               : (isAr ? 'مورّد · مفعّل' : 'Supplier · Active')}
           </div>
         </div>
       </div>
 
-      {/* Soft informational notice when buyer is overdue (non-recourse) */}
-      {overdue && (
-        <Card padded style={{
-          background: 'var(--mal-info-bg)', borderColor: 'var(--mal-info)', borderWidth: 1,
-        }}>
+      {/* Big total received card — animates 232,500 → 250,000 on holdback release */}
+      <Card padded style={{
+        background: holdbackStatus === 'released'
+          ? 'linear-gradient(135deg, #1F7A4F 0%, #2A1F6F 100%)'
+          : 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)',
+        color: '#fff', border: 'none', position: 'relative', overflow: 'hidden',
+      }}>
+        <div className="mal-orb" style={{ position: 'absolute', width: 200, height: 200, top: -90, insetInlineEnd: -90, opacity: .3 }}/>
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 11, opacity: .8, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+            {isAr ? 'استلمتَ من مال' : 'Received from Mal'}
+          </div>
+          <div key={totalReceived /* re-mount to retrigger snap */} style={{
+            fontFamily: 'var(--mal-font-display)', fontSize: 38, fontStyle: 'italic', marginTop: 6,
+            animation: 'mal-day-snap .4s cubic-bezier(.4,1.6,.4,1)',
+          }}>
+            AED {totalReceived.toLocaleString()}
+          </div>
+          <div style={{ fontSize: 12, opacity: .8, marginTop: 4 }}>
+            {isAr ? 'فاتورة' : 'Invoice'} {scenario.invoice.id} · {isAr ? 'AED ٢٥٠٬٠٠٠ إجمالي' : 'AED 250,000 face value'}
+          </div>
+        </div>
+      </Card>
+
+      {/* Settlement breakdown — Day 0 advance + Day 30 holdback */}
+      <Card padded>
+        <div className="mal-caption" style={{ marginBottom: 12 }}>{isAr ? 'تفاصيل التسوية' : 'Settlement breakdown'}</div>
+
+        {/* Day 0 — advance */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--mal-line-2)' }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: 999,
+            background: 'var(--mal-success)', color: '#fff',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}>
+            {dmIco.check ? dmIco.check({ width: 12, height: 12, color: '#fff' }) : '✓'}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>
+              {isAr ? 'سُلفة ٩٣٪' : '93% advance'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+              {isAr ? `يوم ٠ · ${formatSimDay(0)}` : `Day 0 · ${formatSimDay(0)}`}
+            </div>
+          </div>
+          <span className="mal-num" style={{ fontSize: 14, fontWeight: 500 }}>
+            AED {ADVANCE.toLocaleString()}
+          </span>
+        </div>
+
+        {/* Day 30 — holdback */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
+          <div style={{
+            width: 30, height: 30, borderRadius: 999, flexShrink: 0,
+            background: holdbackStatus === 'released' ? 'var(--mal-success)'
+                      : holdbackStatus === 'forfeit' ? 'var(--mal-mid-2)'
+                      : '#fff',
+            color: holdbackStatus === 'released' ? '#fff'
+                  : holdbackStatus === 'forfeit' ? '#fff'
+                  : 'var(--mal-mid)',
+            border: holdbackStatus === 'pending' || holdbackStatus === 'held' ? '1.5px solid var(--mal-line)' : 'none',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {holdbackStatus === 'released'
+              ? (dmIco.check ? dmIco.check({ width: 12, height: 12, color: '#fff' }) : '✓')
+              : holdbackStatus === 'forfeit'
+              ? (dmIco.close ? dmIco.close({ width: 12, height: 12, color: '#fff' }) : '✕')
+              : holdbackStatus === 'held'
+              ? '!'
+              : <div style={{ width: 8, height: 8, borderRadius: 999, background: 'var(--mal-mid-2)' }}/>}
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>
+              {isAr ? 'احتجاز ٧٪' : '7% holdback'}
+            </div>
+            <div style={{ fontSize: 11,
+                          color: holdbackStatus === 'released' ? 'var(--mal-success)'
+                               : holdbackStatus === 'forfeit' ? 'var(--mal-mid)' : 'var(--mal-mid)' }}>
+              {holdbackStatus === 'pending' && (isAr ? `يُحرَّر يوم ${DUE_DAY} · ${formatSimDay(DUE_DAY)}` : `Releases Day ${DUE_DAY} · ${formatSimDay(DUE_DAY)}`)}
+              {holdbackStatus === 'released' && (isAr ? `حُرِّر · يوم ${DUE_DAY}` : `Released · Day ${simDay >= DUE_DAY ? DUE_DAY : simDay}`)}
+              {holdbackStatus === 'held' && (isAr ? `محجوز · لم يُسوِّ المشتري بعد` : `Held · buyer hasn't settled yet`)}
+              {holdbackStatus === 'forfeit' && (isAr ? `محتفظ به من قِبَل مال (مصدّ خسارة)` : `Retained by Mal as loss buffer (non-recourse)`)}
+            </div>
+          </div>
+          <span className="mal-num" style={{
+            fontSize: 14, fontWeight: 500,
+            color: holdbackStatus === 'forfeit' ? 'var(--mal-mid-2)' : 'var(--mal-ink)',
+            textDecoration: holdbackStatus === 'forfeit' ? 'line-through' : 'none',
+          }}>
+            AED {HOLDBACK.toLocaleString()}
+          </span>
+        </div>
+      </Card>
+
+      {/* Status notice */}
+      {holdbackStatus === 'released' && (
+        <Card padded style={{ background: 'var(--mal-success-bg)', borderColor: 'var(--mal-success)', borderWidth: 1 }}>
           <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10, background: '#fff', color: 'var(--mal-info)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff', color: 'var(--mal-success)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {dmIco.check ? dmIco.check({ width: 18, height: 18 }) : '✓'}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-success)' }}>
+                {isAr ? 'فاتورة مُسدّدة بالكامل · تمّ تحرير الاحتجاز' : 'Invoice fully settled · holdback released'}
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
+                {isAr
+                  ? `استلمتَ AED ${TOTAL.toLocaleString()} كاملاً. التزام المشتري للسداد يقع الآن مع مال — أيّ تأخّر هو مشكلة مال، ليس مشكلتك.`
+                  : `You received AED ${TOTAL.toLocaleString()} in full. The buyer's payment commitment now sits with Mal — any delay is Mal's problem, not yours.`}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {holdbackStatus === 'held' && (
+        <Card padded style={{ background: 'var(--mal-info-bg)', borderColor: 'var(--mal-info)', borderWidth: 1 }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff', color: 'var(--mal-info)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {dmIco.info ? dmIco.info({ width: 18, height: 18 }) : 'ℹ'}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-info)' }}>
-                {isAr ? 'مال يجمع من المشتري · إعلاميّ فقط' : 'Mal is collecting from buyer · informational only'}
+                {isAr ? 'الاحتجاز محجوز · إعلاميّ فقط' : 'Holdback held · informational only'}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
                 {isAr
-                  ? `المشتري في مرحلة «${overdue.stage}» اليوم ${overdue.daysOverdue}. تحويلك AED 232,500 آمن — مال يحمل المخاطر بنموذج عدم الرجوع. لا حاجة لأيّ إجراء منك.`
-                  : `Buyer is on Day ${overdue.daysOverdue} of stage \"${overdue.stage}\". Your AED 232,500 wire is safe — Mal carries the credit risk in non-recourse mode. No action required from you.`}
+                  ? `لم يُسوِّ المشتري الفاتورة في موعدها (يوم ${DUE_DAY}). مال يحتفظ بالـ ٧٪ كمصدّ. سُلفة ٩٣٪ التي حصلت عليها مضمونة — لا شيء عليك.`
+                  : `Buyer hasn't settled by Day ${DUE_DAY}. Mal is holding the 7% as a buffer. The 93% advance you already received is yours — no claw-back, no action required.`}
               </div>
             </div>
           </div>
         </Card>
       )}
 
-      {/* Buyer rescheduled — informational */}
-      {isRefinanced && (
-        <Card padded style={{ background: 'var(--mal-primary-50)', borderColor: 'var(--mal-primary-3)', borderWidth: 1 }}>
+      {holdbackStatus === 'forfeit' && (
+        <Card padded style={{ background: 'var(--mal-surface-2)', borderColor: 'var(--mal-line)', borderWidth: 1 }}>
           <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10, background: '#fff', color: 'var(--mal-primary)',
-              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-            }}>
-              {dmIco.refresh ? dmIco.refresh({ width: 18, height: 18 }) : '↻'}
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fff', color: 'var(--mal-mid)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {dmIco.shield ? dmIco.shield({ width: 18, height: 18 }) : '🛡'}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-primary)' }}>
-                {isAr ? 'أعاد المشتري جدولة قرضه' : 'Buyer rescheduled their loan'}
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-ink)' }}>
+                {isAr ? 'احتجاز محتفظ به من قِبَل مال' : 'Holdback retained by Mal'}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
                 {isAr
-                  ? 'الدورة تستمر طبيعيّاً · تحويلك ثابت.'
-                  : 'Cycle continues normally · your wire stays funded.'}
+                  ? `انتهت مهلة الإحتجاز (٣٠ يوم بعد موعد الاستحقاق). مال يحتفظ بالـ AED ${HOLDBACK.toLocaleString()} كمصدّ خسارة. أنت احتفظت بـ AED ${ADVANCE.toLocaleString()} كاملةً — هذا هو نموذج عدم الرجوع.`
+                  : `Grace window passed (${GRACE_DAYS}d after due date). Mal absorbs the AED ${HOLDBACK.toLocaleString()} as the loss buffer. You keep your AED ${ADVANCE.toLocaleString()} in full — this is what non-recourse means.`}
               </div>
             </div>
           </div>
         </Card>
       )}
 
+      {/* Activity feed — supplier-relevant only */}
       <Card padded>
-        <div className="mal-caption">{isAr ? 'استلمتَ من مال' : 'Received from Mal'}</div>
-        <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 30, fontStyle: 'italic', marginTop: 4 }}>
-          AED {balanceReceived.toLocaleString()}
-        </div>
-        <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 4 }}>
-          {isAr ? 'فاتورة' : 'Invoice'} {scenario.invoice.id} · 93% advance · 7% holdback
-        </div>
-      </Card>
-
-      <Card padded>
-        <div className="mal-caption" style={{ marginBottom: 8 }}>{isAr ? 'رحلة المشتري' : 'Buyer journey'} ({plan?.tenorMonths || 4}{isAr ? ' شهر' : ' mo'})</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {statuses.map((e, i) => (
-            <div key={`s-${e.fromOriginal ? 'o' : e.fromRefinanced ? 'n' : ''}-${e.num}-${e.dueDay}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="mal-caption" style={{ marginBottom: 8 }}>{isAr ? 'النشاط' : 'Activity'}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Always show: Day 0 wire */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: 999,
+              background: 'var(--mal-success-bg)', color: 'var(--mal-success)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>
+              {dmIco.bank ? dmIco.bank({ width: 13, height: 13 }) : '$'}
+            </div>
+            <div style={{ flex: 1, fontSize: 12 }}>
+              {isAr ? `تحويل سُلفة AED ${ADVANCE.toLocaleString()}` : `AED ${ADVANCE.toLocaleString()} advance wired`}
+            </div>
+            <span className="mal-mono" style={{ fontSize: 10, color: 'var(--mal-mid-2)' }}>Day 0</span>
+          </div>
+          {/* Day 30: settlement event */}
+          {simDay >= DUE_DAY && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
-                width: 22, height: 22, borderRadius: 999, flexShrink: 0,
-                background: e.status === 'paid' ? 'var(--mal-success)' : e.status === 'overdue' ? 'var(--mal-danger)' : 'var(--mal-line)',
-                color: '#fff',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600,
+                width: 26, height: 26, borderRadius: 999,
+                background: settled ? 'var(--mal-success-bg)' : 'var(--mal-info-bg)',
+                color: settled ? 'var(--mal-success)' : 'var(--mal-info)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
-                {e.status === 'paid' ? (dmIco.check ? dmIco.check({ width: 11, height: 11 }) : '✓')
-                  : e.status === 'overdue' ? '!' : e.num}
+                {dmIco[settled ? 'check' : 'info'] ? dmIco[settled ? 'check' : 'info']({ width: 13, height: 13 }) : '•'}
               </div>
               <div style={{ flex: 1, fontSize: 12 }}>
-                {e.fromOriginal ? (isAr ? `أوّلي · قسط ${e.num}` : `Original EMI ${e.num}`)
-                  : e.fromRefinanced ? (isAr ? `جديد · قسط ${e.num}` : `New EMI ${e.num}`)
-                  : (isAr ? `قسط ${e.num}` : `EMI ${e.num}`)}
-                {e.status === 'paid' && <span style={{ color: 'var(--mal-mid)' }}> · {formatSimDay(e.paidDay)}</span>}
-                {e.status === 'overdue' && <span style={{ color: 'var(--mal-danger)' }}> · {e.daysOverdue}d late</span>}
+                {settled
+                  ? (isAr ? `الاحتجاز AED ${HOLDBACK.toLocaleString()} مُحرَّر للمورّد` : `AED ${HOLDBACK.toLocaleString()} holdback released to supplier`)
+                  : (isAr ? `موعد الاستحقاق · المشتري لم يُسوِّ` : `Invoice due · buyer hasn't settled`)}
               </div>
-              <span className="mal-mono" style={{ fontSize: 11, color: 'var(--mal-mid-2)' }}>
-                Day {e.dueDay}
-              </span>
+              <span className="mal-mono" style={{ fontSize: 10, color: 'var(--mal-mid-2)' }}>Day {DUE_DAY}</span>
             </div>
-          ))}
+          )}
+          {/* Day 60: forfeit event */}
+          {holdbackStatus === 'forfeit' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 26, height: 26, borderRadius: 999,
+                background: 'var(--mal-surface-2)', color: 'var(--mal-mid)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                {dmIco.shield ? dmIco.shield({ width: 13, height: 13 }) : '🛡'}
+              </div>
+              <div style={{ flex: 1, fontSize: 12 }}>
+                {isAr ? 'انتهت مهلة الإحتجاز · مال احتفظ بالاحتجاز' : 'Grace expired · Mal retained the holdback'}
+              </div>
+              <span className="mal-mono" style={{ fontSize: 10, color: 'var(--mal-mid-2)' }}>Day {DUE_DAY + GRACE_DAYS}</span>
+            </div>
+          )}
         </div>
       </Card>
-
-      {events.length > 0 && (
-        <Card padded>
-          <div className="mal-caption" style={{ marginBottom: 8 }}>{isAr ? 'النشاط' : 'Activity'}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {events.slice(0, 4).map((ev, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{
-                  width: 26, height: 26, borderRadius: 999, flexShrink: 0,
-                  background: ev.tone === 'iri' ? 'var(--mal-info-bg)' : 'var(--mal-success-bg)',
-                  color: ev.tone === 'iri' ? 'var(--mal-info)' : 'var(--mal-success)',
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {dmIco[ev.icon] ? dmIco[ev.icon]({ width: 13, height: 13 }) : '•'}
-                </div>
-                <div style={{ flex: 1, fontSize: 12 }}>{ev.label}</div>
-                <span className="mal-mono" style={{ fontSize: 10, color: 'var(--mal-mid-2)' }}>Day {ev.day}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
     </div>
   );
 }
