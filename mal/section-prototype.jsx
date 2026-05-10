@@ -47,6 +47,11 @@ function SectionPrototype({ lang, isMobile }) {
                  style={{ position: 'fixed', top: 70, insetInlineStart: 18, zIndex: 65 }}/>
       )}
 
+      {isLive && (
+        <ResetDemoButton lang={lang}
+                         style={{ position: 'fixed', top: 70, insetInlineStart: 140, zIndex: 65 }}/>
+      )}
+
       <div style={{ minHeight: 'calc(100vh - 56px)' }}>
         {!isLive && <ComingSoon product={product} isAr={isAr}/>}
         {showDemo && (
@@ -134,6 +139,53 @@ function buildPrototypeTourSteps(isAr, entryId) {
       ],
       position: 'center', selector: null },
   ].filter(Boolean);
+}
+
+// ============================================================
+// ResetDemoButton — clears the persisted demo state (Supabase session
+// UUID + in-memory cache) and forces a fresh mount. Pure simulator —
+// no real data is touched. Confirms before nuking.
+// ============================================================
+function ResetDemoButton({ lang, style }) {
+  const isAr = lang === 'ar';
+  const [confirming, setConfirming] = pS(false);
+  pE(() => {
+    if (!confirming) return;
+    const t = setTimeout(() => setConfirming(false), 3500);
+    return () => clearTimeout(t);
+  }, [confirming]);
+
+  const onClick = () => {
+    if (!confirming) { setConfirming(true); return; }
+    try { localStorage.removeItem('mal_session_id'); } catch (e) {}
+    try { sessionStorage.clear(); } catch (e) {}
+    // Hard-reload so React state machine remounts with a new session UUID.
+    window.location.reload();
+  };
+
+  return (
+    <button onClick={onClick} aria-label={isAr ? 'إعادة تعيين العرض التجريبي' : 'Reset demo state'} style={{
+      appearance: 'none', cursor: 'pointer',
+      fontFamily: 'var(--mal-font-ui)',
+      fontSize: 12.5, fontWeight: 600,
+      padding: '8px 14px',
+      borderRadius: 999,
+      color: confirming ? '#fff' : 'var(--mal-ink-2)',
+      background: confirming ? '#b8364b' : 'var(--mal-paper)',
+      border: '1px solid ' + (confirming ? '#b8364b' : 'var(--mal-line)'),
+      transition: 'background .2s, color .2s, border-color .2s',
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      boxShadow: 'var(--mal-sh-1, 0 1px 2px rgba(0,0,0,0.06))',
+      ...style,
+    }}>
+      <span style={{ fontSize: 13 }}>{confirming ? '⚠' : '↺'}</span>
+      <span>
+        {confirming
+          ? (isAr ? 'تأكيد المسح' : 'Tap again to clear')
+          : (isAr ? 'إعادة تعيين' : 'Reset demo')}
+      </span>
+    </button>
+  );
 }
 
 // ============================================================
