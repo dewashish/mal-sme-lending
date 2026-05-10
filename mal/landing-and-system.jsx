@@ -57,25 +57,62 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
         paddingBlock: isMobile ? 28 : 60,
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
       }}>
-        {/* Wordmark */}
-        <h1 className="mal-fade-up mal-display" style={{
-          fontSize: isMobile ? 96 : 200,
-          fontStyle: 'italic',
-          letterSpacing: '-0.04em',
-          lineHeight: 0.9,
+        {/* Hero — video alongside the wordmark */}
+        <div className="mal-fade-up" style={{
+          display: 'flex', alignItems: 'center',
+          gap: isMobile ? 18 : 36, flexWrap: 'wrap',
           margin: 0, marginBottom: isMobile ? 22 : 40,
         }}>
-          <span className="mal-iri-text">Mal</span>
-          <span style={{
-            fontSize: isMobile ? 14 : 16, fontStyle: 'normal',
-            fontFamily: 'var(--mal-font-mono)', letterSpacing: '.18em',
-            textTransform: 'uppercase', color: 'var(--mal-mid)',
-            fontWeight: 500, marginInlineStart: isMobile ? 14 : 28,
-            verticalAlign: isMobile ? 'middle' : '40%',
+          {/* Looping animated mark */}
+          <div style={{
+            position: 'relative',
+            width: isMobile ? 110 : 200,
+            height: isMobile ? 110 : 200,
+            flexShrink: 0,
           }}>
-            {isAr ? 'إقراض المنشآت الصغيرة والمتوسطة' : 'SME Landing'}
-          </span>
-        </h1>
+            <div aria-hidden style={{
+              position: 'absolute', inset: -14,
+              borderRadius: '50%',
+              background: 'conic-gradient(from 90deg, var(--mal-iri-1), var(--mal-iri-2), var(--mal-iri-3), var(--mal-iri-4), var(--mal-iri-1))',
+              filter: 'blur(28px)', opacity: 0.55,
+              animation: 'mal-orb-spin 20s linear infinite',
+              pointerEvents: 'none',
+            }}/>
+            <video
+              src="video.mp4"
+              autoPlay loop muted playsInline
+              aria-hidden
+              style={{
+                position: 'relative', zIndex: 2,
+                width: '100%', height: '100%',
+                borderRadius: '50%',
+                objectFit: 'cover',
+                display: 'block',
+                mixBlendMode: 'multiply',
+              }}
+            />
+          </div>
+
+          {/* Wordmark */}
+          <h1 className="mal-display" style={{
+            fontSize: isMobile ? 64 : 140,
+            fontStyle: 'italic',
+            letterSpacing: '-0.04em',
+            lineHeight: 0.9,
+            margin: 0,
+          }}>
+            <span className="mal-iri-text">Mal</span>
+            <span style={{
+              display: 'block',
+              fontSize: isMobile ? 14 : 18, fontStyle: 'normal',
+              fontFamily: 'var(--mal-font-mono)', letterSpacing: '.18em',
+              textTransform: 'uppercase', color: 'var(--mal-mid)',
+              fontWeight: 500, marginTop: isMobile ? 8 : 14,
+            }}>
+              {isAr ? 'إقراض المنشآت الصغيرة والمتوسطة' : 'Mal · SME Lending'}
+            </span>
+          </h1>
+        </div>
 
         {/* Four cards */}
         <div style={{

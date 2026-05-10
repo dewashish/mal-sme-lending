@@ -11,18 +11,7 @@ const Ico = window.MalIcon;
 function MalLogo({ size = 28, light = false }) {
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-      <video
-        src="video.mp4"
-        autoPlay loop muted playsInline
-        aria-hidden
-        style={{
-          width: size, height: size,
-          borderRadius: '50%',
-          objectFit: 'cover',
-          display: 'block',
-          boxShadow: '0 0 0 1px rgba(0,0,0,.06)',
-        }}
-      />
+      <MalOrb size={size} />
       <span style={{
         fontFamily: 'var(--mal-font-display)',
         fontSize: size * 0.95,
