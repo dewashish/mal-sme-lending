@@ -72,11 +72,19 @@ const AI_TOC = [
   { id: 'aiInventory',  label: '20-agent inventory' },
   { id: 'aiArch',       label: 'Architecture' },
   { id: 'aiDecision',   label: 'Decision engine' },
+  { id: 'aiPricing',    label: 'Dynamic pricing' },
   { id: 'aiEws',        label: 'Early-warning system' },
   { id: 'aiCollect',    label: 'AI collections' },
   { id: 'aiData',       label: 'Data + governance' },
   { id: 'aiRoadmap',    label: 'Roadmap' },
 ];
+
+// Working prototype of the in-house decision-engine — credentials below.
+const DECISION_ENGINE_PROTOTYPE = {
+  url: 'https://dec-e.vercel.app/home',
+  username: 'abc@xyz.com',
+  password: '12345678',
+};
 
 function SectionAi({ lang, isMobile }) {
   const [activeId, setActiveId] = aiS('aiHero');
@@ -108,6 +116,7 @@ function SectionAi({ lang, isMobile }) {
         <AiInventory refFn={setRef('aiInventory')} isAr={isAr} isMobile={isMobile}/>
         <AiArchitecture refFn={setRef('aiArch')} isAr={isAr} isMobile={isMobile}/>
         <AiDecisionEngine refFn={setRef('aiDecision')} isAr={isAr} isMobile={isMobile}/>
+        <AiPricing refFn={setRef('aiPricing')} isAr={isAr} isMobile={isMobile}/>
         <AiEws refFn={setRef('aiEws')} isAr={isAr} isMobile={isMobile}/>
         <AiCollections refFn={setRef('aiCollect')} isAr={isAr} isMobile={isMobile}/>
         <AiData refFn={setRef('aiData')} isAr={isAr}/>
@@ -409,8 +418,11 @@ function AiDecisionEngine({ refFn, isAr, isMobile }) {
           : 'A risk manager can pause at any step, replay the agent trace, override a feature, and re-run — every action is hashed into the audit ledger.'}
       </AiP>
 
+      <DecisionPrototypeCta isAr={isAr} isMobile={isMobile}/>
+
+      <AiSub>{isAr ? 'تتبع القرار' : 'Decision trace'}</AiSub>
       <div style={{
-        marginTop: 16, display: 'flex', gap: 8, alignItems: 'center',
+        marginTop: 8, display: 'flex', gap: 8, alignItems: 'center',
       }}>
         <button onClick={() => setRunning((r) => !r)} className="mal-pill-btn">
           {running ? '❚❚ ' + (isAr ? 'إيقاف' : 'Pause') : '▶ ' + (isAr ? 'تشغيل' : 'Play')}
@@ -548,8 +560,17 @@ function AiEws({ refFn, isAr, isMobile }) {
       title={isAr ? 'يلتقط الضائقة قبل التعثر بأسبوعين.' : 'Catches distress two weeks before default.'}>
       <AiP>
         {isAr
-          ? 'حرّك أي إشارة لرؤية كيف تتغير درجة المخاطر. يستهلك EWS ٣٢ ميزة من نهج التشغيل والمكتب وقاعدة بياناتنا. هنا سبعة منها للتجربة.'
-          : 'Drag any signal to see how the live score moves. The production EWS consumes 32 features (cashflow, exposure, behaviour, bureau, sector). Six representative levers are exposed here so you can feel the model.'}
+          ? 'يربط EWS خمس فئات من إشارات الضائقة — مالية، مصرفية، تشغيلية، سلوكية، وكلية — في درجة واحدة، ثم يفعّل سُلم تدخل واضح. الهدف هو الوقاية، لا العلاج.'
+          : 'EWS fuses five families of distress signals — Financial, Banking, Operational, Behavioural, and Macroeconomic — into a single score, then triggers a clear action ladder. Prevention beats cure: catching trouble two weeks before it shows up in DPD is dramatically cheaper than collecting on it.'}
+      </AiP>
+
+      <EwsFlowDiagram isAr={isAr} isMobile={isMobile}/>
+
+      <AiSub>{isAr ? 'جرّب النموذج' : 'Feel the model'}</AiSub>
+      <AiP>
+        {isAr
+          ? 'حرّك أي إشارة لرؤية كيف تتغير الدرجة. يستهلك الإصدار الإنتاجي ٣٢ ميزة — هنا ست منها كعينة.'
+          : 'Drag any of the levers below to see how the live score moves. Production EWS consumes 32 features; six representative ones are exposed here.'}
       </AiP>
 
       <div style={{
@@ -632,8 +653,17 @@ function AiCollections({ refFn, isAr, isMobile }) {
       title={isAr ? 'حوارات تتعاطف، لا تطارد.' : 'Conversations that empathise — not chase.'}>
       <AiP>
         {isAr
-          ? 'الوكيل الصوتي الثنائي يتصل أولاً، يستمع، يقترح خطة، ويسجّل الالتزام بالدفع. البشر يدخلون فقط عند الحاجة.'
-          : 'The bilingual voice agent calls first, listens for context, proposes a plan, and books a promise-to-pay. Humans only step in for refer cases or sensitive situations — supervised by playback dashboards.'}
+          ? 'لا نتبع جدولة خطية ثابتة (يوم ٣، يوم ٧، يوم ١٤). المدخلات السلوكية، بيانات القرض، وملف العميل تغذّي نموذج التحصيل الذي يولّد توصية — أفضل قناة، أفضل وقت، أفضل نبرة — ثم تُنفّذ كحملة. حلقة التغذية الراجعة تدخل سجل الإجراءات لإعادة ضبط النموذج باستمرار.'
+          : 'No linear day-3 / day-7 / day-14 cadence. Behavioural, loan-info, and profile signals feed a collection model that emits a personalised recommendation — best channel, best time-slot, best message tone — which is executed as a campaign. Whether the action worked or not is logged and feeds back to retune the model.'}
+      </AiP>
+
+      <CollectionsFlowDiagram isAr={isAr} isMobile={isMobile}/>
+
+      <AiSub>{isAr ? 'الوكيل الصوتي · القمع · KPIs' : 'Voice agent · funnel · KPIs'}</AiSub>
+      <AiP>
+        {isAr
+          ? 'الوكيل الصوتي الثنائي ينفّذ التوصية: يتصل أولاً، يستمع، يقترح خطة، ويسجّل الالتزام بالدفع. البشر يدخلون فقط عند الحاجة.'
+          : 'The bilingual voice agent executes the recommendation: it calls first, listens for context, proposes a plan, and books a promise-to-pay. Humans only step in for refer cases or sensitive situations.'}
       </AiP>
 
       <div style={{
@@ -731,6 +761,741 @@ function Bubble({ who, children }) {
           {isAi ? 'AGENT' : 'CUSTOMER'}
         </div>
         {children}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// DECISION ENGINE — live prototype CTA
+// ============================================================
+function DecisionPrototypeCta({ isAr, isMobile }) {
+  const cfg = DECISION_ENGINE_PROTOTYPE;
+  const [copied, setCopied] = aiS('');
+  const copy = (txt, key) => {
+    try {
+      navigator.clipboard?.writeText(txt);
+      setCopied(key);
+      setTimeout(() => setCopied(''), 1300);
+    } catch (e) {}
+  };
+
+  return (
+    <div style={{
+      marginTop: 18, marginBottom: 26,
+      border: '1px solid var(--mal-line)',
+      borderRadius: 16, overflow: 'hidden',
+      background: 'var(--mal-paper)',
+    }}>
+      {/* Browser-frame mock header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '10px 14px',
+        borderBottom: '1px solid var(--mal-line)',
+        background: 'var(--mal-surface-2)',
+      }}>
+        <span style={{ display: 'inline-flex', gap: 5 }}>
+          <span style={{ width: 9, height: 9, borderRadius: 999, background: '#e85a4f' }}/>
+          <span style={{ width: 9, height: 9, borderRadius: 999, background: '#e8b34f' }}/>
+          <span style={{ width: 9, height: 9, borderRadius: 999, background: '#5fb260' }}/>
+        </span>
+        <code style={{
+          fontFamily: 'var(--mal-font-mono)',
+          fontSize: 12.5, color: 'var(--mal-mid)',
+          flex: 1, minWidth: 0,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{cfg.url}</code>
+        <Pill tone="success" dot>{isAr ? 'يعمل' : 'Live'}</Pill>
+      </div>
+
+      <div style={{
+        padding: 18,
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '1fr 280px',
+        gap: 18, alignItems: 'center',
+      }}>
+        <div>
+          <div className="mal-caption" style={{ color: 'var(--mal-primary)' }}>
+            {isAr ? 'نموذج عمل تفاعلي' : 'Working prototype'}
+          </div>
+          <div style={{
+            fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+            fontSize: 24, lineHeight: 1.2, marginTop: 4,
+          }}>
+            {isAr
+              ? 'محرك قرار قابل للضبط من فريق المخاطر.'
+              : 'A decision engine the risk team can configure themselves.'}
+          </div>
+          <p style={{
+            fontSize: 13.5, color: 'var(--mal-mid)',
+            marginTop: 8, lineHeight: 1.6, maxWidth: 540,
+          }}>
+            {isAr
+              ? 'بنينا واجهة منخفضة الكود حيث يضيف فريق المخاطر القواعد، يضبط البوابات، ويعدل السياسة دون الاعتماد على الهندسة. طبقة قواعد حتمية + طبقة تسجيل ذكي + محرك العروض.'
+              : 'We built the in-house low-code / drag-and-drop interface where the risk team adds rules, tunes policy gates, and ships scoring criteria without an engineering hand-off. Deterministic rule layer + AI scoring layer + offer engine — manageable day-to-day by risk.'}
+          </p>
+          <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a href={cfg.url} target="_blank" rel="noopener noreferrer"
+               className="mal-pill-btn"
+               style={{
+                 textDecoration: 'none',
+                 background: 'var(--mal-primary)',
+                 color: '#fff',
+                 borderColor: 'transparent',
+                 fontWeight: 600,
+                 display: 'inline-flex', alignItems: 'center', gap: 6,
+               }}>
+              {isAr ? 'افتح في تبويب جديد' : 'Open prototype'}
+              <span style={{ fontSize: 11 }}>↗</span>
+            </a>
+            <button onClick={() => copy(cfg.url, 'url')} className="mal-pill-btn">
+              {copied === 'url' ? (isAr ? 'تم النسخ' : 'Copied') : (isAr ? 'نسخ الرابط' : 'Copy link')}
+            </button>
+          </div>
+        </div>
+
+        {/* Credentials box */}
+        <div style={{
+          background: 'var(--mal-surface-2)',
+          border: '1px solid var(--mal-line)',
+          borderRadius: 12, padding: 14,
+        }}>
+          <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 8 }}>
+            {isAr ? 'بيانات الدخول' : 'Sign-in'}
+          </div>
+          <CredentialRow
+            label={isAr ? 'اسم المستخدم' : 'Username'}
+            value={cfg.username}
+            onCopy={() => copy(cfg.username, 'u')}
+            copied={copied === 'u'}
+            isAr={isAr}
+          />
+          <div style={{ height: 8 }}/>
+          <CredentialRow
+            label={isAr ? 'كلمة المرور' : 'Password'}
+            value={cfg.password}
+            onCopy={() => copy(cfg.password, 'p')}
+            copied={copied === 'p'}
+            isAr={isAr}
+            mono
+          />
+          <div style={{
+            marginTop: 10, fontSize: 10.5, color: 'var(--mal-mid-2)',
+            lineHeight: 1.5,
+          }}>
+            {isAr
+              ? 'بيئة عرض داخلية. لا توجد بيانات حقيقية.'
+              : 'Internal demo environment. No real customer data.'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CredentialRow({ label, value, onCopy, copied, isAr, mono }) {
+  return (
+    <div>
+      <div style={{
+        fontSize: 10.5, color: 'var(--mal-mid)',
+        textTransform: 'uppercase', letterSpacing: '.08em',
+        marginBottom: 3,
+      }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <code style={{
+          fontFamily: 'var(--mal-font-mono)',
+          fontSize: 13, color: 'var(--mal-ink)',
+          background: 'var(--mal-paper)',
+          border: '1px solid var(--mal-line)',
+          borderRadius: 7, padding: '5px 9px',
+          flex: 1, minWidth: 0,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{value}</code>
+        <button onClick={onCopy} title={isAr ? 'نسخ' : 'Copy'} style={{
+          appearance: 'none', cursor: 'pointer',
+          fontFamily: 'var(--mal-font-ui)', fontSize: 11,
+          padding: '5px 9px', borderRadius: 7,
+          border: '1px solid var(--mal-line)',
+          background: copied ? 'var(--mal-success-50, #e6f5ee)' : 'var(--mal-paper)',
+          color: copied ? 'var(--mal-success, #0a8056)' : 'var(--mal-ink-2)',
+          transition: 'background .2s, color .2s',
+        }}>{copied ? '✓' : (isAr ? 'نسخ' : 'Copy')}</button>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// DYNAMIC PRICING — diagram + linear equation
+// ============================================================
+function AiPricing({ refFn, isAr, isMobile }) {
+  const dataLake = [
+    { label: 'Device' }, { label: 'Profile' }, { label: 'LMS' },
+  ];
+  const realtime = [
+    { label: 'KYC' }, { label: 'LOS' }, { label: 'Bureau' },
+  ];
+  const modules = [
+    {
+      key: 'aff', name: isAr ? 'الوفرة' : 'Affluence', tone: '#5a3aa3',
+      bullets: ['Declared income', 'Estimated income', 'Bands D1, D2, …'],
+    },
+    {
+      key: 'risk', name: isAr ? 'المخاطر' : 'Risk', tone: '#b8364b',
+      bullets: ['Behavioural risk model (on-us)', 'Bureau, Price elasticity', 'Alternate-data model (off-us)'],
+    },
+    {
+      key: 'sens', name: isAr ? 'الحساسية' : 'Sensitivity', tone: '#0a8056',
+      bullets: ['Offer sensitivity', 'Loan amount, Price elasticity', 'Journey sensitivity, process convenience'],
+    },
+  ];
+  const arrows = [
+    { lhs: 'Risk',        dir: 'up',   rhs: 'Price', way: 'up'   },
+    { lhs: 'Affluence',   dir: 'up',   rhs: 'Price', way: 'down' },
+    { lhs: 'Sensitivity', dir: 'up',   rhs: 'Price', way: 'down' },
+    { lhs: 'Amount',      dir: 'up',   rhs: 'Price', way: 'down' },
+    { lhs: 'Tenure',      dir: 'up',   rhs: 'Price', way: 'up'   },
+  ];
+
+  return (
+    <AiSectionWrapper id="aiPricing" refFn={refFn}
+      eyebrow={isAr ? 'التسعير الديناميكي' : 'Dynamic pricing'}
+      title={isAr ? 'لكل عميل سعر يستحقه — لا تسعير ثابت.' : 'Risk-based pricing — never a flat APR.'}>
+      <AiP>
+        {isAr
+          ? 'الهدف ليس انتزاع أعلى هامش — بل العرض الصحيح للعميل الصحيح. مدخلات الجهاز والملف الشخصي و LMS، إلى جانب البيانات الحية من KYC و LOS والمكتب الائتماني، تغذي ثلاث وحدات تسعير: الوفرة، المخاطر، الحساسية. الناتج يمر بسقف وحدّ أدنى محكومين بسياسة المحفظة.'
+          : 'The goal is not to extract maximum margin — it is to give the right offer to the right customer. Device, profile, and LMS context, alongside live KYC, LOS, and Bureau data, feed three pricing modules — Affluence, Risk, Sensitivity. The output passes through portfolio-level governance (floor and cap) before it reaches the customer.'}
+      </AiP>
+
+      {/* Diagram */}
+      <div style={{
+        marginTop: 18, padding: 20,
+        background: 'var(--mal-paper)',
+        border: '1px solid var(--mal-line)',
+        borderRadius: 16,
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '210px 1fr 220px',
+        gap: 18, alignItems: 'stretch',
+      }}>
+        {/* Left: data sources */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <DataPanel
+            title={isAr ? 'بحيرة البيانات' : 'Data Lake · batch'}
+            chips={dataLake}
+            tone="#1f54c8"
+          />
+          <DataPanel
+            title={isAr ? 'بيانات حية' : 'Real-time data'}
+            chips={realtime}
+            tone="#0a8056"
+          />
+        </div>
+
+        {/* Middle: customer + 3 pricing modules */}
+        <div style={{
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', gap: 14, justifyContent: 'space-between',
+        }}>
+          <div style={{
+            padding: '12px 16px', borderRadius: 999,
+            background: 'var(--mal-surface-2)',
+            border: '1px solid var(--mal-line)',
+            fontSize: 13, fontWeight: 600,
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+          }}>
+            <span style={{
+              width: 26, height: 26, borderRadius: 999,
+              background: 'var(--mal-primary)', color: '#fff',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 13,
+            }}>👤</span>
+            {isAr ? 'العميل' : 'Customer'}
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 10, width: '100%',
+          }}>
+            {modules.map((m) => (
+              <div key={m.key} style={{
+                background: 'var(--mal-paper)',
+                border: '1px solid ' + m.tone + '55',
+                borderRadius: 12, padding: 12,
+                position: 'relative', overflow: 'hidden',
+              }}>
+                <div style={{
+                  position: 'absolute', insetInlineStart: 0, top: 0, bottom: 0,
+                  width: 3, background: m.tone,
+                }}/>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '.08em',
+                  textTransform: 'uppercase', color: m.tone,
+                  marginInlineStart: 8,
+                }}>{m.name}</div>
+                <ul style={{
+                  margin: '8px 0 0 8px', paddingInlineStart: 14,
+                  fontSize: 11, color: 'var(--mal-ink)', lineHeight: 1.55,
+                }}>
+                  {m.bullets.map((b, i) => <li key={i}>{b}</li>)}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div style={{
+            fontSize: 11, color: 'var(--mal-mid)', textAlign: 'center',
+            fontFamily: 'var(--mal-font-mono)',
+          }}>
+            ↓ {isAr ? 'عرض السعر الديناميكي' : 'Dynamic price offer'} ↓
+          </div>
+        </div>
+
+        {/* Right: approved offer + arrow legend */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{
+            background: 'linear-gradient(135deg, var(--mal-primary-50), var(--mal-paper))',
+            border: '1px solid var(--mal-primary-3)',
+            borderRadius: 12, padding: 14,
+          }}>
+            <div className="mal-caption" style={{ color: 'var(--mal-primary)' }}>
+              {isAr ? 'العرض المعتمد' : 'Approved offer'}
+            </div>
+            <ul style={{
+              margin: '8px 0 0', paddingInlineStart: 14,
+              fontSize: 12, color: 'var(--mal-ink)', lineHeight: 1.7,
+            }}>
+              <li>{isAr ? 'مبلغ القرض' : 'Selected loan amount'}</li>
+              <li>{isAr ? 'المدة' : 'Selected tenure'}</li>
+              <li>{isAr ? 'APR قائم على المخاطر' : 'Risk-based APR'}</li>
+            </ul>
+          </div>
+
+          <div style={{
+            background: 'var(--mal-surface-2)',
+            border: '1px solid var(--mal-line)',
+            borderRadius: 12, padding: 12,
+          }}>
+            <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 8 }}>
+              {isAr ? 'حساسية السعر' : 'Price sensitivity'}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {arrows.map((a, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 11.5, fontFamily: 'var(--mal-font-mono)',
+                }}>
+                  <span style={{ minWidth: 76, color: 'var(--mal-ink)' }}>{a.lhs}</span>
+                  <span style={{ color: 'var(--mal-mid)' }}>{a.dir === 'up' ? '↑' : '↓'}</span>
+                  <span style={{ color: 'var(--mal-mid-2)' }}>→</span>
+                  <span style={{ color: 'var(--mal-ink)' }}>{a.rhs}</span>
+                  <span style={{
+                    color: a.way === 'up' ? '#b8364b' : '#0a8056',
+                    fontWeight: 700,
+                  }}>{a.way === 'up' ? '↑' : '↓'}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Equation card */}
+      <div style={{
+        marginTop: 18, padding: 18,
+        background: 'var(--mal-paper)',
+        border: '1px solid var(--mal-line)',
+        borderRadius: 14,
+      }}>
+        <AiSub>{isAr ? 'المعادلة الخطية الأساسية' : 'Core linear equation'}</AiSub>
+        <p style={{
+          fontSize: 12.5, color: 'var(--mal-mid)',
+          margin: '0 0 10px', lineHeight: 1.55,
+        }}>
+          {isAr
+            ? 'لكل مقترض i بميزات مستمرة xij ومتغيرات مبوبة b(1)f, b(2)f. السعر بـ bps:'
+            : 'Borrower i has continuous features xij and bucketed attributes b(1)f, b(2)f. Price in bps:'}
+        </p>
+        <div style={{
+          padding: '12px 14px', borderRadius: 10,
+          background: 'var(--mal-surface-2)',
+          border: '1px solid var(--mal-line)',
+          fontFamily: 'var(--mal-font-mono)',
+          fontSize: 14, lineHeight: 1.7,
+          overflowX: 'auto', whiteSpace: 'nowrap',
+        }}>
+          APRᵢ = CoF + μ + Σⱼ βⱼ · xᵢⱼ + Σ_f G_f[ b<sup>(1)</sup>_f(i), b<sup>(2)</sup>_f(i) ]
+        </div>
+        <p style={{
+          fontSize: 12.5, color: 'var(--mal-mid)',
+          margin: '12px 0 6px', lineHeight: 1.55,
+        }}>
+          {isAr
+            ? 'ثم تطبَّق الحوكمة:'
+            : 'Then apply governance:'}
+        </p>
+        <div style={{
+          padding: '12px 14px', borderRadius: 10,
+          background: 'var(--mal-surface-2)',
+          border: '1px solid var(--mal-line)',
+          fontFamily: 'var(--mal-font-mono)',
+          fontSize: 14, lineHeight: 1.7,
+          overflowX: 'auto', whiteSpace: 'nowrap',
+        }}>
+          APRᵢ = min( max( APRᵢ, APR_floor ), APR_cap )
+        </div>
+        <div style={{
+          marginTop: 12,
+          display: 'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+          gap: 10, fontSize: 12, color: 'var(--mal-ink)', lineHeight: 1.55,
+        }}>
+          <div><strong>μ</strong>: {isAr ? 'انتشار قاعدة المحفظة (مضبوط لتحقيق هدف P&L / RAROC)' : 'portfolio base spread, tuned to hit P&L / RAROC target'}</div>
+          <div><strong>βⱼ</strong>: {isAr ? 'معاملات خطية للمحركات المستمرة' : 'linear coefficients for continuous drivers'}</div>
+          <div><strong>G_f</strong>: {isAr ? 'شبكات NxM لتفاعلات ثنائية (مثل Risk × Affluence)' : 'NxM grids capturing 2-way interactions (e.g. Risk × Affluence)'}</div>
+        </div>
+      </div>
+
+      {/* Tier band table — mirrors the PDF */}
+      <AiSub>{isAr ? 'نطاقات السعر حسب الفئة' : 'Risk-tier pricing bands'}</AiSub>
+      <div style={{
+        background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+        borderRadius: 14, overflow: 'hidden',
+      }}>
+        <table style={{
+          width: '100%', borderCollapse: 'collapse',
+          fontSize: 13, fontFamily: 'var(--mal-font-ui)',
+        }}>
+          <thead>
+            <tr style={{ background: 'var(--mal-surface-2)', borderBottom: '1px solid var(--mal-line)' }}>
+              <th style={{ textAlign: 'start', padding: '10px 14px', fontWeight: 600, color: 'var(--mal-mid)' }}>Risk tier</th>
+              <th style={{ textAlign: 'start', padding: '10px 14px', fontWeight: 600, color: 'var(--mal-mid)' }}>Annual rate</th>
+              <th style={{ textAlign: 'start', padding: '10px 14px', fontWeight: 600, color: 'var(--mal-mid)' }}>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { t: 'Tier 1 · Prime',     r: '12 – 15 %', n: 'Competitive vs incumbent banks; speed premium' },
+              { t: 'Tier 2 · Standard',  r: '16 – 22 %', n: 'Mainstream SME credit pricing' },
+              { t: 'Tier 3 · Near-prime',r: '23 – 28 %', n: 'Risk-adjusted; still below fintech / informal credit' },
+            ].map((row, i) => (
+              <tr key={i} style={{ borderTop: i ? '1px solid var(--mal-line-2)' : 'none' }}>
+                <td style={{ padding: '10px 14px', fontWeight: 600 }}>{row.t}</td>
+                <td style={{ padding: '10px 14px', fontFamily: 'var(--mal-font-mono)' }}>{row.r}</td>
+                <td style={{ padding: '10px 14px', color: 'var(--mal-mid)' }}>{row.n}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p style={{ marginTop: 8, fontSize: 11.5, color: 'var(--mal-mid-2)' }}>
+        {isAr ? 'افتراض: تكلفة التمويل ٤–٥٪ بناءً على سوق الودائع الإماراتي + وصول التمويل بالجملة.' : 'Assumption: cost of funds at ~4–5% p.a. based on UAE deposit market + wholesale funding access.'}
+      </p>
+    </AiSectionWrapper>
+  );
+}
+
+function DataPanel({ title, chips, tone }) {
+  return (
+    <div style={{
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+      borderRadius: 12, padding: 12,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{
+        position: 'absolute', insetInlineStart: 0, top: 0, bottom: 0,
+        width: 3, background: tone,
+      }}/>
+      <div style={{
+        fontSize: 10.5, fontWeight: 700, letterSpacing: '.08em',
+        textTransform: 'uppercase', color: tone,
+        marginInlineStart: 8, marginBottom: 8,
+      }}>{title}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginInlineStart: 8 }}>
+        {chips.map((c, i) => (
+          <span key={i} style={{
+            fontSize: 11, padding: '3px 8px',
+            borderRadius: 999,
+            background: 'var(--mal-surface-2)',
+            border: '1px solid var(--mal-line)',
+            color: 'var(--mal-ink-1)',
+            fontFamily: 'var(--mal-font-mono)',
+          }}>{c.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// EWS event-flow diagram — 5 categories → score → action ladder
+// ============================================================
+function EwsFlowDiagram({ isAr, isMobile }) {
+  const cats = [
+    {
+      key: 'fin', name: isAr ? 'مالية' : 'Financial', tone: '#1f54c8',
+      events: ['Declining cash flow', 'Poor sales / profit', 'Adverse audit reports', 'Inventory pile-up', 'Receivables pile-up', 'Low debt-coverage ratio'],
+    },
+    {
+      key: 'bank', name: isAr ? 'مصرفية' : 'Banking', tone: '#5a3aa3',
+      events: ['Poor payment record', 'Cheque bounces', 'Over-utilisation of limit', 'Central fraud data', 'Public defaulter list', 'Increase in debt'],
+    },
+    {
+      key: 'ops', name: isAr ? 'تشغيلية' : 'Operational', tone: '#b06a14',
+      events: ['Loss of customers', 'Disputes with suppliers', 'Labour unrest', 'Project / supplier delays', 'Regulatory violations', 'Management disputes'],
+    },
+    {
+      key: 'beh', name: isAr ? 'سلوكية' : 'Behavioural', tone: '#b8364b',
+      events: ['-ve media reporting', '-ve analyst report', 'Lawsuits filed', 'Frequent device / location change', 'Delay in payment', 'Ceasing communication'],
+    },
+    {
+      key: 'macro', name: isAr ? 'كلية' : 'Macroeconomic', tone: '#0a8056',
+      events: ['Economy outlook', 'Sectoral performance', 'Unemployment rate', 'Inflation forecast', 'Recession indicators', 'Banking NPAs'],
+    },
+  ];
+  const bands = [
+    {
+      name: isAr ? 'حرج' : 'Critical',  tone: '#b8364b',
+      actions: ['Immediate Freeze', 'Intensive Review', 'Direct Engagement', 'Initiate Recovery', 'System Flag'],
+    },
+    {
+      name: isAr ? 'مرتفع' : 'High',     tone: '#b06a14',
+      actions: ['Limit Management', 'Proactive Intervention', 'Restructuring', 'Enhanced Monitoring'],
+    },
+    {
+      name: isAr ? 'متوسط' : 'Medium',   tone: '#1f54c8',
+      actions: ['Automated Monitoring', 'Suspend Pre-approvals', 'Soft Engagement', 'Portfolio Review'],
+    },
+    {
+      name: isAr ? 'منخفض' : 'Low',      tone: '#0a8056',
+      actions: ['Standard Management', 'Growth Opportunity', 'Customer Loyalty', 'Automated Monitoring'],
+    },
+  ];
+
+  return (
+    <div style={{
+      marginTop: 8, padding: 18,
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+      borderRadius: 16,
+    }}>
+      {/* Top: 5 event-source columns */}
+      <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 10 }}>
+        {isAr ? 'مصادر الأحداث' : 'Event sources'}
+      </div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)',
+        gap: 10,
+      }}>
+        {cats.map((c) => (
+          <div key={c.key} style={{
+            background: 'var(--mal-surface-2)',
+            border: '1px solid ' + c.tone + '40',
+            borderRadius: 10, padding: 10,
+          }}>
+            <div style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: '.08em',
+              textTransform: 'uppercase', color: c.tone,
+              marginBottom: 6,
+            }}>{c.name}</div>
+            <ul style={{
+              margin: 0, paddingInlineStart: 14,
+              fontSize: 10.5, lineHeight: 1.5, color: 'var(--mal-ink)',
+            }}>
+              {c.events.map((e, i) => <li key={i}>{e}</li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {/* Trigger arrows */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)',
+        gap: 10, margin: '8px 0',
+      }}>
+        {cats.map((c) => (
+          <div key={c.key} style={{
+            display: 'flex', justifyContent: 'center',
+            fontSize: 10, color: 'var(--mal-mid-2)',
+            fontFamily: 'var(--mal-font-mono)', letterSpacing: '.08em',
+          }}>↓ Trigger ↓</div>
+        ))}
+      </div>
+
+      {/* EWS Score bar */}
+      <div style={{
+        padding: '12px 16px',
+        background: 'linear-gradient(90deg, #0a805615, #1f54c815, #b06a1415, #b8364b15)',
+        border: '1px solid var(--mal-line)',
+        borderRadius: 10,
+        textAlign: 'center',
+        fontWeight: 700, fontSize: 14,
+        letterSpacing: '.06em',
+        color: 'var(--mal-ink-1)',
+      }}>EWS SCORE</div>
+
+      {/* 4 risk bands */}
+      <div style={{
+        marginTop: 14,
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+        gap: 10,
+      }}>
+        {bands.map((b) => (
+          <div key={b.name} style={{
+            background: 'var(--mal-paper)',
+            border: '1px solid ' + b.tone + '40',
+            borderRadius: 10, padding: 12,
+            position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+              background: b.tone,
+            }}/>
+            <div style={{
+              fontSize: 12, fontWeight: 700,
+              color: b.tone, marginTop: 6, marginBottom: 6,
+            }}>{b.name}</div>
+            <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 4 }}>
+              {isAr ? 'الإجراءات' : 'Actions'}
+            </div>
+            <ul style={{
+              margin: 0, paddingInlineStart: 14,
+              fontSize: 10.5, lineHeight: 1.55, color: 'var(--mal-ink)',
+            }}>
+              {b.actions.map((a, i) => <li key={i}>{a}</li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      {/* Operating tools row */}
+      <div style={{
+        marginTop: 12,
+        display: 'flex', flexWrap: 'wrap', gap: 8,
+        fontSize: 11, color: 'var(--mal-mid)',
+      }}>
+        <span style={{ color: 'var(--mal-mid-2)' }}>{isAr ? 'الأدوات:' : 'Tools:'}</span>
+        {['Reports & Dashboards', 'Case Management', 'Investigation Tools'].map((t) => (
+          <span key={t} style={{
+            padding: '3px 9px', borderRadius: 999,
+            background: 'var(--mal-surface-2)',
+            border: '1px solid var(--mal-line)',
+          }}>{t}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// COLLECTIONS — AI flow diagram
+// ============================================================
+function CollectionsFlowDiagram({ isAr, isMobile }) {
+  const inputs = [
+    { name: isAr ? 'سلوكية' : 'Behavioural' },
+    { name: isAr ? 'بيانات القرض' : 'Loan info' },
+    { name: isAr ? 'الملف' : 'Profile' },
+  ];
+  const outputs = [
+    { name: isAr ? 'قنوات الاتصال / الاتصال التلقائي' : 'Communication channels / auto-diallers' },
+    { name: isAr ? 'الفترة الزمنية' : 'Time slot' },
+    { name: isAr ? 'نبرة الرسالة' : 'Message tone' },
+  ];
+  return (
+    <div style={{
+      marginTop: 8, padding: 18,
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+      borderRadius: 16,
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr' : '1fr 240px',
+      gap: 18,
+    }}>
+      <div>
+        {/* Inputs row */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10,
+        }}>
+          {inputs.map((it, i) => (
+            <div key={i} style={{
+              background: 'var(--mal-surface-2)',
+              border: '1px solid var(--mal-line)',
+              borderRadius: 10, padding: '10px 12px',
+              textAlign: 'center', fontSize: 12.5, fontWeight: 600,
+              color: 'var(--mal-ink)',
+            }}>{it.name}</div>
+          ))}
+        </div>
+
+        <div style={{
+          textAlign: 'center', fontSize: 10.5, color: 'var(--mal-mid-2)',
+          margin: '6px 0', fontFamily: 'var(--mal-font-mono)', letterSpacing: '.1em',
+        }}>↓ {isAr ? 'علم البيانات' : 'Data science'} ↓</div>
+
+        {/* Pipeline */}
+        <div style={{
+          padding: 14, borderRadius: 12,
+          background: 'var(--mal-paper)',
+          border: '1.5px dashed var(--mal-primary-3)',
+        }}>
+          {[
+            { name: isAr ? 'نموذج التحصيل' : 'Collection model',  fill: 'var(--mal-surface-2)', mark: false },
+            { name: isAr ? 'توصية الذكاء الاصطناعي' : 'AI Recommendation', fill: 'var(--mal-primary-50)', mark: true },
+            { name: isAr ? 'حملات التحصيل' : 'Collection campaigns', fill: 'var(--mal-surface-2)', mark: false },
+          ].map((b, i) => (
+            <div key={i}>
+              <div style={{
+                background: b.fill,
+                border: '1px solid ' + (b.mark ? 'var(--mal-primary)' : 'var(--mal-line)'),
+                borderRadius: 10, padding: '10px 14px',
+                textAlign: 'center', fontSize: 13, fontWeight: 600,
+                color: b.mark ? 'var(--mal-primary)' : 'var(--mal-ink)',
+              }}>{b.name}</div>
+              {i < 2 && (
+                <div style={{
+                  textAlign: 'center', fontSize: 10, color: 'var(--mal-mid-2)',
+                  margin: '4px 0', fontFamily: 'var(--mal-font-mono)',
+                }}>{i === 0 ? (isAr ? 'منشئ الاستراتيجية' : 'Strategy builder') : '↓'}</div>
+              )}
+            </div>
+          ))}
+
+          {/* Feedback loop */}
+          <div style={{
+            marginTop: 14,
+            background: 'rgba(184,54,75,0.06)',
+            border: '1px dashed #b8364b66',
+            borderRadius: 10, padding: '8px 12px',
+            fontSize: 11, color: 'var(--mal-ink)', lineHeight: 1.55,
+          }}>
+            <span style={{ color: '#b8364b', fontWeight: 700 }}>
+              {isAr ? '↺ حلقة التغذية الراجعة:' : '↺ Feedback loop:'}
+            </span>{' '}
+            {isAr
+              ? 'هل اتُّخذ الإجراء؟ سجّل الحدث · أعِد ضبط توصيات النموذج.'
+              : 'Action taken or not · event-action log · refines the model\'s recommendations.'}
+          </div>
+        </div>
+      </div>
+
+      {/* Right: outputs (channel / time / tone) */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="mal-caption" style={{ color: 'var(--mal-mid)' }}>
+          {isAr ? 'الإخراج' : 'Output'}
+        </div>
+        {outputs.map((o, i) => (
+          <div key={i} style={{
+            background: 'linear-gradient(135deg, var(--mal-primary-50), var(--mal-paper))',
+            border: '1px solid var(--mal-primary-3)',
+            borderRadius: 10, padding: '10px 12px',
+            fontSize: 12.5, fontWeight: 600,
+            color: 'var(--mal-ink)',
+          }}>{o.name}</div>
+        ))}
       </div>
     </div>
   );
