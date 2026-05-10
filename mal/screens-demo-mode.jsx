@@ -2025,6 +2025,9 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         );
       })()}
 
+      {/* Trust dashboard — regulator + bureau + ISO badges */}
+      {!allClosed && <TrustBadgesRow isAr={isAr}/>}
+
       {/* Notification preference centre — channel + language picker, with timeline preview */}
       {!allClosed && (
         <NotifPrefsCard
@@ -3318,6 +3321,86 @@ function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
         })}
       </div>
     </Card>
+  );
+}
+
+// ============================================================
+// TrustBadgesRow — compact regulator / bureau / Sharia / ISO row.
+// Surfaces who oversees Mal so SME owners can verify in one glance.
+// ============================================================
+function TrustBadgesRow({ isAr }) {
+  const [open, setOpen] = dmS(false);
+  const badges = [
+    {
+      key: 'reg', label: isAr ? 'ADGM FSRA' : 'ADGM FSRA',
+      sub: isAr ? 'فئة ٢ — تقديم الائتمان' : 'Cat 2 · Providing Credit',
+      tone: '#5a3aa3',
+    },
+    {
+      key: 'cb', label: isAr ? 'CBUAE' : 'CBUAE',
+      sub: isAr ? 'تسجيل المنتج · إفصاح حماية المستهلك' : 'Product reg · CPR-aligned',
+      tone: '#1f54c8',
+    },
+    {
+      key: 'aecb', label: isAr ? 'AECB' : 'AECB',
+      sub: isAr ? 'إبلاغ شهري' : 'Monthly bureau reporting',
+      tone: '#0a8056',
+    },
+    {
+      key: 'sharia', label: isAr ? 'شرعي' : 'AAOIFI · Sharia',
+      sub: isAr ? 'هيكل التورّق · فتوى متاحة' : 'Tawarruq · Fatwa on file',
+      tone: '#0a8056',
+    },
+    {
+      key: 'iso', label: 'ISO 27001',
+      sub: isAr ? 'أمن المعلومات' : 'Information security',
+      tone: '#b06a14',
+    },
+  ];
+  return (
+    <div style={{
+      padding: '10px 12px', borderRadius: 12,
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        cursor: 'pointer',
+      }} onClick={() => setOpen(!open)}>
+        <span style={{ fontSize: 13 }}>🛡</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--mal-ink)' }}>
+            {isAr ? 'مرخّص ومدقَّق' : 'Licensed · audited · transparent'}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--mal-mid)', marginTop: 1 }}>
+            ADGM · CBUAE · AECB · AAOIFI · ISO 27001
+          </div>
+        </div>
+        <span style={{ color: 'var(--mal-mid-2)', fontSize: 10 }}>
+          {open ? '▾' : '▸'}
+        </span>
+      </div>
+      {open && (
+        <div style={{
+          marginTop: 10, display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 6,
+        }}>
+          {badges.map((b) => (
+            <div key={b.key} style={{
+              padding: 8, borderRadius: 8,
+              background: b.tone + '12',
+              border: '1px solid ' + b.tone + '40',
+            }}>
+              <div style={{
+                fontSize: 10.5, fontWeight: 700, color: b.tone,
+                letterSpacing: '.04em', textTransform: 'uppercase',
+              }}>{b.label}</div>
+              <div style={{ fontSize: 10, color: 'var(--mal-mid)', marginTop: 2, lineHeight: 1.4 }}>{b.sub}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
