@@ -18,7 +18,7 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
   return (
     <div dir={isAr ? 'rtl' : 'ltr'} style={{
       fontFamily: 'var(--mal-font-ui)', color: 'var(--mal-ink)',
-      background: 'var(--mal-surface)', minHeight: '100vh',
+      background: '#C2D1E6', minHeight: '100vh',
       position: 'relative', overflow: 'hidden',
       display: 'flex', flexDirection: 'column',
     }}>
