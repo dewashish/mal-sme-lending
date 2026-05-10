@@ -93,24 +93,26 @@ function SectionFinancial({ lang, isMobile }) {
           {isLive && (
             <a href={`models/${data.meta.workbook}`} download={data.meta.workbook}
                title={`${data.meta.workbook} · ${data.meta.sheets} sheets · synced ${data.meta.lastUpdated}`}
+               className="mal-excel-cta"
                style={{
                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                 padding: '8px 14px', borderRadius: 999,
-                 background: 'var(--mal-paper)',
-                 border: '1px solid var(--mal-line)',
-                 color: 'var(--mal-ink)',
-                 fontSize: 12.5, fontWeight: 600,
+                 padding: '9px 16px', borderRadius: 999,
+                 background: '#107C41',
+                 border: '1px solid #0E6939',
+                 color: '#FFFFFF',
+                 fontSize: 12.5, fontWeight: 600, letterSpacing: '0.01em',
                  textDecoration: 'none',
-                 transition: 'border-color .15s, transform .15s',
+                 transition: 'background .15s, transform .15s',
                }}
                onMouseEnter={(e) => {
-                 e.currentTarget.style.borderColor = '#107C41';
+                 e.currentTarget.style.background = '#0E6939';
                  e.currentTarget.style.transform = 'translateY(-1px)';
                }}
                onMouseLeave={(e) => {
-                 e.currentTarget.style.borderColor = 'var(--mal-line)';
+                 e.currentTarget.style.background = '#107C41';
                  e.currentTarget.style.transform = 'translateY(0)';
                }}>
+              <DownloadArrowIcon/>
               <ExcelIcon/>
               <span>{isAr ? 'تحميل إكسل' : 'Download Excel'}</span>
             </a>
@@ -293,13 +295,24 @@ function buildEconomicsTourSteps(data, isAr) {
   ];
 }
 
-// Microsoft Excel logo — small inline SVG, official Excel green (#107C41)
+// Microsoft Excel logo — sits on the green button as a white tile with green X
 function ExcelIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <rect x="0.5" y="0.5" width="15" height="15" rx="2" fill="#107C41"/>
+    <svg width="15" height="15" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect x="0.5" y="0.5" width="15" height="15" rx="2" fill="#FFFFFF"/>
       <path d="M5.0 4.5 L7.6 8 L5.0 11.5 H6.6 L8.4 8.95 L10.2 11.5 H11.8 L9.2 8 L11.8 4.5 H10.2 L8.4 7.05 L6.6 4.5 Z"
-            fill="#FFFFFF"/>
+            fill="#107C41"/>
+    </svg>
+  );
+}
+
+// Down-arrow with line under it — clear "download to disk" affordance
+function DownloadArrowIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M8 2 V11 M4 7.5 L8 11.5 L12 7.5 M3.5 13.5 H12.5"
+            stroke="currentColor" strokeWidth="1.6"
+            fill="none" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   );
 }
