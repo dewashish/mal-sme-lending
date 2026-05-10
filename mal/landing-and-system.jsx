@@ -13,9 +13,9 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
       accent: 'linear-gradient(135deg, #C9B7E8, #B6CFE8 70%, #FBD9B5)' },
     { id: 'prototype', num: '02', label: isAr ? 'النموذج' : 'Prototype',
       accent: 'linear-gradient(135deg, #B6CFE8, #C9B7E8 70%, #F0B7C2)' },
-    { id: 'financial', num: '03', label: isAr ? 'النمذجة المالية' : 'Financial Modeling',
+    { id: 'financial', num: '03', label: isAr ? 'الاقتصاد' : 'Economics',
       accent: 'linear-gradient(135deg, #FBD9B5, #F0B7C2 60%, #C9B7E8)' },
-    { id: 'ai',        num: '04', label: isAr ? 'مبادرات الذكاء' : 'AI Initiatives',
+    { id: 'ai',        num: '04', label: isAr ? 'الذكاء' : 'AI',
       accent: 'linear-gradient(135deg, #C658FD, #8B41E1 60%, #C9B7E8)' },
   ];
 

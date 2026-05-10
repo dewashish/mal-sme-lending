@@ -13,3 +13,5 @@ node_modules/
 landing.png
 buyer-app-desktop.png
 mobile-ar-buyer.png
+~$*.xlsx
+.venv-models/

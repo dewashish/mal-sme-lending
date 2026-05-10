@@ -60,6 +60,7 @@ function SectionStrategy({ lang, isMobile }) {
         paddingTop: 28,
       }}>
         <DocHero isAr={isAr} isMobile={isMobile}/>
+        <LiveUnitEconomicsCallout isAr={isAr} isMobile={isMobile}/>
         <DocBody doc={doc} sectionRefs={sectionRefs}/>
         <DocOutro isAr={isAr}/>
       </article>
@@ -125,6 +126,137 @@ function StrategyTOC({ toc, activeId, jumpTo, isAr }) {
         })}
       </div>
     </aside>
+  );
+}
+
+// ============================================================
+// Live Unit Economics callout — pulls from window.MAL_P1_DATA
+// ============================================================
+function LiveUnitEconomicsCallout({ isAr, isMobile }) {
+  const data = (typeof window !== 'undefined') ? window.MAL_P1_DATA : null;
+  if (!data) return null;
+  const fy = data.fiveYearSummary;
+  const r3 = data.ratios.y3;
+  const r5 = data.ratios.y5;
+  const ue = data.unitEconomics;
+
+  const fmtAedM = (n, dp = 0) => 'AED ' + (n).toFixed(dp) + 'M';
+  const fmtAedB = (n, dp = 1) => 'AED ' + (n / 1000).toFixed(dp) + 'B';
+  const fmtPct  = (n, dp = 1) => n.toFixed(dp) + '%';
+
+  return (
+    <section style={{
+      margin: '12px 0 36px',
+      padding: isMobile ? 20 : 26,
+      borderRadius: 16,
+      background: 'linear-gradient(135deg, rgba(201,183,232,0.18) 0%, rgba(168,192,154,0.12) 100%)',
+      border: '1px solid var(--mal-line)',
+      position: 'relative',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <Pill tone="iri" dot>{isAr ? 'مباشر · النموذج المالي' : 'Live · canonical financial model'}</Pill>
+        <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+          {data.meta.workbook} · {data.meta.sheets} {isAr ? 'ورقة' : 'sheets'} · {isAr ? 'مزامنة' : 'synced'} {data.meta.lastUpdated}
+        </span>
+      </div>
+      <div style={{
+        fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+        fontSize: isMobile ? 22 : 28, lineHeight: 1.15, letterSpacing: '-0.01em',
+        marginBottom: 6,
+      }}>
+        {isAr ? 'الاقتصاد الوحدوي · المنتج ١ (بطاقة الفاتورة الذكية)' : 'Unit economics · P1 (Smart Invoice)'}
+      </div>
+      <div style={{ fontSize: 13, color: 'var(--mal-mid)', marginBottom: 18, lineHeight: 1.55 }}>
+        {isAr
+          ? 'الأرقام المحدثة من النموذج المعتمد. كل تعديل في إكسل ينعكس هنا تلقائياً.'
+          : 'Live numbers from the canonical Excel model. Updates flow automatically when the workbook is re-synced.'}
+      </div>
+
+      {/* Five headline KPIs */}
+      <div style={{
+        display: 'grid', gap: 10,
+        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)',
+        marginBottom: 22,
+      }}>
+        {[
+          [isAr ? 'صرف ٥ سنوات' : '5-yr disbursement', fmtAedB(fy.face, 1), isAr ? '٢٥٠M → ١٣B' : 'Y1 250M → Y5 13B'],
+          [isAr ? 'مساهمة صافية تراكمية' : 'Cum. net contribution', fmtAedM(fy.cumNetContrib, 0), isAr ? 'Y1 → Y5' : 'Y1 → Y5'],
+          [isAr ? 'العائد على الأصول · Y3' : 'ROA · Y3', fmtPct(r3.roaPct, 2), isAr ? `Y5: ${fmtPct(r5.roaPct, 2)}` : `Y5: ${fmtPct(r5.roaPct, 2)}`],
+          ['RAROC · Y3', fmtPct(r3.rarocPct, 0), isAr ? 'مقابل ٢٠٪ هدف' : 'vs 20% target'],
+          [isAr ? 'حقوق ملكية مرفوعة' : 'Equity raised', fmtAedM(fy.totalEquityRaised, 0), isAr ? 'بذرة + A/B/C' : 'Seed + A + B + C'],
+        ].map(([label, value, sub], i) => (
+          <div key={i} style={{
+            padding: 12, background: 'rgba(255,255,255,0.55)',
+            borderRadius: 12, border: '1px solid rgba(0,0,0,0.06)',
+          }}>
+            <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '.06em',
+                          textTransform: 'uppercase', color: 'var(--mal-mid-2)' }}>{label}</div>
+            <div style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+                          fontSize: 22, lineHeight: 1.05, marginTop: 6,
+                          color: 'var(--mal-ink)' }}>{value}</div>
+            <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 4 }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Per-track unit economics */}
+      <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em',
+                    textTransform: 'uppercase', color: 'var(--mal-mid-2)', marginBottom: 10 }}>
+        {isAr ? 'الاقتصاد لكل ١٠٠ ألف درهم فاتورة' : 'Per AED 100k of invoice'}
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12.5 }}>
+          <thead>
+            <tr>
+              <th style={{ textAlign: 'start', padding: '6px 10px', color: 'var(--mal-mid)',
+                           fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em',
+                           borderBottom: '1px solid var(--mal-line)' }}/>
+              {[isAr ? 'مدة' : 'Tenor', isAr ? 'العائد' : 'Yield',
+                isAr ? 'خسارة متوقعة' : 'Exp. loss', isAr ? 'مساهمة صافية' : 'Net contrib.',
+                isAr ? 'هامش %' : 'Margin %'].map((h, i) => (
+                <th key={i} style={{ textAlign: 'end', padding: '6px 10px', color: 'var(--mal-mid)',
+                                     fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em',
+                                     borderBottom: '1px solid var(--mal-line)' }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['Pay-30',    ue.pay30],
+              ['BNPL',      ue.bnpl],
+              [isAr ? 'تمديد' : 'Term Extension', ue.ext],
+            ].map(([name, t], ri) => (
+              <tr key={ri}>
+                <td style={{ padding: '8px 10px', color: 'var(--mal-ink)', fontWeight: 500 }}>{name}</td>
+                <td style={{ padding: '8px 10px', textAlign: 'end', fontFamily: 'var(--mal-font-mono)' }}>{t.tenor.toFixed(0)}d</td>
+                <td style={{ padding: '8px 10px', textAlign: 'end', fontFamily: 'var(--mal-font-mono)' }}>{fmtPct(t.yieldPct, 1)}</td>
+                <td style={{ padding: '8px 10px', textAlign: 'end', fontFamily: 'var(--mal-font-mono)', color: 'var(--mal-danger)' }}>
+                  AED {Math.round(t.expectedLoss).toLocaleString()}
+                </td>
+                <td style={{ padding: '8px 10px', textAlign: 'end', fontFamily: 'var(--mal-font-mono)', fontWeight: 600 }}>
+                  AED {Math.round(t.netContrib).toLocaleString()}
+                </td>
+                <td style={{ padding: '8px 10px', textAlign: 'end', fontFamily: 'var(--mal-font-mono)', fontWeight: 600,
+                             color: 'var(--mal-success)' }}>
+                  {fmtPct(t.netContribPct, 2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: 16, fontSize: 11, color: 'var(--mal-mid)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <span>
+          {isAr ? 'هدف العائد على الأصول > ٥٪ مع تحمل إجهاد PD ١.٣×' : `ROA target ≥5% · PD-stress tolerance ${data.breakEven.pdMultiplier.toFixed(2)}×`}
+        </span>
+        <a href="#" onClick={(e) => { e.preventDefault();
+            window.dispatchEvent(new CustomEvent('mal:nav', { detail: { section: 'financial' } })); }}
+           style={{ color: 'var(--mal-primary)', fontWeight: 600, textDecoration: 'none' }}>
+          {isAr ? 'افتح النموذج المالي الكامل ←' : 'Open full financial model →'}
+        </a>
+      </div>
+    </section>
   );
 }
 

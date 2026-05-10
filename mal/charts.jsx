@@ -82,22 +82,23 @@ function MalLineChart({ series = [], labels = [], height = 220, formatValue, ari
       {/* Grid lines */}
       {[0, 0.25, 0.5, 0.75, 1].map((p) => {
         const y = padTop + p * innerH;
-        return <line key={p} x1={padX} y1={y} x2={w - padX} y2={y} stroke="var(--mal-line)" strokeDasharray="2 4" strokeWidth="1"/>;
+        return <line key={'g'+p} x1={padX} y1={y} x2={w - padX} y2={y} stroke="var(--mal-line)" strokeDasharray="2 4" strokeWidth="1"/>;
       })}
       {labels.map((l, i) => (
-        <text key={l} x={xAt(i)} y={height - padBottom + 18} textAnchor="middle"
+        <text key={'lab'+i} x={xAt(i)} y={height - padBottom + 18} textAnchor="middle"
               fontSize="11" fill="var(--mal-mid)">{l}</text>
       ))}
       {series.map((s, sIdx) => {
         const color = s.color || ['var(--mal-primary)', 'var(--mal-primary-3)', 'var(--mal-success)', 'var(--mal-warn)'][sIdx % 4];
+        const sk = 's' + sIdx + '_' + (s.name || '');
         const points = s.values.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ');
         const areaD = `M${xAt(0)},${height - padBottom} L${s.values.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' L')} L${xAt(s.values.length - 1)},${height - padBottom} Z`;
         return (
-          <g key={s.name}>
-            <path d={areaD} fill={color} opacity="0.06"/>
-            <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <g key={sk}>
+            <path key={sk + '_a'} d={areaD} fill={color} opacity="0.06"/>
+            <polyline key={sk + '_p'} points={points} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             {s.values.map((v, i) => (
-              <g key={i}>
+              <g key={sk + '_d' + i}>
                 <circle cx={xAt(i)} cy={yAt(v)} r="4" fill="#fff" stroke={color} strokeWidth="2"/>
                 <text x={xAt(i)} y={yAt(v) - 10} textAnchor="middle" fontSize="10" fontFamily="var(--mal-font-mono)" fill={color}>
                   {formatValue ? formatValue(v) : v}

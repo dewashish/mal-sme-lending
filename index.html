@@ -219,11 +219,14 @@
 <script type="text/babel" src="mal/persona-picker.jsx"></script>
 <script type="text/babel" src="mal/screens-demo-mode.jsx"></script>
 <script type="text/babel" src="mal/charts.jsx"></script>
+<script type="text/babel" src="mal/tour.jsx?v=20260510-4"></script>
 <script src="mal/strategy-doc.js"></script>
-<script type="text/babel" src="mal/section-prototype.jsx"></script>
-<script type="text/babel" src="mal/section-strategy.jsx"></script>
-<script type="text/babel" src="mal/section-financial.jsx"></script>
-<script type="text/babel" src="mal/section-ai.jsx"></script>
+<script src="mal/p1-model-data.js"></script>
+<script src="mal/product-catalogue.js"></script>
+<script type="text/babel" src="mal/section-prototype.jsx?v=20260510-4"></script>
+<script type="text/babel" src="mal/section-strategy.jsx?v=20260510-4"></script>
+<script type="text/babel" src="mal/section-financial.jsx?v=20260510-4"></script>
+<script type="text/babel" src="mal/section-ai.jsx?v=20260510-4"></script>
 
 <script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
@@ -403,6 +406,20 @@ function Root() {
     window.MalSession.setMeta(null, lang);
   }, [lang, hydrated]);
 
+  // Cross-section nav listener (fired by inline links e.g. strategy → financial)
+  useEffect(() => {
+    const onNav = (e) => {
+      const target = e?.detail?.section;
+      if (target && ['strategy','prototype','financial','ai'].includes(target)) {
+        setSection(target);
+        setView('app');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+    window.addEventListener('mal:nav', onNav);
+    return () => window.removeEventListener('mal:nav', onNav);
+  }, []);
+
   return (
     <>
       {view === 'landing' && (
@@ -427,8 +444,8 @@ function Root() {
 const APP_SECTIONS = [
   { id: 'strategy',  label: 'Strategy',          shortLabel: 'Strategy' },
   { id: 'prototype', label: 'Prototype',          shortLabel: 'Prototype' },
-  { id: 'financial', label: 'Financial Modeling', shortLabel: 'Financial' },
-  { id: 'ai',        label: 'AI Initiatives',     shortLabel: 'AI' },
+  { id: 'financial', label: 'Economics',          shortLabel: 'Economics' },
+  { id: 'ai',        label: 'AI',                 shortLabel: 'AI' },
 ];
 
 function AppFrame({ section, setSection, lang, setLang, isMobile, onHome }) {
