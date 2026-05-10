@@ -64,6 +64,29 @@
     60%  { transform: scale(1.06); opacity: 1; }
     100% { transform: scale(1); opacity: 1; }
   }
+  /* Top-nav section tabs (Strategy / Prototype / Financial / AI) */
+  .mal-app-section-tab {
+    all: unset; cursor: pointer; box-sizing: border-box;
+    padding: 8px 16px; border-radius: 999px;
+    font-size: 13px; font-weight: 500; color: var(--mal-mid);
+    transition: background .18s, color .18s, transform .14s;
+  }
+  .mal-app-section-tab:hover {
+    color: var(--mal-ink); background: var(--mal-surface-2);
+    transform: translateY(-1px);
+  }
+  .mal-app-section-tab.active {
+    color: #FAF7EE;
+    background: var(--mal-ink);
+    font-weight: 600;
+  }
+  /* Section page wrapper — used inside each section */
+  .mal-section-page {
+    min-height: calc(100vh - 56px);
+    padding: 28px 24px 60px;
+    max-width: 1280px;
+    margin-inline: auto;
+  }
   /* Decision-step row state transitions */
   @keyframes mal-decision-fade-in {
     from { opacity: 0; transform: translateY(2px); }
@@ -195,6 +218,11 @@
 <script type="text/babel" src="mal/screens-others.jsx"></script>
 <script type="text/babel" src="mal/persona-picker.jsx"></script>
 <script type="text/babel" src="mal/screens-demo-mode.jsx"></script>
+<script type="text/babel" src="mal/charts.jsx"></script>
+<script type="text/babel" src="mal/section-prototype.jsx"></script>
+<script type="text/babel" src="mal/section-strategy.jsx"></script>
+<script type="text/babel" src="mal/section-financial.jsx"></script>
+<script type="text/babel" src="mal/section-ai.jsx"></script>
 
 <script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
@@ -348,78 +376,130 @@ const PERSONA_DETAILS_LOCAL = {
 // ----------------------------------------------------------------------------
 // Root — landing → picker → app
 // ----------------------------------------------------------------------------
+// Top-level app — Landing → 4-section app (Strategy / Prototype / Financial / AI)
 function Root() {
-  const [view, setView] = useState('landing');     // 'landing' | 'picker' | 'app' | 'demo'
-  const [persona, setPersona] = useState(null);
-  const [appRoute, setAppRoute] = useState('home'); // initial route for AppShell
+  const [view, setView] = useState('landing');           // 'landing' | 'app'
+  const [section, setSection] = useState('prototype');   // 'strategy' | 'prototype' | 'financial' | 'ai'
   const [lang, setLang] = useState('en');
   const [hydrated, setHydrated] = useState(false);
   const isMobile = useIsMobile();
 
   const savedToast = useSavedToast();
 
-  // Load any prior session state on first mount; if persona/lang were saved,
-  // resume there. Otherwise stay on landing.
   useEffect(() => {
     let alive = true;
     if (!window.MalSession) { setHydrated(true); return; }
     window.MalSession.loadState().then((cache) => {
       if (!alive) return;
       if (cache && cache.__lang) setLang(cache.__lang);
-      if (cache && cache.__persona) {
-        setPersona(cache.__persona);
-        // Don't auto-jump into app on first visit — preserve landing as the
-        // "front door" experience. Persona is just remembered for the picker.
-      }
       setHydrated(true);
     });
     return () => { alive = false; };
   }, []);
 
-  // Persist lang on change once hydrated
   useEffect(() => {
     if (!hydrated || !window.MalSession) return;
-    window.MalSession.setMeta(persona || null, lang);
-  }, [lang, persona, hydrated]);
+    window.MalSession.setMeta(null, lang);
+  }, [lang, hydrated]);
 
   return (
     <>
       {view === 'landing' && (
         <MalLanding lang={lang}
                     viewport={isMobile ? 'mobile' : 'desktop'}
-                    onLaunch={() => setView('picker')} />
+                    onLaunch={() => { setView('app'); setSection('strategy'); }} />
       )}
 
-      {view === 'picker' && (
-        <PersonaPicker lang={lang}
-                       setLang={setLang}
-                       isMobile={isMobile}
-                       onDemo={() => setView('demo')}
-                       onPick={(p, opts) => {
-                         setPersona(p);
-                         setAppRoute((opts && opts.route) || 'home');
-                         setView('app');
-                       }}
-                       onBack={() => setView('landing')} />
-      )}
-
-      {view === 'app' && persona && (
-        <AppShell persona={persona}
-                  initialRoute={appRoute}
-                  lang={lang}
-                  setLang={setLang}
+      {view === 'app' && (
+        <AppFrame section={section} setSection={setSection}
+                  lang={lang} setLang={setLang}
                   isMobile={isMobile}
-                  onHome={() => setView('landing')}
-                  onSwitchPersona={() => setView('picker')} />
-      )}
-
-      {view === 'demo' && (
-        <DemoMode lang={lang} setLang={setLang} isMobile={isMobile}
-                  onExit={() => setView('picker')} />
+                  onHome={() => setView('landing')}/>
       )}
 
       {savedToast}
     </>
+  );
+}
+
+// AppFrame — top bar + section nav + body
+const APP_SECTIONS = [
+  { id: 'strategy',  label: 'Strategy',          shortLabel: 'Strategy' },
+  { id: 'prototype', label: 'Prototype',          shortLabel: 'Prototype' },
+  { id: 'financial', label: 'Financial Modeling', shortLabel: 'Financial' },
+  { id: 'ai',        label: 'AI Initiatives',     shortLabel: 'AI' },
+];
+
+function AppFrame({ section, setSection, lang, setLang, isMobile, onHome }) {
+  const Ico = window.MalIcon;
+  const [theme, setTheme] = useState('light');
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.density = 'cozy';
+  }, [theme]);
+
+  return (
+    <div data-theme={theme} dir={lang === 'ar' ? 'rtl' : 'ltr'}
+         style={{ minHeight: '100vh', background: 'var(--mal-surface)' }}>
+      <header className="mal-app-bar">
+        <button className="mal-pill-btn" onClick={onHome} aria-label="Home / landing">
+          <span style={{ transform: lang === 'ar' ? 'scaleX(-1)' : 'none', display: 'inline-flex' }}>
+            {Ico.arrowL ? Ico.arrowL({ width: 12, height: 12 }) : '←'}
+          </span>
+          <MalLogo size={16} />
+        </button>
+
+        {!isMobile && (
+          <nav style={{
+            flex: 1, display: 'flex', justifyContent: 'center',
+            gap: 4, minWidth: 0,
+          }}>
+            {APP_SECTIONS.map((s) => (
+              <button key={s.id}
+                      onClick={() => setSection(s.id)}
+                      className={`mal-app-section-tab ${section === s.id ? 'active' : ''}`}>
+                {s.label}
+              </button>
+            ))}
+          </nav>
+        )}
+
+        <div className="mal-app-bar-actions">
+          <Tabs value={lang} onChange={setLang} size="sm" items={[
+            { value: 'en', label: 'EN' }, { value: 'ar', label: 'AR' },
+          ]} />
+          <IconBtn icon={theme === 'dark' ? 'sun' : 'moon'}
+                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                   label="Theme" size={32} kind="default" />
+        </div>
+      </header>
+
+      {/* Mobile section selector */}
+      {isMobile && (
+        <div style={{
+          display: 'flex', overflowX: 'auto', gap: 6, padding: '10px 14px',
+          borderBottom: '1px solid var(--mal-line)', background: 'var(--mal-paper)',
+        }}>
+          {APP_SECTIONS.map((s) => (
+            <button key={s.id}
+                    onClick={() => setSection(s.id)}
+                    className={`mal-app-section-tab ${section === s.id ? 'active' : ''}`}
+                    style={{ flexShrink: 0 }}>
+              {s.shortLabel}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Section body */}
+      <main>
+        {section === 'strategy'  && <SectionStrategy   lang={lang} isMobile={isMobile}/>}
+        {section === 'prototype' && <SectionPrototype  lang={lang} isMobile={isMobile}/>}
+        {section === 'financial' && <SectionFinancial  lang={lang} isMobile={isMobile}/>}
+        {section === 'ai'        && <SectionAi         lang={lang} isMobile={isMobile}/>}
+      </main>
+    </div>
   );
 }
 
