@@ -2668,6 +2668,10 @@ function DemoSupplierHome({ lang, onIssue }) {
           {isAr ? 'أصدر فاتورة لتبدأ' : 'Issue your first invoice to start'}
         </div>
       </Card>
+
+      {/* Anchor pre-approved limits — buyers Mal already cleared for this supplier */}
+      <AnchorPreapprovedCard isAr={isAr}/>
+
       <Button kind="primary" size="lg" full icon="bolt" onClick={onIssue}>
         {isAr ? 'أصدر فاتورة جديدة' : 'Issue a new invoice'}
       </Button>
@@ -3321,6 +3325,80 @@ function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
         })}
       </div>
     </Card>
+  );
+}
+
+// ============================================================
+// AnchorPreapprovedCard — surfaces buyers Mal has already pre-cleared
+// for this supplier so the supplier can issue an invoice with zero
+// underwriting friction. Shows up above "Issue invoice" CTA.
+// ============================================================
+function AnchorPreapprovedCard({ isAr }) {
+  const buyers = [
+    { name: 'Crescent Trading FZE',  limit: 850000, rating: 'A',  score: 'AECB 742', live: true },
+    { name: 'Al Habtoor Group',      limit: 1200000, rating: 'A+', score: 'AECB 798' },
+    { name: 'Lulu Hypermarket LLC',  limit: 950000, rating: 'A',  score: 'AECB 765' },
+  ];
+  return (
+    <div style={{
+      padding: 12, borderRadius: 12,
+      background: 'linear-gradient(135deg, rgba(31,84,200,0.06), var(--mal-paper))',
+      border: '1px solid rgba(31,84,200,0.30)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{ fontSize: 12 }}>⭐</span>
+        <div style={{ flex: 1 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, color: '#1f54c8',
+            letterSpacing: '.06em', textTransform: 'uppercase',
+          }}>
+            {isAr ? 'مشترون مُعتمَدون مسبقاً' : 'Pre-approved buyers'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 1 }}>
+            {isAr ? 'تمويل فوري عند الإصدار · لا توجد فحوصات إضافية' : 'Instant funding on invoice · no buyer underwriting needed'}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {buyers.map((b, i) => (
+          <div key={i} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 10px', borderRadius: 8,
+            background: 'var(--mal-surface-2)',
+            border: '1px solid var(--mal-line)',
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--mal-ink)' }}>
+                {b.name}
+                {b.live && (
+                  <span style={{
+                    fontSize: 9, fontWeight: 700, marginLeft: 6,
+                    padding: '2px 6px', borderRadius: 999,
+                    color: '#0a8056', background: 'rgba(10,128,86,0.14)',
+                    letterSpacing: '.04em',
+                  }}>
+                    {isAr ? 'فاتورتك الحاليّة' : 'YOUR LIVE INVOICE'}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 1 }}>
+                {b.score} · {isAr ? 'تصنيف' : 'tier'} {b.rating}
+              </div>
+            </div>
+            <div style={{ textAlign: 'end' }}>
+              <div style={{
+                fontSize: 11, color: 'var(--mal-mid)',
+                fontFamily: 'var(--mal-font-mono)',
+              }}>{isAr ? 'حتى' : 'up to'}</div>
+              <div style={{
+                fontSize: 12.5, fontWeight: 600, color: 'var(--mal-ink)',
+                fontFamily: 'var(--mal-font-mono)',
+              }}>AED {(b.limit / 1000).toFixed(0)}k</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
