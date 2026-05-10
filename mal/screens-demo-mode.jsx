@@ -140,6 +140,7 @@ function computeEmiStatuses(plan, simDay, paymentsByEmi) {
         status: 'paid',
         paidDay: paid.paidOnDay,
         penalty: paid.withPenalty || 0,
+        settledByExtension: !!paid.settledByExtension,
       };
     }
     if (simDay >= emi.dueDay) {
@@ -253,14 +254,14 @@ function canRefinanceNow(plan, simDay, paymentsByEmi, alreadyRefinanced) {
   const statuses = computeEmiStatuses(plan, simDay, paymentsByEmi);
   const paid = statuses.filter((e) => e.status === 'paid').length;
   const remaining = statuses.length - paid;
-  if (paid < 1) return false;
-  if (remaining < 2) return false;
-
+  if (remaining < 1) return false;             // nothing left to refinance
+  // Distress windows — eligible regardless of plan size
   const overdue = findOverdue(statuses);
   if (overdue && overdue.daysOverdue <= 4) return true;
   const next = findNextUpcoming(statuses);
   if (next && (next.dueDay - simDay) >= 0 && (next.dueDay - simDay) <= 7) return true;
-  if (next && next.dueDay - simDay > 7) return true;
+  // Mid-loan: only meaningful for multi-EMI plans, after at least one EMI paid
+  if (paid >= 1 && plan.schedule.length >= 2) return true;
   return false;
 }
 
@@ -483,81 +484,49 @@ function DemoTopBar({ lang, setLang, onExit, reset, phase, isMobile }) {
 // 5. Phase timeline (clickable)
 // ==================================================================
 
-// Vertical sidebar timeline (desktop). Sticky, hover-bulges, click-to-jump.
+// Vertical sidebar timeline (desktop), cfodeck-inspired collapse-and-expand
+// rail. Default state: a slim 36px column with each phase rendered as a
+// short horizontal dash. Active phase = wider, branded dash. On hover, the
+// rail expands to 220px and the labels fade in. Click any item to jump.
 function DemoTimelineSidebar({ phase, setPhase, lang }) {
   const isAr = lang === 'ar';
   const idx = DM_PHASES.findIndex((p) => p.id === phase);
   return (
-    <aside style={{
-      width: 220, flexShrink: 0,
-      padding: '20px 12px 24px 16px',
+    <aside className="mal-rail" style={{
+      flexShrink: 0,
       position: 'sticky', top: 64,
-      borderInlineEnd: '1px solid var(--mal-line)',
-      background: 'transparent',
       maxHeight: 'calc(100vh - 64px)',
-      overflowY: 'auto',
     }}>
-      <div className="mal-caption" style={{ marginBottom: 12, paddingInline: 10 }}>
-        {isAr ? 'الجدول الزمني' : 'Journey'}
+      <div className="mal-rail-cap">
+        {isAr ? 'رحلة' : 'Journey'}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
-        {/* Spine: vertical line connecting the dots */}
-        <div aria-hidden style={{
-          position: 'absolute', insetInlineStart: 22, top: 14, bottom: 14,
-          width: 2, background: 'linear-gradient(180deg, var(--mal-line) 0%, var(--mal-line) 100%)',
-        }}/>
-        {/* Filled portion */}
-        <div aria-hidden style={{
-          position: 'absolute', insetInlineStart: 22, top: 14,
-          width: 2,
-          height: `calc((100% - 28px) * ${idx / Math.max(1, DM_PHASES.length - 1)})`,
-          background: 'linear-gradient(180deg, var(--mal-primary) 0%, var(--mal-primary-3) 100%)',
-          transition: 'height .35s',
+      <div className="mal-rail-list">
+        {/* Spine: vertical line behind the dots, only visible when expanded */}
+        <div aria-hidden className="mal-rail-spine"/>
+        <div aria-hidden className="mal-rail-spine-fill" style={{
+          height: `calc(${idx / Math.max(1, DM_PHASES.length - 1) * 100}% )`,
         }}/>
         {DM_PHASES.map((p, i) => {
           const active = i === idx;
           const past   = i < idx;
+          const state = active ? 'active' : past ? 'past' : 'upcoming';
           return (
             <button key={p.id}
                     onClick={() => setPhase(p.id)}
-                    className="mal-sidebar-tab"
-                    style={{
-                      all: 'unset', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 12,
-                      padding: '8px 10px', borderRadius: 12,
-                      background: active ? 'var(--mal-paper)' : 'transparent',
-                      border: '1px solid ' + (active ? 'var(--mal-primary-3)' : 'transparent'),
-                      boxShadow: active ? 'var(--mal-sh-2)' : 'none',
-                      transition: 'transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease',
-                      position: 'relative', zIndex: 1,
-                    }}>
-              {/* Dot */}
-              <div style={{
-                width: 14, height: 14, borderRadius: 999, flexShrink: 0,
-                background: active ? 'var(--mal-primary)' : past ? 'var(--mal-primary-3)' : 'var(--mal-paper)',
-                border: '2px solid ' + (active ? 'var(--mal-primary)' : past ? 'var(--mal-primary-3)' : 'var(--mal-line)'),
-                boxShadow: active ? '0 0 0 4px var(--mal-primary-50)' : 'none',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff',
-                transition: 'all .25s',
-              }}>
-                {past && (dmIco.check ? dmIco.check({ width: 9, height: 9, color: '#fff' }) : '✓')}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 10, fontFamily: 'var(--mal-font-mono)', color: 'var(--mal-mid-2)',
-                  letterSpacing: '.04em', lineHeight: 1,
-                }}>
-                  {String(i + 1).padStart(2, '0')}
-                </div>
-                <div style={{
-                  fontSize: 12.5, fontWeight: active ? 600 : 500,
-                  color: active ? 'var(--mal-ink)' : past ? 'var(--mal-ink)' : 'var(--mal-mid)',
-                  marginTop: 2,
-                }}>
-                  {p.label}
-                </div>
-              </div>
+                    className={`mal-rail-item mal-rail-item-${state}`}
+                    aria-label={`Phase ${i + 1}: ${p.label}`}
+                    title={p.label}>
+              {/* Dash/dot indicator — morphs between collapsed dash and expanded dot */}
+              <span className="mal-rail-dash" aria-hidden>
+                {past && (dmIco.check
+                  ? dmIco.check({ width: 9, height: 9, color: '#fff' })
+                  : '✓')}
+              </span>
+              {/* Number + label — only visible when rail is expanded */}
+              <span className="mal-rail-meta" aria-hidden>
+                <span className="mal-rail-num">{String(i + 1).padStart(2, '0')}</span>
+                <span className="mal-rail-label">{p.label}</span>
+              </span>
             </button>
           );
         })}
@@ -923,7 +892,7 @@ function DemoCenterColumnLive({ scenario, setSimDay, stepDay, setPhase, patch, l
 // ==================================================================
 
 function DemoPanel({ side, title, sub, tone, spotlight, toast, lang, children }) {
-  const w = 380, h = 880;
+  const w = 380, h = 760;
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center',
@@ -1332,7 +1301,34 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
   if (route === 'extend-confirm') {
     return <BuyerExtendConfirm lang={lang} setRoute={(r) => {
       if (r === 'extend-success') {
-        patch({ termExtension: { principal: 250000, tenorMonths: 6, aprPct: 11.5, emi: 44063, startDay: scenario.simDay, signedAt: new Date().toISOString() } });
+        // Signing the extension means Mal *takes over* the original invoice:
+        // every unpaid EMI of the current plan flips to "settled by Mal via
+        // extension". Penalty 0 (covered by the extension's own pricing).
+        // Buyer now owes Mal under the new term-extension schedule.
+        patch((s) => {
+          const newPaid = { ...(s.paymentsByEmi || {}) };
+          (s.plan?.schedule || []).forEach((emi) => {
+            if (!newPaid[emi.num]) {
+              newPaid[emi.num] = {
+                paidOnDay: s.simDay,
+                withPenalty: 0,
+                settledByExtension: true,
+              };
+            }
+          });
+          return {
+            paymentsByEmi: newPaid,
+            termExtension: {
+              principal: 250000, tenorMonths: 6, aprPct: 11.5, emi: 44063,
+              startDay: s.simDay, signedAt: new Date().toISOString(),
+            },
+            buyerToast: {
+              title: 'Original invoice settled by Mal',
+              sub: `New 6-mo term loan begins · AED 44,063/mo`,
+              icon: 'check', tone: 'success',
+            },
+          };
+        });
       }
       setBuyerRoute(r);
     }} viewport="mobile"/>;
@@ -1583,7 +1579,12 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
                       : e.num}
                   </div>
                   <div style={{ flex: 1, minWidth: 100 }}>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{groupLabel}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13, fontWeight: 500 }}>{groupLabel}</span>
+                      {e.settledByExtension && (
+                        <Pill tone="info" dot>{isAr ? 'سُدِّد عبر التمديد' : 'Settled by Mal · extension'}</Pill>
+                      )}
+                    </div>
                     <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
                       {e.status === 'paid'
                         ? (isAr ? `دُفع · ${formatSimDay(e.paidDay)}` : `Paid · ${formatSimDay(e.paidDay)}`) + (e.penalty ? ' (+' + e.penalty + ')' : '')
