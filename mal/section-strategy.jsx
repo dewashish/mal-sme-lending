@@ -1,26 +1,32 @@
 /* eslint-disable */
 // Section 1 — Strategy
-// Faithful, word-for-word renderer of the SME Lending Head of Product
-// Strategy doc. Reads window.MAL_STRATEGY_DOC (auto-generated from the
-// .docx) and renders every paragraph with display-grade typography.
-//
-// Layout: sticky left TOC (auto-built from H1+H2) + scrollable main column.
-// Tables and charts are kept out of this surface — the doc speaks for itself.
+// Renders the strategy doc with the visual upgrades from
+// mal/strategy-visuals.jsx wired in: chapter cards, per-chapter heroes,
+// reading-progress bar, ambient orb, embedded diagrams and live
+// unit-economics callouts at the right anchors.
 
 const { useState: stS, useEffect: stE, useRef: stR, useMemo: stM, useCallback: stCB } = React;
 
 function SectionStrategy({ lang, isMobile }) {
   const isAr = lang === 'ar';
   const doc = window.MAL_STRATEGY_DOC || [];
+  const visuals = window.MalStrategyVisuals || {};
 
-  // Build TOC from H1 + H2 (skip H3 to keep it scannable; the doc has 100+ H2s)
-  const toc = stM(() => {
-    return doc
-      .filter((p) => (p.tag === 'h1' || p.tag === 'h2') && p.id)
-      .map((p) => ({ id: p.id, text: p.text, level: p.tag === 'h1' ? 1 : 2 }));
+  // Build TOC (H1 + H2). Skip preamble (everything before first H1).
+  const trimmedDoc = stM(() => {
+    const firstH1 = doc.findIndex((p) => p.tag === 'h1');
+    return firstH1 > 0 ? doc.slice(firstH1) : doc;
   }, [doc]);
 
+  const toc = stM(() => trimmedDoc
+    .filter((p) => (p.tag === 'h1' || p.tag === 'h2') && p.id)
+    .map((p) => ({ id: p.id, text: p.text, level: p.tag === 'h1' ? 1 : 2 })),
+    [trimmedDoc]);
+
+  const chapters = stM(() => toc.filter((t) => t.level === 1), [toc]);
+
   const [activeId, setActiveId] = stS(toc[0]?.id || null);
+  const [searchOpen, setSearchOpen] = stS(false);
   const sectionRefs = stR({});
 
   // Scroll-spy via IntersectionObserver
@@ -39,6 +45,37 @@ function SectionStrategy({ lang, isMobile }) {
     sectionRefs.current[id]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
+  // Cmd/Ctrl+K to open search
+  stE(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  // Find which H1 chapter the active id belongs to
+  const activeChapterIdx = stM(() => {
+    if (!activeId) return 0;
+    let idx = 0;
+    for (let i = 0; i < chapters.length; i++) {
+      if (chapters[i].id === activeId) return i;
+      // The active id is an H2 — find which chapter it sits under
+      const ch = chapters[i];
+      const next = chapters[i + 1];
+      const chPos = trimmedDoc.findIndex((p) => p.id === ch.id);
+      const nextPos = next ? trimmedDoc.findIndex((p) => p.id === next.id) : trimmedDoc.length;
+      const activePos = trimmedDoc.findIndex((p) => p.id === activeId);
+      if (activePos >= chPos && activePos < nextPos) idx = i;
+    }
+    return idx;
+  }, [activeId, chapters, trimmedDoc]);
+
+  const currentChapter = chapters[activeChapterIdx];
+
   if (!doc.length) {
     return (
       <div className="mal-section-page" style={{ textAlign: 'center', paddingTop: 80 }}>
@@ -51,16 +88,49 @@ function SectionStrategy({ lang, isMobile }) {
 
   return (
     <div style={{ position: 'relative' }} dir={isAr ? 'rtl' : 'ltr'}>
-      {!isMobile && <StrategyTOC toc={toc} activeId={activeId} jumpTo={jumpTo} isAr={isAr}/>}
+      {/* Chapter ambient orb (Phase 4) */}
+      {visuals.ChapterAmbient && currentChapter && (
+        <visuals.ChapterAmbient chapterId={currentChapter.id}/>
+      )}
+
+      {/* Reading-progress bar (Phase 1) */}
+      {visuals.ReadingProgress && (
+        <visuals.ReadingProgress
+          activeChapterIdx={activeChapterIdx}
+          totalChapters={chapters.length}
+          currentTitle={currentChapter?.text}
+          isAr={isAr}/>
+      )}
+
+      {/* Cmd+K palette (Phase 3) */}
+      {visuals.SearchPalette && (
+        <visuals.SearchPalette
+          open={searchOpen}
+          onClose={() => setSearchOpen(false)}
+          toc={toc}
+          onJump={jumpTo}
+          isAr={isAr}/>
+      )}
+
+      {!isMobile && <StrategyTOC toc={toc} activeId={activeId} jumpTo={jumpTo} isAr={isAr}
+                                  onOpenSearch={() => setSearchOpen(true)}/>}
 
       <article className="mal-section-page" style={{
         maxWidth: 880,
         marginInline: 'auto',
         paddingInlineStart: isMobile ? 24 : 280,
         paddingTop: 28,
+        position: 'relative', zIndex: 1,
       }}>
-        <DocHero isAr={isAr} isMobile={isMobile}/>
-        <DocBody doc={doc} sectionRefs={sectionRefs} isAr={isAr} isMobile={isMobile}/>
+        <DocHero isAr={isAr} isMobile={isMobile} onOpenSearch={() => setSearchOpen(true)}/>
+
+        {/* Chapter cards grid (Phase 1) */}
+        {visuals.ChapterCardsGrid && (
+          <visuals.ChapterCardsGrid chapters={chapters} onJump={jumpTo} isAr={isAr} isMobile={isMobile}/>
+        )}
+
+        <DocBody doc={trimmedDoc} chapters={chapters} sectionRefs={sectionRefs}
+                 isAr={isAr} isMobile={isMobile}/>
         <DocOutro isAr={isAr}/>
       </article>
     </div>
@@ -68,9 +138,9 @@ function SectionStrategy({ lang, isMobile }) {
 }
 
 // ============================================================
-// Sticky TOC
+// Sticky TOC (Phase 1 — same pattern as before, with search trigger)
 // ============================================================
-function StrategyTOC({ toc, activeId, jumpTo, isAr }) {
+function StrategyTOC({ toc, activeId, jumpTo, isAr, onOpenSearch }) {
   const idx = toc.findIndex((t) => t.id === activeId);
   return (
     <aside style={{
@@ -79,9 +149,30 @@ function StrategyTOC({ toc, activeId, jumpTo, isAr }) {
       float: isAr ? 'right' : 'left',
       paddingInlineStart: 24, paddingTop: 32, paddingBottom: 32,
       maxHeight: 'calc(100vh - 56px)', overflowY: 'auto',
+      zIndex: 1,
     }}>
-      <div className="mal-caption" style={{ marginBottom: 14, color: 'var(--mal-mid-2)' }}>
-        {isAr ? 'الفهرس · مايو ٢٠٢٦' : 'CONTENTS · MAY 2026'}
+      <div style={{ marginBottom: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="mal-caption" style={{ color: 'var(--mal-mid-2)' }}>
+          {isAr ? 'الفهرس · مايو ٢٠٢٦' : 'CONTENTS · MAY 2026'}
+        </div>
+        <button onClick={onOpenSearch} style={{
+          all: 'unset', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '6px 10px', borderRadius: 8,
+          background: 'var(--mal-surface-2)',
+          border: '1px solid var(--mal-line)',
+          fontSize: 11, color: 'var(--mal-mid)',
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--mal-primary-3)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--mal-line)'; }}>
+          <span>{isAr ? 'بحث' : 'Search'}</span>
+          <span style={{
+            fontFamily: 'var(--mal-font-mono)', fontSize: 9.5,
+            padding: '1px 5px', borderRadius: 4,
+            background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+            color: 'var(--mal-mid-2)',
+          }}>⌘K</span>
+        </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         {toc.map((t, i) => {
@@ -129,12 +220,9 @@ function StrategyTOC({ toc, activeId, jumpTo, isAr }) {
 }
 
 // ============================================================
-// Live Unit Economics callout — embedded inside each Product N
-// chapter at its "Three-Year Unit Economics" h2.
-// productNum: 1 = Smart Invoice (live data) · 2 = Healthcare · 3 = Anchor SCF
+// Live unit-economics callout (P1 live · P2/P3 placeholder)
 // ============================================================
 function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
-  // Only Smart Invoice has a live model. P2/P3 render a placeholder.
   if (productNum !== 1) {
     return <UnitEconomicsPlaceholder productNum={productNum} isAr={isAr} isMobile={isMobile}/>;
   }
@@ -144,7 +232,6 @@ function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
   const r3 = data.ratios.y3;
   const r5 = data.ratios.y5;
   const ue = data.unitEconomics;
-
   const fmtAedM = (n, dp = 0) => 'AED ' + (n).toFixed(dp) + 'M';
   const fmtAedB = (n, dp = 1) => 'AED ' + (n / 1000).toFixed(dp) + 'B';
   const fmtPct  = (n, dp = 1) => n.toFixed(dp) + '%';
@@ -172,23 +259,20 @@ function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
         {isAr ? 'الاقتصاد الوحدوي · المنتج ١ (بطاقة الفاتورة الذكية)' : 'Unit economics · P1 (Smart Invoice)'}
       </div>
       <div style={{ fontSize: 13, color: 'var(--mal-mid)', marginBottom: 18, lineHeight: 1.55 }}>
-        {isAr
-          ? 'الأرقام المحدثة من النموذج المعتمد. كل تعديل في إكسل ينعكس هنا تلقائياً.'
-          : 'Live numbers from the canonical Excel model. Updates flow automatically when the workbook is re-synced.'}
+        {isAr ? 'الأرقام المحدثة من النموذج المعتمد. كل تعديل في إكسل ينعكس هنا تلقائياً.'
+              : 'Live numbers from the canonical Excel model. Updates flow automatically when the workbook is re-synced.'}
       </div>
-
-      {/* Five headline KPIs */}
       <div style={{
         display: 'grid', gap: 10,
         gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(5, 1fr)',
         marginBottom: 22,
       }}>
         {[
-          [isAr ? 'صرف ٥ سنوات' : '5-yr disbursement', fmtAedB(fy.face, 1), isAr ? '٢٥٠M → ١٣B' : 'Y1 250M → Y5 13B'],
-          [isAr ? 'مساهمة صافية تراكمية' : 'Cum. net contribution', fmtAedM(fy.cumNetContrib, 0), isAr ? 'Y1 → Y5' : 'Y1 → Y5'],
-          [isAr ? 'العائد على الأصول · Y3' : 'ROA · Y3', fmtPct(r3.roaPct, 2), isAr ? `Y5: ${fmtPct(r5.roaPct, 2)}` : `Y5: ${fmtPct(r5.roaPct, 2)}`],
+          [isAr ? 'صرف ٥ سنوات' : '5-yr disbursement', fmtAedB(fy.face, 1), 'Y1 250M → Y5 13B'],
+          [isAr ? 'مساهمة صافية تراكمية' : 'Cum. net contribution', fmtAedM(fy.cumNetContrib, 0), 'Y1 → Y5'],
+          [isAr ? 'العائد على الأصول · Y3' : 'ROA · Y3', fmtPct(r3.roaPct, 2), `Y5: ${fmtPct(r5.roaPct, 2)}`],
           ['RAROC · Y3', fmtPct(r3.rarocPct, 0), isAr ? 'مقابل ٢٠٪ هدف' : 'vs 20% target'],
-          [isAr ? 'حقوق ملكية مرفوعة' : 'Equity raised', fmtAedM(fy.totalEquityRaised, 0), isAr ? 'بذرة + A/B/C' : 'Seed + A + B + C'],
+          [isAr ? 'حقوق ملكية مرفوعة' : 'Equity raised', fmtAedM(fy.totalEquityRaised, 0), 'Seed + A + B + C'],
         ].map(([label, value, sub], i) => (
           <div key={i} style={{
             padding: 12, background: 'rgba(255,255,255,0.55)',
@@ -197,14 +281,11 @@ function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
             <div style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: '.06em',
                           textTransform: 'uppercase', color: 'var(--mal-mid-2)' }}>{label}</div>
             <div style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-                          fontSize: 22, lineHeight: 1.05, marginTop: 6,
-                          color: 'var(--mal-ink)' }}>{value}</div>
+                          fontSize: 22, lineHeight: 1.05, marginTop: 6, color: 'var(--mal-ink)' }}>{value}</div>
             <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 4 }}>{sub}</div>
           </div>
         ))}
       </div>
-
-      {/* Per-track unit economics */}
       <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em',
                     textTransform: 'uppercase', color: 'var(--mal-mid-2)', marginBottom: 10 }}>
         {isAr ? 'الاقتصاد لكل ١٠٠ ألف درهم فاتورة' : 'Per AED 100k of invoice'}
@@ -213,9 +294,7 @@ function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 12.5 }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'start', padding: '6px 10px', color: 'var(--mal-mid)',
-                           fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.06em',
-                           borderBottom: '1px solid var(--mal-line)' }}/>
+              <th/>
               {[isAr ? 'مدة' : 'Tenor', isAr ? 'العائد' : 'Yield',
                 isAr ? 'خسارة متوقعة' : 'Exp. loss', isAr ? 'مساهمة صافية' : 'Net contrib.',
                 isAr ? 'هامش %' : 'Margin %'].map((h, i) => (
@@ -226,11 +305,7 @@ function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
             </tr>
           </thead>
           <tbody>
-            {[
-              ['Pay-30',    ue.pay30],
-              ['BNPL',      ue.bnpl],
-              [isAr ? 'تمديد' : 'Term Extension', ue.ext],
-            ].map(([name, t], ri) => (
+            {[['Pay-30', ue.pay30], ['BNPL', ue.bnpl], [isAr ? 'تمديد' : 'Term Extension', ue.ext]].map(([name, t], ri) => (
               <tr key={ri}>
                 <td style={{ padding: '8px 10px', color: 'var(--mal-ink)', fontWeight: 500 }}>{name}</td>
                 <td style={{ padding: '8px 10px', textAlign: 'end', fontFamily: 'var(--mal-font-mono)' }}>{t.tenor.toFixed(0)}d</td>
@@ -250,10 +325,11 @@ function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
           </tbody>
         </table>
       </div>
-
-      <div style={{ marginTop: 16, fontSize: 11, color: 'var(--mal-mid)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+      <div style={{ marginTop: 16, fontSize: 11, color: 'var(--mal-mid)', display: 'flex',
+                    justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <span>
-          {isAr ? 'هدف العائد على الأصول > ٥٪ مع تحمل إجهاد PD ١.٣×' : `ROA target ≥5% · PD-stress tolerance ${data.breakEven.pdMultiplier.toFixed(2)}×`}
+          {isAr ? `هدف العائد على الأصول > ٥٪ مع تحمل إجهاد PD ${data.breakEven.pdMultiplier.toFixed(2)}×`
+                : `ROA target ≥5% · PD-stress tolerance ${data.breakEven.pdMultiplier.toFixed(2)}×`}
         </span>
         <a href="#" onClick={(e) => { e.preventDefault();
             window.dispatchEvent(new CustomEvent('mal:nav', { detail: { section: 'financial' } })); }}
@@ -265,9 +341,6 @@ function LiveUnitEconomicsCallout({ isAr, isMobile, productNum = 1 }) {
   );
 }
 
-// ============================================================
-// Placeholder for Products 2 and 3 — model not yet wired
-// ============================================================
 function UnitEconomicsPlaceholder({ productNum, isAr, isMobile }) {
   const products = {
     2: {
@@ -292,8 +365,7 @@ function UnitEconomicsPlaceholder({ productNum, isAr, isMobile }) {
       borderRadius: 14,
       background: 'var(--mal-paper)',
       border: '1px dashed var(--mal-line)',
-      position: 'relative',
-      overflow: 'hidden',
+      position: 'relative', overflow: 'hidden',
     }}>
       <div aria-hidden style={{
         position: 'absolute', inset: 0,
@@ -312,9 +384,7 @@ function UnitEconomicsPlaceholder({ productNum, isAr, isMobile }) {
           fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
           fontSize: isMobile ? 20 : 24, lineHeight: 1.2, letterSpacing: '-0.01em',
           marginBottom: 8, color: 'var(--mal-ink)',
-        }}>
-          {isAr ? p.titleAr : p.title}
-        </div>
+        }}>{isAr ? p.titleAr : p.title}</div>
         <p style={{ fontSize: 13, lineHeight: 1.65, color: 'var(--mal-mid)', margin: '0 0 14px' }}>
           {isAr ? p.blurbAr : p.blurb}
         </p>
@@ -335,50 +405,88 @@ function UnitEconomicsPlaceholder({ productNum, isAr, isMobile }) {
 }
 
 // ============================================================
-// HERO — title block
+// HERO — title block (with print + Cmd+K hint)
 // ============================================================
-function DocHero({ isAr, isMobile }) {
+function DocHero({ isAr, isMobile, onOpenSearch }) {
   return (
     <section style={{ marginBottom: 24, paddingTop: 4 }}>
-      <h1 style={{
-        fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-        fontSize: isMobile ? 36 : 48, lineHeight: 1.0, letterSpacing: '-0.02em',
-        margin: 0,
-      }}>
-        {isAr ? 'الاستراتيجية' : 'Strategy'}
-      </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+                    flexWrap: 'wrap', gap: 14 }}>
+        <h1 style={{
+          fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+          fontSize: isMobile ? 36 : 48, lineHeight: 1.0, letterSpacing: '-0.02em',
+          margin: 0,
+        }}>
+          {isAr ? 'الاستراتيجية' : 'Strategy'}
+        </h1>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => window.print()} style={{
+            all: 'unset', cursor: 'pointer',
+            padding: '6px 12px', borderRadius: 999,
+            background: 'transparent', border: '1px solid var(--mal-line)',
+            color: 'var(--mal-mid)', fontSize: 11.5, fontWeight: 500,
+          }}>
+            ↓ {isAr ? 'تصدير PDF' : 'Print / PDF'}
+          </button>
+        </div>
+      </div>
     </section>
   );
 }
 
 // ============================================================
-// BODY — render every paragraph
+// BODY — render every paragraph; inject visuals at anchors
 // ============================================================
-// Helper: figure out which product number a "Three-Year Unit Economics"
-// h2 belongs to by reading its text or surrounding context.
+function paraText(p) {
+  if (!p) return '';
+  if (typeof p.spans === 'string') return p.spans.trim();
+  if (Array.isArray(p.spans)) return p.spans.map((s) => (s && s.t) || '').join('').trim();
+  return (p.text || '').trim();
+}
+function isUnitEconHeading(p) {
+  if (!p || p.tag !== 'h2') return false;
+  return /three[\s-]year unit economics/i.test(paraText(p));
+}
 function detectProductNum(text) {
   const t = String(text || '').toLowerCase();
-  if (/product\s*1|: product 1|p1\b/.test(t)) return 1;
-  if (/product\s*2|: product 2|p2\b/.test(t)) return 2;
-  if (/product\s*3|: product 3|p3\b/.test(t)) return 3;
+  if (/product\s*1|: product 1/.test(t)) return 1;
+  if (/product\s*2|: product 2/.test(t)) return 2;
+  if (/product\s*3|: product 3/.test(t)) return 3;
   return null;
 }
 
-function isUnitEconHeading(p) {
-  if (p.tag !== 'h2') return false;
-  const text = (p.spans || []).map((s) => s.t || '').join('');
-  return /three[\s-]year unit economics/i.test(text);
+// IDs / fragments where Phase-2 diagrams should be injected (matched on h1/h2 IDs)
+const DIAGRAM_INJECT = {
+  // Section 1 (Executive Overview) — regulatory timeline
+  '1-1-combined-three-year-outlook':         { type: 'reg-timeline' },
+  '1-2-what-this-document-is-not':           { type: 'three-product' },
+  // Section 5.2 — anchor cards
+  '5-2-target-anchors':                      { type: 'anchors' },
+  // Sections 3.3 / 3.4 — buyer / supplier journeys
+  '3-3-the-buyer-journey-end-to-end':        { type: 'journey-buyer' },
+  '3-4-the-supplier-journey-end-to-end':     { type: 'journey-supplier' },
+  // Section 6.2 — capital stack
+  '6-2-capital-stack-and-funding':           { type: 'capital-stack' },
+  // Appendix D.3 — FLDG waterfall
+  'd-3-risk-waterfall-and-fldg-mechanics':   { type: 'fldg-waterfall' },
+};
+
+function renderInjectedDiagram(type, isAr) {
+  const v = window.MalStrategyVisuals || {};
+  switch (type) {
+    case 'reg-timeline':    return v.RegulatoryTimeline   ? <v.RegulatoryTimeline isAr={isAr}/>   : null;
+    case 'three-product':   return v.ThreeProductComparison ? <v.ThreeProductComparison isAr={isAr}/> : null;
+    case 'anchors':         return v.AnchorCards          ? <v.AnchorCards isAr={isAr}/>          : null;
+    case 'journey-buyer':   return v.JourneyDiagram       ? <v.JourneyDiagram persona="buyer" isAr={isAr}/> : null;
+    case 'journey-supplier':return v.JourneyDiagram       ? <v.JourneyDiagram persona="supplier" isAr={isAr}/> : null;
+    case 'capital-stack':   return v.CapitalStackDiagram  ? <v.CapitalStackDiagram isAr={isAr}/>  : null;
+    case 'fldg-waterfall':  return v.FldgWaterfall        ? <v.FldgWaterfall isAr={isAr}/>        : null;
+    default: return null;
+  }
 }
 
-function DocBody({ doc, sectionRefs, isAr, isMobile }) {
-  // Skip the preamble: drop everything before the first H1 ("1. Executive Overview").
-  // This removes "Head of Product Strategy", "UAE SME Lending Platform",
-  // "Confidential. Internal. Working Draft.", etc.
-  const trimmedDoc = stM(() => {
-    const firstH1 = doc.findIndex((p) => p.tag === 'h1');
-    return firstH1 > 0 ? doc.slice(firstH1) : doc;
-  }, [doc]);
-
+function DocBody({ doc, chapters, sectionRefs, isAr, isMobile }) {
+  const visuals = window.MalStrategyVisuals || {};
   // Group consecutive list items into <ul> blocks for nicer rendering.
   const blocks = stM(() => {
     const out = [];
@@ -386,21 +494,27 @@ function DocBody({ doc, sectionRefs, isAr, isMobile }) {
     const flushList = () => {
       if (listBuffer.length) { out.push({ type: 'list', items: listBuffer }); listBuffer = []; }
     };
-    trimmedDoc.forEach((p, i) => {
-      if (p.tag === 'li') {
-        listBuffer.push({ ...p, key: i });
-      } else {
+    doc.forEach((p, i) => {
+      if (p.tag === 'li') { listBuffer.push({ ...p, key: i }); }
+      else {
         flushList();
-        if (p.tag === 'table') {
-          out.push({ type: 'table', table: { ...p, key: i } });
-        } else {
-          out.push({ type: 'para', para: { ...p, key: i } });
-        }
+        if (p.tag === 'table') out.push({ type: 'table', table: { ...p, key: i } });
+        else                   out.push({ type: 'para', para: { ...p, key: i } });
       }
     });
     flushList();
     return out;
-  }, [trimmedDoc]);
+  }, [doc]);
+
+  // Build a map: H1 id → chapter index
+  const chapterIdxById = stM(() => {
+    const m = {};
+    chapters.forEach((c, i) => { m[c.id] = i; });
+    return m;
+  }, [chapters]);
+
+  // Track where we are so we can drop the drop cap on first <p> of each chapter
+  let pendingDropCap = false;
 
   return (
     <>
@@ -408,8 +522,7 @@ function DocBody({ doc, sectionRefs, isAr, isMobile }) {
         if (b.type === 'list') {
           return (
             <ul key={'l' + bi} style={{
-              margin: '0 0 18px', paddingInlineStart: 22,
-              listStyle: 'disc',
+              margin: '0 0 18px', paddingInlineStart: 22, listStyle: 'disc',
             }}>
               {b.items.map((it) => (
                 <li key={it.key} style={{
@@ -426,11 +539,37 @@ function DocBody({ doc, sectionRefs, isAr, isMobile }) {
           return <TableBlock key={'t' + bi} rows={b.table.rows}/>;
         }
         const p = b.para;
-        // After the "Three-Year Unit Economics: Product N" h2 emerges,
-        // inject the live unit-economics callout right below it.
+
+        // H1 chapter boundary: render divider + hero
+        if (p.tag === 'h1' && p.id) {
+          const chIdx = chapterIdxById[p.id];
+          pendingDropCap = true;
+          return (
+            <React.Fragment key={'h1-' + p.key}>
+              {chIdx > 0 && visuals.ChapterDivider && (
+                <visuals.ChapterDivider nextLabel={p.text} nextNum={visuals.CHAPTER_TONE?.[p.id]?.badge}/>
+              )}
+              <ParaBlock para={p} sectionRefs={sectionRefs}/>
+              {visuals.ChapterHero && (
+                <visuals.ChapterHero chapter={{ id: p.id, text: p.text }} isAr={isAr}/>
+              )}
+            </React.Fragment>
+          );
+        }
+
+        // H2 — check for unit-econ injection or diagram injection
+        if (p.tag === 'h2' && p.id && DIAGRAM_INJECT[p.id]) {
+          const diag = DIAGRAM_INJECT[p.id];
+          return (
+            <React.Fragment key={'inj-' + p.key}>
+              <ParaBlock para={p} sectionRefs={sectionRefs}/>
+              {renderInjectedDiagram(diag.type, isAr)}
+            </React.Fragment>
+          );
+        }
+
         if (isUnitEconHeading(p)) {
-          const text = (p.spans || []).map((s) => s.t || '').join('');
-          const productNum = detectProductNum(text);
+          const productNum = detectProductNum(paraText(p));
           if (productNum) {
             return (
               <React.Fragment key={'ue-' + p.key}>
@@ -440,6 +579,17 @@ function DocBody({ doc, sectionRefs, isAr, isMobile }) {
             );
           }
         }
+
+        // Drop cap on first paragraph after each H1 hero
+        if (p.tag === 'p' && pendingDropCap) {
+          pendingDropCap = false;
+          const text = paraText(p);
+          const dc = visuals.applyDropCap?.(text);
+          if (dc && p.spans?.length) {
+            return <DropCapPara key={p.key} para={p} dropCap={dc}/>;
+          }
+        }
+
         return <ParaBlock key={p.key} para={p} sectionRefs={sectionRefs}/>;
       })}
     </>
@@ -453,23 +603,18 @@ function TableBlock({ rows }) {
   if (!rows || rows.length === 0) return null;
   const headerRow = rows[0];
   const bodyRows = rows.slice(1);
-  // Heuristic: a row is "numeric" if 2+ cells parse as numbers, percentages, or AED amounts
   const isNumericCell = (s) => /^[\-\+]?[\d.,]+%?$/.test((s || '').trim()) || /^AED/i.test((s || '').trim());
-
   return (
     <div style={{
       margin: '20px 0 26px',
       border: '1px solid var(--mal-line)',
-      borderRadius: 14,
-      overflow: 'hidden',
+      borderRadius: 14, overflow: 'hidden',
       background: 'var(--mal-paper)',
     }}>
       <div style={{ overflowX: 'auto' }}>
         <table style={{
-          width: '100%',
-          borderCollapse: 'collapse',
-          fontSize: 13,
-          fontFamily: 'var(--mal-font-ui)',
+          width: '100%', borderCollapse: 'collapse',
+          fontSize: 13, fontFamily: 'var(--mal-font-ui)',
         }}>
           <thead>
             <tr style={{
@@ -479,8 +624,7 @@ function TableBlock({ rows }) {
               {headerRow.map((cell, ci) => (
                 <th key={ci} style={{
                   textAlign: 'start', verticalAlign: 'top',
-                  padding: '12px 14px',
-                  fontSize: 11, fontWeight: 600,
+                  padding: '12px 14px', fontSize: 11, fontWeight: 600,
                   textTransform: 'uppercase', letterSpacing: '.06em',
                   color: 'var(--mal-mid)',
                   borderInlineStart: ci > 0 ? '1px solid var(--mal-line-2)' : 'none',
@@ -499,15 +643,13 @@ function TableBlock({ rows }) {
                   const numeric = isNumericCell(cell) && ci > 0;
                   return (
                     <td key={ci} style={{
-                      padding: '11px 14px',
-                      verticalAlign: 'top',
+                      padding: '11px 14px', verticalAlign: 'top',
                       color: ci === 0 ? 'var(--mal-mid)' : 'var(--mal-ink)',
                       borderInlineStart: ci > 0 ? '1px solid var(--mal-line-2)' : 'none',
                       fontFamily: numeric ? 'var(--mal-font-mono)' : 'inherit',
                       fontWeight: ci === 0 ? 500 : 400,
                       whiteSpace: numeric ? 'nowrap' : 'normal',
-                      lineHeight: 1.5,
-                      minWidth: 80,
+                      lineHeight: 1.5, minWidth: 80,
                     }}>{cell || ''}</td>
                   );
                 })}
@@ -520,18 +662,18 @@ function TableBlock({ rows }) {
   );
 }
 
+// ============================================================
+// ParaBlock — H1/H2/H3/H4/p with refs for scroll-spy
+// ============================================================
 function ParaBlock({ para, sectionRefs }) {
-  const setRef = (el) => {
-    if (para.id && el) sectionRefs.current[para.id] = el;
-  };
+  const setRef = (el) => { if (para.id && el) sectionRefs.current[para.id] = el; };
   if (para.tag === 'h1') {
     return (
       <h2 id={para.id} ref={setRef} style={{
         fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
         fontSize: 48, lineHeight: 1.05, letterSpacing: '-0.02em',
-        margin: '64px 0 24px', scrollMarginTop: 70,
+        margin: '12px 0 0', scrollMarginTop: 96,
         color: 'var(--mal-ink)',
-        paddingBottom: 14, borderBottom: '1px solid var(--mal-line)',
       }}>
         <RenderSpans spans={para.spans}/>
       </h2>
@@ -542,7 +684,7 @@ function ParaBlock({ para, sectionRefs }) {
       <h3 id={para.id} ref={setRef} style={{
         fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
         fontSize: 30, lineHeight: 1.15, letterSpacing: '-0.015em',
-        margin: '38px 0 14px', scrollMarginTop: 70,
+        margin: '38px 0 14px', scrollMarginTop: 96,
         color: 'var(--mal-ink)',
       }}>
         <RenderSpans spans={para.spans}/>
@@ -570,13 +712,41 @@ function ParaBlock({ para, sectionRefs }) {
       </div>
     );
   }
-  // default: paragraph
   return (
     <p style={{
-      fontSize: 15, lineHeight: 1.75, color: 'var(--mal-ink)',
-      margin: '0 0 14px',
+      fontSize: 15, lineHeight: 1.75, color: 'var(--mal-ink)', margin: '0 0 14px',
     }}>
       <RenderSpans spans={para.spans}/>
+    </p>
+  );
+}
+
+// ============================================================
+// DropCapPara — first paragraph of a chapter with a display-italic initial
+// ============================================================
+function DropCapPara({ para, dropCap }) {
+  const restSpans = stM(() => {
+    if (typeof para.spans === 'string') {
+      return para.spans.slice(1);
+    }
+    if (Array.isArray(para.spans) && para.spans.length) {
+      const copy = para.spans.map((s) => ({ ...s }));
+      if (copy[0].t) copy[0] = { ...copy[0], t: copy[0].t.slice(1) };
+      return copy;
+    }
+    return [];
+  }, [para]);
+  return (
+    <p style={{
+      fontSize: 15, lineHeight: 1.75, color: 'var(--mal-ink)', margin: '0 0 14px',
+    }}>
+      <span style={{
+        fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+        fontSize: 64, lineHeight: 0.85, letterSpacing: '-0.04em',
+        float: 'inline-start', marginInlineEnd: 8, marginTop: 4, marginBottom: -4,
+        color: 'var(--mal-ink)',
+      }}>{dropCap.first}</span>
+      <RenderSpans spans={restSpans}/>
     </p>
   );
 }
@@ -594,7 +764,7 @@ function RenderSpans({ spans }) {
 }
 
 // ============================================================
-// OUTRO — a soft close + back-to-top
+// OUTRO — soft close + back-to-top
 // ============================================================
 function DocOutro({ isAr }) {
   return (
