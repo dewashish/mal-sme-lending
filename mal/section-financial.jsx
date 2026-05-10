@@ -85,10 +85,33 @@ function SectionFinancial({ lang, isMobile }) {
             fontSize: isMobile ? 36 : 48, lineHeight: 1.0, letterSpacing: '-0.02em',
             margin: '0 0 6px',
           }}>{isAr ? 'الاقتصاد' : 'Economics'}</h1>
-          <div data-tour-id="econ-source" style={{ color: 'var(--mal-mid)', fontSize: 13, marginBottom: 18 }}>
-            {isAr
-              ? `المصدر: ${data.meta.workbook} · ${data.meta.sheets} ورقة · آخر مزامنة ${data.meta.lastUpdated}`
-              : `Source of truth: ${data.meta.workbook} · ${data.meta.sheets} sheets · last sync ${data.meta.lastUpdated}`}
+          <div data-tour-id="econ-source" style={{ color: 'var(--mal-mid)', fontSize: 13, marginBottom: 18, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span>
+              {isAr ? 'المصدر: ' : 'Source of truth: '}
+              <a href={`models/${data.meta.workbook}`} download={data.meta.workbook}
+                 style={{ color: 'var(--mal-ink)', textDecoration: 'underline',
+                          textDecorationColor: 'var(--mal-line)', textUnderlineOffset: 3 }}>
+                {data.meta.workbook}
+              </a>
+            </span>
+            <a href={`models/${data.meta.workbook}`} download={data.meta.workbook}
+               style={{
+                 display: 'inline-flex', alignItems: 'center', gap: 4,
+                 padding: '2px 8px', borderRadius: 999,
+                 fontSize: 11, fontWeight: 500,
+                 color: 'var(--mal-ink)',
+                 border: '1px solid var(--mal-line)',
+                 background: 'var(--mal-paper)',
+                 textDecoration: 'none',
+               }}
+               onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--mal-ink)'; }}
+               onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--mal-line)'; }}>
+              ↓ {isAr ? 'تحميل إكسل' : 'Excel'}
+            </a>
+            <span>
+              · {data.meta.sheets} {isAr ? 'ورقة' : 'sheets'} ·
+              {isAr ? ' آخر مزامنة ' : ' last sync '}{data.meta.lastUpdated}
+            </span>
           </div>
         </div>
         {TourBtn && isLive && (
@@ -1489,11 +1512,23 @@ function SyncFooter({ data, exportCsv, isAr }) {
         <span style={{ marginInline: 8, color: 'var(--mal-mid-2)' }}>·</span>
         {isAr ? 'مزامنة' : 'synced'} {data.meta.lastUpdated}
       </div>
-      <button onClick={exportCsv} style={{
-        all: 'unset', cursor: 'pointer',
-        padding: '8px 14px', background: 'var(--mal-ink)', color: '#FAF7EE',
-        borderRadius: 999, fontSize: 12, fontWeight: 500,
-      }}>↓ {isAr ? 'تصدير CSV' : 'Export 5-yr P&L CSV'}</button>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <a href={`models/${data.meta.workbook}`} download={data.meta.workbook}
+           style={{
+             display: 'inline-flex', alignItems: 'center', gap: 6,
+             padding: '8px 14px', background: 'var(--mal-ink)', color: '#FAF7EE',
+             borderRadius: 999, fontSize: 12, fontWeight: 500,
+             textDecoration: 'none', cursor: 'pointer',
+           }}>
+          ↓ {isAr ? 'تحميل ملف الإكسل الكامل' : 'Download full Excel workbook'}
+        </a>
+        <button onClick={exportCsv} style={{
+          all: 'unset', cursor: 'pointer',
+          padding: '8px 14px', background: 'transparent', color: 'var(--mal-ink)',
+          border: '1px solid var(--mal-line)',
+          borderRadius: 999, fontSize: 12, fontWeight: 500,
+        }}>↓ {isAr ? 'CSV' : 'CSV (P&L only)'}</button>
+      </div>
     </div>
   );
 }
