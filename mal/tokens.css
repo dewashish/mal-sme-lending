@@ -10,11 +10,11 @@
   --mal-ink-2:      #1A1A28;
   --mal-mid:        #5C5C72;
   --mal-mid-2:      #8B8BA1;
-  --mal-line:       #E8E3D6;
-  --mal-line-2:     #F0EBDE;
-  --mal-surface:    #FAF7EE;       /* warm pearl bg */
-  --mal-surface-2:  #F4F0E2;
-  --mal-paper:      #FFFEF9;
+  --mal-line:       #D0DDEE;
+  --mal-line-2:     #E4EAF5;
+  --mal-surface:    #E4EAF5;       /* mal.ai blue-gray */
+  --mal-surface-2:  #D0DDEE;
+  --mal-paper:      #FFFFFF;
   --mal-elev:       #FFFFFF;
 
   /* primary accent — refined indigo (from Mal orb) */

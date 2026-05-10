@@ -9,18 +9,16 @@ const Ico = window.MalIcon;
 // Logo + orb
 // ============================================================
 function MalLogo({ size = 28, light = false }) {
+  // Real Mal wordmark from mal.ai · 71×29 viewBox
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-      <MalOrb size={size} />
-      <span style={{
-        fontFamily: 'var(--mal-font-display)',
-        fontSize: size * 0.95,
-        lineHeight: 1,
-        color: light ? '#fff' : 'var(--mal-ink)',
-        letterSpacing: '-0.02em',
-        fontStyle: 'italic',
-      }}>mal</span>
-    </div>
+    <img
+      src="mal-logo.svg"
+      alt="Mal"
+      style={{
+        height: size, width: 'auto', display: 'block',
+        filter: light ? 'invert(1)' : undefined,
+      }}
+    />
   );
 }
 
