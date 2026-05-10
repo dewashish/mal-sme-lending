@@ -73,6 +73,24 @@
     from { opacity: 1; }
     to   { opacity: 0; }
   }
+  /* Sidebar timeline items: hover bulge */
+  .mal-sidebar-tab:hover {
+    background: var(--mal-paper) !important;
+    transform: translateX(2px) scale(1.015);
+    box-shadow: var(--mal-sh-2) !important;
+    border-color: var(--mal-primary-3) !important;
+  }
+  [dir="rtl"] .mal-sidebar-tab:hover {
+    transform: translateX(-2px) scale(1.015);
+  }
+  /* Plan picker rows: hover bulge */
+  .mal-plan-row:hover {
+    transform: translateY(-1px) scale(1.005);
+    box-shadow: var(--mal-sh-2) !important;
+    border-color: var(--mal-primary-3) !important;
+  }
+  /* Day stepper buttons: subtle hover scale */
+  .mal-day-step:hover { transform: scale(1.08); background: var(--mal-surface-2); }
   /* Mobile fluid container — no iPhone bezel under 720px */
   @media (max-width: 720px) {
     .mal-app-fluid { padding: 0 !important; }

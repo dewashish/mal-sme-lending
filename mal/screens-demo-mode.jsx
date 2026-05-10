@@ -37,26 +37,55 @@ const DM_PHASES = [
 // 1. Default state
 // ==================================================================
 
-const DEFAULT_PLAN = {
-  type: 'installment_4',
-  label: '4-month installments',
-  tenorMonths: 4,
-  principal: 250000,
-  totalCost: 9000,
-  emiAmount: 64750,
-  startDay: 1,
-  schedule: [
-    { num: 1, dueDay: 30,  amount: 64750 },
-    { num: 2, dueDay: 60,  amount: 64750 },
-    { num: 3, dueDay: 90,  amount: 64750 },
-    { num: 4, dueDay: 120, amount: 64750 },
-  ],
+// All five plan presets. Each is a fully-formed plan object the buyer
+// state can adopt directly. Single-bullet plans (pay30, bnpl60, bnpl90)
+// have a one-row schedule; instalment plans (inst3, installment_4) have
+// N rows of equal monthly EMIs. Supplier always gets settled on Day 30
+// regardless of which plan the buyer signs (Mal absorbs timing risk).
+const PLAN_DEFS = {
+  pay30: {
+    type: 'pay30', label: 'Pay in 30d',
+    tenorMonths: 1, principal: 250000, totalCost: 0, emiAmount: 250000,
+    schedule: [{ num: 1, dueDay: 30, amount: 250000 }],
+  },
+  bnpl60: {
+    type: 'bnpl60', label: 'BNPL 60d',
+    tenorMonths: 2, principal: 250000, totalCost: 4500, emiAmount: 254500,
+    schedule: [{ num: 1, dueDay: 60, amount: 254500 }],
+  },
+  bnpl90: {
+    type: 'bnpl90', label: 'BNPL 90d',
+    tenorMonths: 3, principal: 250000, totalCost: 6500, emiAmount: 256500,
+    schedule: [{ num: 1, dueDay: 90, amount: 256500 }],
+  },
+  inst3: {
+    type: 'inst3', label: 'Instalments · 3 mo',
+    tenorMonths: 3, principal: 250000, totalCost: 7500, emiAmount: 85833,
+    schedule: [
+      { num: 1, dueDay: 30, amount: 85833 },
+      { num: 2, dueDay: 60, amount: 85833 },
+      { num: 3, dueDay: 90, amount: 85834 },
+    ],
+  },
+  installment_4: {
+    type: 'installment_4', label: 'Instalments · 4 mo',
+    tenorMonths: 4, principal: 250000, totalCost: 9000, emiAmount: 64750,
+    schedule: [
+      { num: 1, dueDay: 30,  amount: 64750 },
+      { num: 2, dueDay: 60,  amount: 64750 },
+      { num: 3, dueDay: 90,  amount: 64750 },
+      { num: 4, dueDay: 120, amount: 64750 },
+    ],
+  },
 };
+const DEFAULT_PLAN = PLAN_DEFS.installment_4;
 
 const DEFAULT_SCENARIO = {
-  // Onboarding control
+  // Onboarding control + per-side completion flags
   buyerStep: 0,
   supplierStep: 0,
+  buyerOnboardingDone: false,
+  supplierOnboardingDone: false,
 
   // Invoice the supplier issued
   invoice: {
@@ -323,6 +352,18 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile }) {
     return () => clearTimeout(t);
   }, [scenario.buyerToast?.title, scenario.supplierToast?.title]);
 
+  // Auto-advance phase to 'home' only when BOTH sides finish onboarding.
+  // Independent: each side completes at its own pace, sees a "ready · waiting"
+  // screen until the other catches up. ~700ms after both are done, advance.
+  dmE(() => {
+    if (phase === 'onboarding'
+        && scenario.buyerOnboardingDone
+        && scenario.supplierOnboardingDone) {
+      const t = setTimeout(() => setPhase('home'), 700);
+      return () => clearTimeout(t);
+    }
+  }, [phase, scenario.buyerOnboardingDone, scenario.supplierOnboardingDone]);
+
   // Cross-date toasts: when simDay changes, fire alerts for any EMI dueDay
   // that was just crossed without a payment. We only fire on forward movement.
   const lastSimDay = dmR(scenario.simDay);
@@ -376,11 +417,22 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile }) {
     }}>
       <DemoTopBar lang={lang} setLang={setLang} onExit={onExit}
                   reset={reset} phase={phase} isMobile={isMobile}/>
-      <DemoTimeline phase={phase} setPhase={setPhase} lang={lang}/>
-      <DemoStage scenario={scenario} setScenario={setScenario} patch={patch}
-                 phase={phase} setPhase={setPhase} setSimDay={setSimDay} stepDay={stepDay}
-                 lang={lang} isMobile={isMobile}/>
-      <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan}/>
+      {/* Mobile timeline collapses to top; desktop uses left sidebar */}
+      {isMobile && <DemoTimelineHorizontal phase={phase} setPhase={setPhase} lang={lang}/>}
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        alignItems: 'flex-start',
+        minHeight: isMobile ? 0 : 'calc(100vh - 80px)',
+      }}>
+        {!isMobile && <DemoTimelineSidebar phase={phase} setPhase={setPhase} lang={lang}/>}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <DemoStage scenario={scenario} setScenario={setScenario} patch={patch}
+                     phase={phase} setPhase={setPhase} setSimDay={setSimDay} stepDay={stepDay}
+                     lang={lang} isMobile={isMobile}/>
+          <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan}/>
+        </div>
+      </div>
     </div>
   );
 }
@@ -431,12 +483,97 @@ function DemoTopBar({ lang, setLang, onExit, reset, phase, isMobile }) {
 // 5. Phase timeline (clickable)
 // ==================================================================
 
-function DemoTimeline({ phase, setPhase, lang }) {
+// Vertical sidebar timeline (desktop). Sticky, hover-bulges, click-to-jump.
+function DemoTimelineSidebar({ phase, setPhase, lang }) {
+  const isAr = lang === 'ar';
+  const idx = DM_PHASES.findIndex((p) => p.id === phase);
+  return (
+    <aside style={{
+      width: 220, flexShrink: 0,
+      padding: '20px 12px 24px 16px',
+      position: 'sticky', top: 64,
+      borderInlineEnd: '1px solid var(--mal-line)',
+      background: 'transparent',
+      maxHeight: 'calc(100vh - 64px)',
+      overflowY: 'auto',
+    }}>
+      <div className="mal-caption" style={{ marginBottom: 12, paddingInline: 10 }}>
+        {isAr ? 'الجدول الزمني' : 'Journey'}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
+        {/* Spine: vertical line connecting the dots */}
+        <div aria-hidden style={{
+          position: 'absolute', insetInlineStart: 22, top: 14, bottom: 14,
+          width: 2, background: 'linear-gradient(180deg, var(--mal-line) 0%, var(--mal-line) 100%)',
+        }}/>
+        {/* Filled portion */}
+        <div aria-hidden style={{
+          position: 'absolute', insetInlineStart: 22, top: 14,
+          width: 2,
+          height: `calc((100% - 28px) * ${idx / Math.max(1, DM_PHASES.length - 1)})`,
+          background: 'linear-gradient(180deg, var(--mal-primary) 0%, var(--mal-primary-3) 100%)',
+          transition: 'height .35s',
+        }}/>
+        {DM_PHASES.map((p, i) => {
+          const active = i === idx;
+          const past   = i < idx;
+          return (
+            <button key={p.id}
+                    onClick={() => setPhase(p.id)}
+                    className="mal-sidebar-tab"
+                    style={{
+                      all: 'unset', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '8px 10px', borderRadius: 12,
+                      background: active ? 'var(--mal-paper)' : 'transparent',
+                      border: '1px solid ' + (active ? 'var(--mal-primary-3)' : 'transparent'),
+                      boxShadow: active ? 'var(--mal-sh-2)' : 'none',
+                      transition: 'transform .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease',
+                      position: 'relative', zIndex: 1,
+                    }}>
+              {/* Dot */}
+              <div style={{
+                width: 14, height: 14, borderRadius: 999, flexShrink: 0,
+                background: active ? 'var(--mal-primary)' : past ? 'var(--mal-primary-3)' : 'var(--mal-paper)',
+                border: '2px solid ' + (active ? 'var(--mal-primary)' : past ? 'var(--mal-primary-3)' : 'var(--mal-line)'),
+                boxShadow: active ? '0 0 0 4px var(--mal-primary-50)' : 'none',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff',
+                transition: 'all .25s',
+              }}>
+                {past && (dmIco.check ? dmIco.check({ width: 9, height: 9, color: '#fff' }) : '✓')}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 10, fontFamily: 'var(--mal-font-mono)', color: 'var(--mal-mid-2)',
+                  letterSpacing: '.04em', lineHeight: 1,
+                }}>
+                  {String(i + 1).padStart(2, '0')}
+                </div>
+                <div style={{
+                  fontSize: 12.5, fontWeight: active ? 600 : 500,
+                  color: active ? 'var(--mal-ink)' : past ? 'var(--mal-ink)' : 'var(--mal-mid)',
+                  marginTop: 2,
+                }}>
+                  {p.label}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </aside>
+  );
+}
+
+// Horizontal timeline retained for mobile only.
+function DemoTimelineHorizontal({ phase, setPhase, lang }) {
   const idx = DM_PHASES.findIndex((p) => p.id === phase);
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-      padding: '14px 22px', overflowX: 'auto',
+      display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap',
+      padding: '12px 16px', overflowX: 'auto',
+      borderBottom: '1px solid var(--mal-line)',
     }}>
       {DM_PHASES.map((p, i) => (
         <button key={p.id}
@@ -707,15 +844,14 @@ function DemoCenterColumnLive({ scenario, setSimDay, stepDay, setPhase, patch, l
         ].map((b) => (
           <button key={b.l}
                   onClick={() => stepDay(b.d)}
+                  className="mal-day-step"
                   style={{
                     all: 'unset', cursor: 'pointer',
                     minWidth: 38, padding: '6px 10px', borderRadius: 999,
                     fontSize: 12, fontWeight: 600, color: 'var(--mal-ink)',
                     fontFamily: 'var(--mal-font-mono)',
-                    transition: 'background .14s',
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--mal-surface-2)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                    transition: 'background .14s, transform .14s',
+                  }}>
             {b.l}
           </button>
         ))}
@@ -787,7 +923,7 @@ function DemoCenterColumnLive({ scenario, setSimDay, stepDay, setPhase, patch, l
 // ==================================================================
 
 function DemoPanel({ side, title, sub, tone, spotlight, toast, lang, children }) {
-  const w = 380, h = 760;
+  const w = 380, h = 880;
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center',
@@ -881,10 +1017,15 @@ function DemoToast({ toast }) {
 function BuyerSurface({ phase, setPhase, scenario, patch, lang }) {
   if (phase === 'intro') return <DemoIntroBuyer lang={lang} onProceed={() => setPhase('onboarding')}/>;
   if (phase === 'onboarding') {
+    // Per-side completion: when buyer finishes, mark only the buyer flag.
+    // Phase only advances when BOTH sides have completed (handled below).
+    if (scenario.buyerOnboardingDone) {
+      return <DemoOnboardingReady lang={lang} side="buyer" partnerDone={scenario.supplierOnboardingDone}/>;
+    }
     return <BuyerOnboardingFlow lang={lang}
                                 controlledStep={scenario.buyerStep}
                                 onStepChange={(n) => patch({ buyerStep: n })}
-                                onDone={() => setPhase('home')}/>;
+                                onDone={() => patch({ buyerOnboardingDone: true })}/>;
   }
   if (phase === 'home' || phase === 'issue') return <DemoBuyerHomeEmpty lang={lang}/>;
   if (phase === 'receive') return <DemoBuyerHomeWithInvoice lang={lang} scenario={scenario} onProceed={() => setPhase('plan')}/>;
@@ -899,6 +1040,61 @@ function BuyerSurface({ phase, setPhase, scenario, patch, lang }) {
                           scenario={scenario} patch={patch} lang={lang}/>;
   }
   return null;
+}
+
+// Shown on the side that's already finished onboarding while the OTHER
+// side is still going. Once both are done, DemoMode auto-advances to 'home'.
+function DemoOnboardingReady({ lang, side, partnerDone }) {
+  const isAr = lang === 'ar';
+  const isBuyer = side === 'buyer';
+  const personaTitle = isBuyer ? (isAr ? 'تجارة الهلال' : 'Crescent Trading FZE')
+                               : (isAr ? 'أطلس باكدجنغ' : 'Atlas Packaging FZ');
+  return (
+    <div style={{ height: '100%', minHeight: 800, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, background: isBuyer
+        ? 'linear-gradient(180deg, #FAF7EE 0%, #EFEAFF 60%, #FAF7EE 100%)'
+        : 'linear-gradient(180deg, #FAF7EE 0%, #DCE8F8 60%, #FAF7EE 100%)' }}/>
+      <div style={{ position: 'absolute', top: 60, insetInlineEnd: -60, width: 280, height: 280, opacity: .55 }}>
+        <div className="mal-orb" style={{ width: '100%', height: '100%', animation: 'mal-orb-spin 22s linear infinite' }}/>
+      </div>
+      <div style={{ flex: 1, padding: 30, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', zIndex: 1, textAlign: 'center', gap: 18 }}>
+        <div style={{
+          width: 70, height: 70, borderRadius: 999,
+          background: 'var(--mal-success-bg)', color: 'var(--mal-success)',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          {dmIco.check ? dmIco.check({ width: 32, height: 32, stroke: 'var(--mal-success)' }) : '✓'}
+        </div>
+        <h2 className="mal-display-md" style={{ fontStyle: 'italic', margin: 0 }}>
+          {isAr ? 'تمّ الإعداد' : 'You\'re onboarded'}
+        </h2>
+        <div style={{ color: 'var(--mal-mid)', fontSize: 13, lineHeight: 1.5, maxWidth: 280 }}>
+          {personaTitle} · {isBuyer ? (isAr ? 'حدّ ائتمان AED 850,000' : 'AED 850,000 limit · Tier A')
+                                    : (isAr ? 'حساب مورّد مفعّل' : 'Supplier account active')}
+        </div>
+        <div style={{
+          marginTop: 18, padding: '14px 16px',
+          background: 'var(--mal-paper)', borderRadius: 14,
+          border: '1px solid var(--mal-line)',
+          maxWidth: 300, width: '100%',
+        }}>
+          {partnerDone ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--mal-success)' }}>
+              {dmIco.check ? dmIco.check({ width: 16, height: 16, stroke: 'var(--mal-success)' }) : '✓'}
+              {isAr ? 'الطرف الآخر جاهز أيضاً — جارٍ المتابعة…' : 'Other side ready too — proceeding…'}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--mal-mid)' }}>
+              <div style={{ width: 14, height: 14, border: '2px solid var(--mal-primary-3)', borderTopColor: 'transparent', borderRadius: 999, animation: 'mal-spin 1s linear infinite' }}/>
+              {isAr
+                ? `في انتظار إعداد ${isBuyer ? 'المورّد' : 'المشتري'}…`
+                : `Waiting for ${isBuyer ? 'supplier' : 'buyer'} to finish onboarding…`}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function DemoIntroBuyer({ lang, onProceed }) {
@@ -1041,15 +1237,12 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
           return (
             <button key={p.key}
                     onClick={() => {
-                      // For demo, the "installment_4" path drives the lifecycle.
-                      // Other plans (cash / shorter installments) just track selection.
-                      if (p.key === 'installment_4') {
-                        patch({ plan: DEFAULT_PLAN });
-                      } else {
-                        patch({ plan: { type: p.key, label: p.label } });
-                      }
+                      // Each preset has a real schedule, so the lifecycle simulator
+                      // works for any plan the buyer picks.
+                      const preset = PLAN_DEFS[p.key] || PLAN_DEFS.installment_4;
+                      patch({ plan: preset, paymentsByEmi: {} });
                     }}
-                    className={selected ? '' : 'mal-fade-up'}
+                    className={`mal-plan-row ${selected ? 'selected' : 'mal-fade-up'}`}
                     style={{
                       all: 'unset', cursor: 'pointer',
                       padding: 14, borderRadius: 14,
@@ -1057,7 +1250,7 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
                       border: '1.5px solid ' + (selected ? 'var(--mal-primary)' : 'transparent'),
                       boxShadow: selected ? 'var(--mal-sh-2)' : 'none',
                       display: 'flex', alignItems: 'center', gap: 12,
-                      transition: 'all .3s',
+                      transition: 'transform .18s ease, background .18s ease, box-shadow .18s ease, border-color .18s ease',
                       animationDelay: (i * 60) + 'ms',
                     }}>
               <div style={{
@@ -1319,9 +1512,9 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
-          <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 26, fontStyle: 'italic' }}>
-            {plan.tenorMonths}{isAr ? ' شهر · أقساط' : '-mo installments'}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 24, fontStyle: 'italic' }}>
+            {plan.label}
           </span>
           <Pill tone={isClosed ? 'success' : (overdue ? 'danger' : 'info')} dot>
             {isClosed ? (isAr ? 'مُغلق' : 'Closed')
@@ -1486,19 +1679,23 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
   );
 }
 
-// Buyer's confirm screen (UAE Pass signature) used after picking a plan
+// Buyer's confirm screen (UAE Pass signature) used after picking a plan.
+// Reads the actual selected plan; works for any of the 5 presets.
 function DemoBuyerConfirm({ lang, scenario, patch }) {
   const isAr = lang === 'ar';
   const [signing, setSigning] = dmS(false);
+  const plan = scenario.plan || DEFAULT_PLAN;
   dmE(() => {
     if (signing) {
       const t = setTimeout(() => {
-        patch({ signed: true, signing: false, plan: DEFAULT_PLAN, buyerRoute: 'home' });
+        patch({ signed: true, signing: false, buyerRoute: 'home' });
         setSigning(false);
       }, 1300);
       return () => clearTimeout(t);
     }
   }, [signing]);
+  const isInstallment = plan.schedule.length > 1;
+  const feePct = plan.principal > 0 ? ((plan.totalCost / plan.principal) * 100).toFixed(1) : '0';
   return (
     <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="mal-display-sm" style={{ fontStyle: 'italic' }}>{isAr ? 'تأكيد التوقيع' : 'Confirm to sign'}</div>
@@ -1506,16 +1703,32 @@ function DemoBuyerConfirm({ lang, scenario, patch }) {
         <div className="mal-orb" style={{ position: 'absolute', width: 140, height: 140, top: -40, insetInlineEnd: -40, opacity: .45 }}/>
         <div style={{ position: 'relative' }}>
           <div style={{ fontSize: 11, opacity: .7, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-            {isAr ? 'فاتورة' : 'Invoice'}
+            {isAr ? 'فاتورة' : 'Invoice'} {scenario.invoice.id}
           </div>
           <div className="mal-num" style={{ fontFamily: 'var(--mal-font-display)', fontSize: 36, marginTop: 6, fontStyle: 'italic' }}>
-            AED 250,000
+            AED {plan.principal.toLocaleString()}
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14, fontSize: 12, opacity: .9 }}>
-            <span>{isAr ? '٤ شهور' : '4 mo'} · 3.6% fee</span>
-            <span className="mal-num">AED 64,750 / mo</span>
+            <span>{plan.label} · {feePct}% fee</span>
+            <span className="mal-num">
+              AED {plan.emiAmount.toLocaleString()}{isInstallment ? (isAr ? ' / شهر' : ' / mo') : ''}
+            </span>
           </div>
         </div>
+      </Card>
+      <Card padded>
+        {[
+          [isAr ? 'إلى مورّد' : 'Paid to',           'Atlas Packaging FZ'],
+          [isAr ? 'الخصم' : 'Auto-debit',            'ENBD ****4291'],
+          [isAr ? 'القسط الأوّل' : 'First due',      formatSimDay(plan.schedule[0].dueDay)],
+          [isAr ? 'القسط الأخير' : 'Last due',       formatSimDay(plan.schedule[plan.schedule.length - 1].dueDay)],
+          [isAr ? 'إجمالي التكلفة' : 'Total cost',   plan.totalCost ? `AED ${plan.totalCost.toLocaleString()}` : (isAr ? 'مجّاناً' : 'Free')],
+        ].map(([k, v], i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: i ? '1px solid var(--mal-line-2)' : 'none', fontSize: 13 }}>
+            <span style={{ color: 'var(--mal-mid)' }}>{k}</span>
+            <span style={{ fontWeight: 500 }}>{v}</span>
+          </div>
+        ))}
       </Card>
       <Button kind="primary" size="lg" full onClick={() => setSigning(true)}
               icon={signing ? 'check' : 'lock'}>
@@ -1767,10 +1980,13 @@ function DemoRefinanceSuccess({ lang, scenario, setBuyerRoute }) {
 function SupplierSurface({ phase, setPhase, scenario, patch, lang }) {
   if (phase === 'intro') return <DemoIntroSupplier lang={lang} onProceed={() => setPhase('onboarding')}/>;
   if (phase === 'onboarding') {
+    if (scenario.supplierOnboardingDone) {
+      return <DemoOnboardingReady lang={lang} side="supplier" partnerDone={scenario.buyerOnboardingDone}/>;
+    }
     return <SupplierOnboardingFlow lang={lang}
                                    controlledStep={scenario.supplierStep}
                                    onStepChange={(n) => patch({ supplierStep: n })}
-                                   onDone={() => setPhase('home')}/>;
+                                   onDone={() => patch({ supplierOnboardingDone: true })}/>;
   }
   if (phase === 'home') return <DemoSupplierHome lang={lang} onIssue={() => setPhase('issue')}/>;
   if (phase === 'issue') return <DemoSupplierIssueInvoice lang={lang} scenario={scenario} patch={patch} onIssued={() => setPhase('receive')}/>;
