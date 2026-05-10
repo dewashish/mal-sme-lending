@@ -433,15 +433,14 @@ const APP_SECTIONS = [
 
 function AppFrame({ section, setSection, lang, setLang, isMobile, onHome }) {
   const Ico = window.MalIcon;
-  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.theme = 'light';
     document.documentElement.dataset.density = 'cozy';
-  }, [theme]);
+  }, []);
 
   return (
-    <div data-theme={theme} dir={lang === 'ar' ? 'rtl' : 'ltr'}
+    <div data-theme="light" dir={lang === 'ar' ? 'rtl' : 'ltr'}
          style={{ minHeight: '100vh', background: 'var(--mal-surface)' }}>
       <header className="mal-app-bar">
         <button className="mal-pill-btn" onClick={onHome} aria-label="Home / landing">
@@ -470,9 +469,6 @@ function AppFrame({ section, setSection, lang, setLang, isMobile, onHome }) {
           <Tabs value={lang} onChange={setLang} size="sm" items={[
             { value: 'en', label: 'EN' }, { value: 'ar', label: 'AR' },
           ]} />
-          <IconBtn icon={theme === 'dark' ? 'sun' : 'moon'}
-                   onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                   label="Theme" size={32} kind="default" />
         </div>
       </header>
 
