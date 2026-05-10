@@ -255,11 +255,30 @@ function collectionsBanner(stage, dpd, isAr) {
   };
 }
 
-function buildEvents(simDay, plan, paymentsByEmi) {
+function buildEvents(simDay, plan, paymentsByEmi, notifPrefs) {
   if (!plan) return [];
   const all = [];
   all.push({ day: 0, scope: 'buyer',    label: 'Plan signed · 4-mo installments', icon: 'check' });
   all.push({ day: 0, scope: 'supplier', label: 'AED 232,500 wired · 93% advance', icon: 'bank' });
+
+  // Pre-due reminders fire at -3 and -1 days (only if not yet paid).
+  const channels = notifPrefs && notifPrefs.channels && notifPrefs.channels.length
+    ? notifPrefs.channels.join(' · ')
+    : 'WhatsApp · SMS · in-app';
+  computeEmiStatuses(plan, simDay, paymentsByEmi).forEach((e) => {
+    if (e.status !== 'paid') {
+      [3, 1].forEach((dDays) => {
+        const remDay = e.dueDay - dDays;
+        if (remDay >= 0 && remDay <= simDay) {
+          all.push({
+            day: remDay, scope: 'buyer',
+            label: `EMI ${e.num} reminder · ${dDays === 1 ? 'tomorrow' : '3 days to go'} · sent via ${channels}`,
+            icon: 'info', tone: 'iri',
+          });
+        }
+      });
+    }
+  });
 
   computeEmiStatuses(plan, simDay, paymentsByEmi).forEach((e) => {
     if (e.status === 'paid') {
@@ -836,7 +855,7 @@ function CircularDayDial({ simDay, setSimDay, plan, paymentsByEmi, lang, maxDay 
 function DemoCenterColumnLive({ scenario, setSimDay, stepDay, setPhase, patch, lang }) {
   const isAr = lang === 'ar';
   const { simDay, plan, paymentsByEmi, refinancedPaymentsByEmi } = scenario;
-  const events = plan ? buildEvents(simDay, plan, plan.refinancedFrom ? refinancedPaymentsByEmi : paymentsByEmi).slice(0, 4) : [];
+  const events = plan ? buildEvents(simDay, plan, plan.refinancedFrom ? refinancedPaymentsByEmi : paymentsByEmi, scenario.notifPrefs).slice(0, 4) : [];
 
   return (
     <div style={{
@@ -1985,6 +2004,15 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
           </Card>
         );
       })()}
+
+      {/* Notification preference centre — channel + language picker, with timeline preview */}
+      {!allClosed && (
+        <NotifPrefsCard
+          isAr={isAr}
+          prefs={scenario.notifPrefs || { channels: ['WhatsApp', 'SMS', 'In-app'], language: isAr ? 'ar' : 'en' }}
+          onChange={(prefs) => patch({ notifPrefs: prefs })}
+        />
+      )}
 
       {/* Bundle / Consolidate CTA — show when ≥ 2 active obligations and not bundled. */}
       {!scenario.bundledPlan && activeLoanCount >= 2 && (
@@ -3269,6 +3297,131 @@ function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
         })}
       </div>
     </Card>
+  );
+}
+
+// ============================================================
+// NotifPrefsCard — collapsible card showing the buyer's reminder
+// channel + language prefs + a timeline preview of when they fire.
+// ============================================================
+function NotifPrefsCard({ isAr, prefs, onChange }) {
+  const [open, setOpen] = dmS(false);
+  const allChannels = isAr
+    ? ['واتساب', 'SMS', 'بريد', 'إشعار التطبيق']
+    : ['WhatsApp', 'SMS', 'Email', 'In-app'];
+  const channels = prefs.channels || ['WhatsApp', 'SMS', 'In-app'];
+  const lang = prefs.language || (isAr ? 'ar' : 'en');
+
+  const toggleChannel = (c) => {
+    const next = channels.includes(c) ? channels.filter((x) => x !== c) : [...channels, c];
+    onChange({ ...prefs, channels: next });
+  };
+
+  return (
+    <div style={{
+      padding: 14, borderRadius: 14,
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        cursor: 'pointer',
+      }} onClick={() => setOpen(!open)}>
+        <span style={{
+          width: 28, height: 28, borderRadius: 999,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--mal-surface-2)', fontSize: 14,
+        }}>🔔</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--mal-ink)' }}>
+            {isAr ? 'كيف نذكّرك' : 'How we remind you'}
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
+            {channels.join(' · ')} · {lang === 'ar' ? 'العربية' : 'English'}
+          </div>
+        </div>
+        <span style={{ color: 'var(--mal-mid-2)', fontSize: 12 }}>
+          {open ? '▾' : '▸'}
+        </span>
+      </div>
+
+      {open && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Channels */}
+          <div>
+            <div className="mal-caption" style={{ marginBottom: 6, color: 'var(--mal-mid)' }}>
+              {isAr ? 'القنوات' : 'Channels'}
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {allChannels.map((c) => {
+                const active = channels.includes(c);
+                return (
+                  <button key={c} onClick={() => toggleChannel(c)} style={{
+                    all: 'unset', cursor: 'pointer',
+                    fontSize: 11, padding: '4px 10px', borderRadius: 999,
+                    background: active ? 'var(--mal-primary)' : 'var(--mal-surface-2)',
+                    color: active ? '#fff' : 'var(--mal-ink-2)',
+                    border: '1px solid ' + (active ? 'var(--mal-primary)' : 'var(--mal-line)'),
+                    transition: 'background .15s, color .15s',
+                  }}>{c}</button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Language */}
+          <div>
+            <div className="mal-caption" style={{ marginBottom: 6, color: 'var(--mal-mid)' }}>
+              {isAr ? 'لغة الرسائل' : 'Message language'}
+            </div>
+            <div style={{ display: 'inline-flex', gap: 4 }}>
+              {[{ v: 'en', l: 'English' }, { v: 'ar', l: 'العربية' }].map((opt) => {
+                const active = lang === opt.v;
+                return (
+                  <button key={opt.v} onClick={() => onChange({ ...prefs, language: opt.v })} style={{
+                    all: 'unset', cursor: 'pointer',
+                    fontSize: 11, padding: '4px 10px', borderRadius: 999,
+                    background: active ? 'var(--mal-ink)' : 'var(--mal-surface-2)',
+                    color: active ? '#FAF7EE' : 'var(--mal-ink-2)',
+                  }}>{opt.l}</button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Timeline preview */}
+          <div>
+            <div className="mal-caption" style={{ marginBottom: 6, color: 'var(--mal-mid)' }}>
+              {isAr ? 'متى ترسل الذكرى' : 'When reminders fire'}
+            </div>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4,
+              fontFamily: 'var(--mal-font-mono)', fontSize: 9.5,
+            }}>
+              {[
+                { lab: '−3d', tone: '#1f54c8' },
+                { lab: '−1d', tone: '#1f54c8' },
+                { lab: 'Due', tone: '#5a3aa3' },
+                { lab: '+1d', tone: '#b06a14' },
+                { lab: '+7d', tone: '#b06a14' },
+                { lab: '+15d', tone: '#b8364b' },
+              ].map((t) => (
+                <div key={t.lab} style={{
+                  padding: '4px 6px', borderRadius: 6, textAlign: 'center',
+                  background: t.tone + '14', color: t.tone,
+                  border: '1px solid ' + t.tone + '40',
+                }}>{t.lab}</div>
+              ))}
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--mal-mid-2)', marginTop: 6, lineHeight: 1.5 }}>
+              {isAr
+                ? 'ذكرى مسبقة قبل ٣ أيّام · يوم قبل · يوم الاستحقاق · سُلم التحصيل بعد ذلك. كلّها تظهر في سجلّ النشاط أعلاه.'
+                : 'Pre-due nudge at −3 and −1 days · day-of confirmation · collections ladder after. All log into the activity timeline above.'}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
