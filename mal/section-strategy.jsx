@@ -161,7 +161,11 @@ function DocBody({ doc, sectionRefs }) {
         listBuffer.push({ ...p, key: i });
       } else {
         flushList();
-        out.push({ type: 'para', para: { ...p, key: i } });
+        if (p.tag === 'table') {
+          out.push({ type: 'table', table: { ...p, key: i } });
+        } else {
+          out.push({ type: 'para', para: { ...p, key: i } });
+        }
       }
     });
     flushList();
@@ -188,10 +192,87 @@ function DocBody({ doc, sectionRefs }) {
             </ul>
           );
         }
+        if (b.type === 'table') {
+          return <TableBlock key={'t' + bi} rows={b.table.rows}/>;
+        }
         const p = b.para;
         return <ParaBlock key={p.key} para={p} sectionRefs={sectionRefs}/>;
       })}
     </>
+  );
+}
+
+// ============================================================
+// TableBlock — beautiful, scrollable, sticky-header data table
+// ============================================================
+function TableBlock({ rows }) {
+  if (!rows || rows.length === 0) return null;
+  const headerRow = rows[0];
+  const bodyRows = rows.slice(1);
+  // Heuristic: a row is "numeric" if 2+ cells parse as numbers, percentages, or AED amounts
+  const isNumericCell = (s) => /^[\-\+]?[\d.,]+%?$/.test((s || '').trim()) || /^AED/i.test((s || '').trim());
+
+  return (
+    <div style={{
+      margin: '20px 0 26px',
+      border: '1px solid var(--mal-line)',
+      borderRadius: 14,
+      overflow: 'hidden',
+      background: 'var(--mal-paper)',
+    }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: 13,
+          fontFamily: 'var(--mal-font-ui)',
+        }}>
+          <thead>
+            <tr style={{
+              background: 'var(--mal-surface-2)',
+              borderBottom: '1px solid var(--mal-line)',
+            }}>
+              {headerRow.map((cell, ci) => (
+                <th key={ci} style={{
+                  textAlign: 'start', verticalAlign: 'top',
+                  padding: '12px 14px',
+                  fontSize: 11, fontWeight: 600,
+                  textTransform: 'uppercase', letterSpacing: '.06em',
+                  color: 'var(--mal-mid)',
+                  borderInlineStart: ci > 0 ? '1px solid var(--mal-line-2)' : 'none',
+                  whiteSpace: 'nowrap',
+                }}>{cell}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {bodyRows.map((row, ri) => (
+              <tr key={ri} style={{
+                background: ri % 2 ? 'transparent' : 'rgba(0,0,0,.012)',
+                borderBottom: ri < bodyRows.length - 1 ? '1px solid var(--mal-line-2)' : 'none',
+              }}>
+                {row.map((cell, ci) => {
+                  const numeric = isNumericCell(cell) && ci > 0;
+                  return (
+                    <td key={ci} style={{
+                      padding: '11px 14px',
+                      verticalAlign: 'top',
+                      color: ci === 0 ? 'var(--mal-mid)' : 'var(--mal-ink)',
+                      borderInlineStart: ci > 0 ? '1px solid var(--mal-line-2)' : 'none',
+                      fontFamily: numeric ? 'var(--mal-font-mono)' : 'inherit',
+                      fontWeight: ci === 0 ? 500 : 400,
+                      whiteSpace: numeric ? 'nowrap' : 'normal',
+                      lineHeight: 1.5,
+                      minWidth: 80,
+                    }}>{cell || ''}</td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 
@@ -203,18 +284,11 @@ function ParaBlock({ para, sectionRefs }) {
     return (
       <h2 id={para.id} ref={setRef} style={{
         fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-        fontSize: 52, lineHeight: 1.05, letterSpacing: '-0.02em',
-        margin: '60px 0 22px', scrollMarginTop: 70,
+        fontSize: 48, lineHeight: 1.05, letterSpacing: '-0.02em',
+        margin: '64px 0 24px', scrollMarginTop: 70,
         color: 'var(--mal-ink)',
+        paddingBottom: 14, borderBottom: '1px solid var(--mal-line)',
       }}>
-        <span style={{
-          display: 'block', fontFamily: 'var(--mal-font-mono)',
-          fontStyle: 'normal', fontSize: 11, letterSpacing: '.16em',
-          textTransform: 'uppercase', color: 'var(--mal-primary)',
-          marginBottom: 12, fontWeight: 600,
-        }}>
-          ─── Chapter
-        </span>
         <RenderSpans spans={para.spans}/>
       </h2>
     );
