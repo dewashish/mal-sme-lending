@@ -457,9 +457,6 @@ function detectProductNum(text) {
 
 // IDs / fragments where Phase-2 diagrams should be injected (matched on h1/h2 IDs)
 const DIAGRAM_INJECT = {
-  // Section 1 (Executive Overview) — regulatory timeline
-  '1-1-combined-three-year-outlook':         { type: 'reg-timeline' },
-  '1-2-what-this-document-is-not':           { type: 'three-product' },
   // Section 5.2 — anchor cards
   '5-2-target-anchors':                      { type: 'anchors' },
   // Sections 3.3 / 3.4 — buyer / supplier journeys
@@ -485,23 +482,88 @@ function renderInjectedDiagram(type, isAr) {
   }
 }
 
+// Match an H3 like "3.10.1 POST /v1/onboarding/start"
+const API_H3_RE = /^(\d+\.\d+\.\d+)\s+(GET|POST|PUT|PATCH|DELETE)\s+(\/\S+)/;
+const API_LABEL_RE = /^(Request|Response\s+\d+(?:\s*\(.*?\))?|Headers|Errors|Notes?|Webhook|Trigger):\s*$/;
+
+// Pre-compile an api-endpoint block from a run of strategy-doc paragraphs.
+function buildApiEndpoint(headPara, bodyParas, key) {
+  const headText = paraText(headPara);
+  const m = headText.match(API_H3_RE);
+  if (!m) return null;
+  const [, num, method, path] = m;
+  const lines = bodyParas.map(paraText);
+  const sections = [];
+  const descLines = [];
+  let cur = null;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (API_LABEL_RE.test(trimmed)) {
+      if (cur) sections.push(cur);
+      cur = { label: trimmed.replace(/:$/, ''), bodyLines: [] };
+    } else if (cur) {
+      cur.bodyLines.push(line);
+    } else {
+      if (trimmed) descLines.push(trimmed);
+    }
+  }
+  if (cur) sections.push(cur);
+  return {
+    type: 'api-endpoint',
+    key,
+    id: headPara.id,
+    method, path, num,
+    title: headText,
+    description: descLines.join(' '),
+    sections: sections.map((s) => ({
+      label: s.label,
+      body: s.bodyLines.join('\n').replace(/\s+$/, ''),
+    })),
+  };
+}
+
 function DocBody({ doc, chapters, sectionRefs, isAr, isMobile }) {
   const visuals = window.MalStrategyVisuals || {};
   // Group consecutive list items into <ul> blocks for nicer rendering.
+  // Also fold API-endpoint H3s + their body paragraphs into a single block.
   const blocks = stM(() => {
     const out = [];
     let listBuffer = [];
     const flushList = () => {
       if (listBuffer.length) { out.push({ type: 'list', items: listBuffer }); listBuffer = []; }
     };
-    doc.forEach((p, i) => {
-      if (p.tag === 'li') { listBuffer.push({ ...p, key: i }); }
-      else {
+    let i = 0;
+    while (i < doc.length) {
+      const p = doc[i];
+      // Detect API endpoint H3
+      if (p.tag === 'h3' && API_H3_RE.test(paraText(p))) {
+        flushList();
+        // Collect following p-blocks until next h1/h2/h3
+        const bodyParas = [];
+        let j = i + 1;
+        while (j < doc.length) {
+          const q = doc[j];
+          if (q.tag === 'h1' || q.tag === 'h2' || q.tag === 'h3') break;
+          if (q.tag === 'p') bodyParas.push(q);
+          // li/table inside an API section is unexpected — skip
+          j++;
+        }
+        const api = buildApiEndpoint(p, bodyParas, i);
+        if (api) {
+          out.push(api);
+          i = j;
+          continue;
+        }
+      }
+      if (p.tag === 'li') {
+        listBuffer.push({ ...p, key: i });
+      } else {
         flushList();
         if (p.tag === 'table') out.push({ type: 'table', table: { ...p, key: i } });
         else                   out.push({ type: 'para', para: { ...p, key: i } });
       }
-    });
+      i++;
+    }
     flushList();
     return out;
   }, [doc]);
@@ -519,6 +581,23 @@ function DocBody({ doc, chapters, sectionRefs, isAr, isMobile }) {
   return (
     <>
       {blocks.map((b, bi) => {
+        if (b.type === 'api-endpoint') {
+          const Cmp = visuals.ApiEndpoint;
+          if (!Cmp) return null;
+          const setRef = (el) => { if (b.id && el) sectionRefs.current[b.id] = el; };
+          return (
+            <div key={'api' + bi} ref={setRef} id={b.id} style={{ scrollMarginTop: 96 }}>
+              <Cmp
+                method={b.method}
+                path={b.path}
+                num={b.num}
+                description={b.description}
+                sections={b.sections}
+                isAr={isAr}
+              />
+            </div>
+          );
+        }
         if (b.type === 'list') {
           return (
             <ul key={'l' + bi} style={{

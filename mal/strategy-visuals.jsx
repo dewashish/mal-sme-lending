@@ -19,9 +19,9 @@ const { useState: sV_S, useEffect: sV_E, useMemo: sV_M, useCallback: sV_CB, useR
 // ============================================================
 const CHAPTER_ABSTRACTS = {
   '1-executive-overview':
-    'Three SME-lending products picked for a new UAE platform — Smart Invoice, Healthcare Receivables, and Anchor SCF — with the regulatory tailwind that makes the timing right.',
+    'The middle of the UAE SME credit market is empty. Banks are slow and collateral-heavy; fintechs are fast but expensive. Mal sits in between with bank-cost capital, digital-first speed, and Sharia by default.',
   '2-platform-context-and-foundations':
-    'Foundational capabilities, operating model, and regulatory posture that all three products share. Where the build leverages exist.',
+    'Foundational capabilities and the operating model the three products share — built once on a tight, AI-leveraged team running at 3x benchmark productivity.',
   '3-product-1-smart-invoice-with-flexible-installmen':
     'Smart Invoice — Mal\'s flagship. B2B Pay & Get Paid: supplier gets 90% advance on day one; buyer chooses Pay-30, BNPL 60-180d, or a 6-month term extension.',
   'product-1-path-2-buyer-led-invoice-extension-loan':
@@ -801,6 +801,316 @@ function PullQuote({ children }) {
 }
 
 // ============================================================
+// ApiEndpoint — Stripe/Postman-style compact API container
+// ============================================================
+const METHOD_COLOR = {
+  GET:    { fg: '#0a8056', bg: 'rgba(10,128,86,0.12)',  border: 'rgba(10,128,86,0.28)' },
+  POST:   { fg: '#1f54c8', bg: 'rgba(31,84,200,0.10)',  border: 'rgba(31,84,200,0.26)' },
+  PUT:    { fg: '#b06a14', bg: 'rgba(176,106,20,0.12)', border: 'rgba(176,106,20,0.28)' },
+  PATCH:  { fg: '#b06a14', bg: 'rgba(176,106,20,0.12)', border: 'rgba(176,106,20,0.28)' },
+  DELETE: { fg: '#b8364b', bg: 'rgba(184,54,75,0.12)',  border: 'rgba(184,54,75,0.28)' },
+};
+
+// Tiny JSON-ish syntax colorizer. Source isn't strict JSON (has // comments,
+// pseudo-types like "buyer" | "supplier"), so we work line-by-line with regexes.
+function colorizeJsonLine(line) {
+  const out = [];
+  let i = 0, n = line.length;
+  while (i < n) {
+    const ch = line[i];
+    // line comment
+    if (ch === '/' && line[i+1] === '/') {
+      out.push({ kind: 'cmt', text: line.slice(i) });
+      break;
+    }
+    // string / key (in double quotes)
+    if (ch === '"') {
+      let j = i + 1;
+      while (j < n && (line[j] !== '"' || line[j-1] === '\\')) j++;
+      const tok = line.slice(i, j + 1);
+      // is this a key? next non-space char after the closing quote must be ':'
+      let k = j + 1;
+      while (k < n && line[k] === ' ') k++;
+      const isKey = line[k] === ':';
+      out.push({ kind: isKey ? 'key' : 'str', text: tok });
+      i = j + 1; continue;
+    }
+    // number
+    if (/[0-9]/.test(ch) || (ch === '-' && /[0-9]/.test(line[i+1]))) {
+      let j = i + 1;
+      while (j < n && /[0-9.eE+\-]/.test(line[j])) j++;
+      out.push({ kind: 'num', text: line.slice(i, j) });
+      i = j; continue;
+    }
+    // keywords
+    const rest = line.slice(i);
+    const kwm = rest.match(/^(true|false|null|undefined)\b/);
+    if (kwm) {
+      out.push({ kind: 'kw', text: kwm[0] });
+      i += kwm[0].length; continue;
+    }
+    out.push({ kind: 'punct', text: ch });
+    i++;
+  }
+  const palette = {
+    key:   { color: '#5a3aa3' },           // brand purple (keys)
+    str:   { color: '#0a8056' },           // green (strings)
+    num:   { color: '#1f54c8' },           // blue (numbers)
+    kw:    { color: '#b06a14' },           // orange (keywords)
+    cmt:   { color: 'var(--mal-ink-3)', fontStyle: 'italic' },
+    punct: { color: 'var(--mal-ink-2)' },
+  };
+  return out.map((t, k) => (
+    <span key={k} style={palette[t.kind]}>{t.text}</span>
+  ));
+}
+
+function CodeBlock({ body, dim }) {
+  const lines = (body || '').split('\n');
+  return (
+    <pre style={{
+      margin: 0,
+      padding: '12px 14px',
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+      borderRadius: 10,
+      fontFamily: 'var(--mal-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace)',
+      fontSize: 12.5,
+      lineHeight: 1.55,
+      color: 'var(--mal-ink-1)',
+      overflowX: 'auto',
+      whiteSpace: 'pre',
+      transition: 'opacity .25s ease',
+      opacity: dim ? 0.55 : 1,
+    }}>
+      {lines.map((ln, i) => (
+        <div key={i}>{ln.length === 0 ? '\u00a0' : colorizeJsonLine(ln)}</div>
+      ))}
+    </pre>
+  );
+}
+
+function ApiEndpoint({ method, path, num, description, sections, isAr }) {
+  const color = METHOD_COLOR[method] || METHOD_COLOR.POST;
+  const requestSec = sections.find((s) => /^Request/i.test(s.label));
+  const responseSecs = sections.filter((s) => /^Response/i.test(s.label));
+  const otherSecs = sections.filter(
+    (s) => !/^Request/i.test(s.label) && !/^Response/i.test(s.label)
+  );
+  const hasPayload = !!requestSec || responseSecs.length > 0;
+
+  const [running, setRunning] = sV_S(false);
+  const [shown, setShown] = sV_S(false);
+  const [respIdx, setRespIdx] = sV_S(0);
+
+  const onRun = () => {
+    if (!hasPayload || running) return;
+    setRunning(true);
+    setShown(false);
+    setTimeout(() => {
+      setRunning(false);
+      setShown(true);
+    }, 520);
+  };
+
+  const onReset = () => {
+    setShown(false);
+    setRunning(false);
+  };
+
+  const activeResp = responseSecs[respIdx] || responseSecs[0];
+  // Parse "Response 202 (Accepted)" → status code + label
+  const respMeta = (s) => {
+    if (!s) return { code: '200', sub: '' };
+    const m = (s.label || '').match(/Response\s+(\d+)\s*(?:\((.*?)\))?/i);
+    return { code: m ? m[1] : '200', sub: m && m[2] ? m[2] : '' };
+  };
+
+  return (
+    <div style={{
+      margin: '20px 0 28px',
+      border: '1px solid var(--mal-line)',
+      borderRadius: 14,
+      background: 'var(--mal-surface-1, var(--mal-paper))',
+      overflow: 'hidden',
+      direction: isAr ? 'rtl' : 'ltr',
+    }}>
+      {/* Header bar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 14px',
+        borderBottom: '1px solid var(--mal-line)',
+        background: 'var(--mal-surface-2)',
+      }}>
+        <span style={{
+          display: 'inline-flex', alignItems: 'center',
+          fontFamily: 'var(--mal-font-mono)',
+          fontSize: 11.5, fontWeight: 700, letterSpacing: 0.4,
+          color: color.fg, background: color.bg,
+          border: `1px solid ${color.border}`,
+          borderRadius: 6, padding: '3px 8px',
+        }}>{method}</span>
+        <code style={{
+          fontFamily: 'var(--mal-font-mono)',
+          fontSize: 13.5, color: 'var(--mal-ink-1)',
+          fontWeight: 500,
+          flex: 1, minWidth: 0,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>{path}</code>
+        {num && (
+          <span style={{
+            fontSize: 11, color: 'var(--mal-ink-3)',
+            fontFamily: 'var(--mal-font-mono)', letterSpacing: 0.3,
+          }}>§{num}</span>
+        )}
+        {hasPayload && (
+          <button
+            onClick={running ? null : (shown ? onReset : onRun)}
+            style={{
+              appearance: 'none', cursor: 'pointer',
+              fontFamily: 'var(--mal-font-ui)',
+              fontSize: 12, fontWeight: 600,
+              color: shown ? 'var(--mal-ink-2)' : '#fff',
+              background: shown ? 'transparent' : 'var(--mal-primary, #5a3aa3)',
+              border: shown ? '1px solid var(--mal-line)' : '1px solid transparent',
+              borderRadius: 7, padding: '6px 12px',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              transition: 'background .2s ease, color .2s ease, border-color .2s ease',
+            }}>
+            {running ? (
+              <>
+                <span style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  border: '1.5px solid #fff', borderTopColor: 'transparent',
+                  animation: 'mal-api-spin .8s linear infinite',
+                }}/>
+                <span>Running</span>
+              </>
+            ) : shown ? (
+              <>
+                <span>Reset</span>
+              </>
+            ) : (
+              <>
+                <span>Run</span>
+                <span style={{ fontSize: 10 }}>▶</span>
+              </>
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Description */}
+      {description && (
+        <div style={{
+          padding: '12px 14px 6px',
+          fontSize: 14, lineHeight: 1.6, color: 'var(--mal-ink-1)',
+        }}>{description}</div>
+      )}
+
+      {/* Other free-form sections (Headers, Errors, Notes, Webhook…) */}
+      {otherSecs.map((s, i) => (
+        <div key={'o' + i} style={{ padding: '10px 14px 0' }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
+            color: 'var(--mal-ink-3)', textTransform: 'uppercase',
+            marginBottom: 6,
+          }}>{s.label}</div>
+          <CodeBlock body={s.body}/>
+        </div>
+      ))}
+
+      {/* Request panel */}
+      {requestSec && (
+        <div style={{ padding: '10px 14px 12px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginBottom: 6,
+          }}>
+            <span style={{
+              fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
+              color: 'var(--mal-ink-3)', textTransform: 'uppercase',
+            }}>Request body</span>
+            <span style={{
+              fontSize: 11, fontFamily: 'var(--mal-font-mono)',
+              color: 'var(--mal-ink-3)',
+            }}>application/json</span>
+          </div>
+          <CodeBlock body={requestSec.body} dim={running}/>
+        </div>
+      )}
+
+      {/* Response panel — slides in on Run */}
+      {responseSecs.length > 0 && (
+        <div style={{
+          maxHeight: shown ? 1200 : 0,
+          opacity: shown ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height .45s ease, opacity .35s ease',
+          borderTop: shown ? '1px solid var(--mal-line)' : 'none',
+        }}>
+          <div style={{ padding: '10px 14px 14px' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              marginBottom: 8,
+            }}>
+              <span style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
+                color: 'var(--mal-ink-3)', textTransform: 'uppercase',
+              }}>Response</span>
+              {responseSecs.length > 1 ? (
+                <div style={{ display: 'inline-flex', gap: 4 }}>
+                  {responseSecs.map((s, i) => {
+                    const meta = respMeta(s);
+                    const active = i === respIdx;
+                    return (
+                      <button key={i} onClick={() => setRespIdx(i)} style={{
+                        appearance: 'none', cursor: 'pointer',
+                        fontFamily: 'var(--mal-font-mono)',
+                        fontSize: 11.5, fontWeight: 600,
+                        padding: '3px 9px', borderRadius: 6,
+                        color: active ? '#0a8056' : 'var(--mal-ink-2)',
+                        background: active ? 'rgba(10,128,86,0.12)' : 'transparent',
+                        border: `1px solid ${active ? 'rgba(10,128,86,0.28)' : 'var(--mal-line)'}`,
+                      }}>{meta.code}</button>
+                    );
+                  })}
+                </div>
+              ) : (
+                (() => {
+                  const meta = respMeta(activeResp);
+                  return (
+                    <span style={{
+                      fontFamily: 'var(--mal-font-mono)',
+                      fontSize: 11.5, color: '#0a8056',
+                      background: 'rgba(10,128,86,0.12)',
+                      border: '1px solid rgba(10,128,86,0.28)',
+                      borderRadius: 6, padding: '2px 8px',
+                    }}>{meta.code}</span>
+                  );
+                })()
+              )}
+              {(() => {
+                const meta = respMeta(activeResp);
+                return meta.sub ? (
+                  <span style={{
+                    fontSize: 11.5, color: 'var(--mal-ink-3)',
+                  }}>{meta.sub}</span>
+                ) : null;
+              })()}
+              <span style={{ marginInlineStart: 'auto', fontSize: 11, color: 'var(--mal-ink-3)' }}>
+                ⏱ 245 ms · simulated
+              </span>
+            </div>
+            <CodeBlock body={activeResp ? activeResp.body : ''}/>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // Expose
 // ============================================================
 window.MalStrategyVisuals = {
@@ -809,5 +1119,6 @@ window.MalStrategyVisuals = {
   AnchorCards, JourneyDiagram, FldgWaterfall,
   GlossaryTerm, CrossRef, SearchPalette,
   ChapterAmbient, PullQuote,
+  ApiEndpoint,
   CHAPTER_ABSTRACTS, CHAPTER_TONE, READ_TIMES, GLOSSARY,
 };
