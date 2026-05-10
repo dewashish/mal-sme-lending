@@ -1743,7 +1743,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
 
       {/* Active plan card with EMI ladder and Pay buttons */}
       <Card padded>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <div className="mal-caption">{isAr ? 'الخطة الحالية' : 'Active plan'} · {scenario.invoice.id}</div>
           {!isClosed && nextUpcoming && (
             <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
@@ -1751,6 +1751,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
             </span>
           )}
         </div>
+        <EInvoiceBadge isAr={isAr} compact/>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 24, fontStyle: 'italic' }}>
             {plan.label}
@@ -2853,6 +2854,7 @@ function DemoSupplierLive({ lang, scenario }) {
           <div style={{ fontSize: 12, opacity: .8, marginTop: 4 }}>
             {isAr ? 'فاتورة' : 'Invoice'} {scenario.invoice.id} · {isAr ? 'AED ٢٥٠٬٠٠٠ إجمالي' : 'AED 250,000 face value'}
           </div>
+          <EInvoiceBadge isAr={isAr}/>
         </div>
       </Card>
 
@@ -3316,6 +3318,31 @@ function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
         })}
       </div>
     </Card>
+  );
+}
+
+// ============================================================
+// EInvoiceBadge — small "submitted to FTA / Peppol ID" badge that
+// surfaces e-invoicing compliance on every invoice card. Reflects
+// the UAE FTA mandate (pilot Jul 2026, full SME by Jul 2027).
+// ============================================================
+function EInvoiceBadge({ isAr, compact, peppolId = '0142.0042.0418' }) {
+  return (
+    <div style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: compact ? '3px 8px' : '4px 10px',
+      borderRadius: 999,
+      background: 'rgba(10,128,86,0.12)',
+      border: '1px solid rgba(10,128,86,0.32)',
+      fontSize: compact ? 10 : 10.5,
+      color: '#0a8056',
+      fontWeight: 600,
+      marginTop: compact ? 4 : 8,
+    }}>
+      <span style={{ fontSize: 11 }}>✓</span>
+      <span>{isAr ? 'مُسجَّلة لدى الهيئة' : 'Submitted to FTA'}</span>
+      <span style={{ opacity: 0.65, fontFamily: 'var(--mal-font-mono)' }}>· Peppol {peppolId}</span>
+    </div>
   );
 }
 
