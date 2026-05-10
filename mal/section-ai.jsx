@@ -70,6 +70,7 @@ const AGENT_BY_ID = Object.fromEntries(ALL_AGENTS.map((a) => [a.id, a]));
 const AI_TOC = [
   { id: 'aiHero',       label: 'Overview' },
   { id: 'aiInventory',  label: '20-agent inventory' },
+  { id: 'aiLifecycle',  label: 'Use cases by stage' },
   { id: 'aiArch',       label: 'Architecture' },
   { id: 'aiDecision',   label: 'Decision engine' },
   { id: 'aiPricing',    label: 'Dynamic pricing' },
@@ -77,6 +78,374 @@ const AI_TOC = [
   { id: 'aiCollect',    label: 'AI collections' },
   { id: 'aiData',       label: 'Data + governance' },
   { id: 'aiRoadmap',    label: 'Roadmap' },
+];
+
+// Color palette for the model-family chips used in the lifecycle table.
+const MODEL_FAMILIES = {
+  document:       { label: 'Document AI',      color: '#1f54c8' },
+  identity:       { label: 'Identity / fraud', color: '#b8364b' },
+  scoring:        { label: 'Scoring',          color: '#5a3aa3' },
+  propensity:     { label: 'Propensity',       color: '#b06a14' },
+  recommendation: { label: 'Recommendation',   color: '#0a8056' },
+  conversational: { label: 'Conversational',   color: '#088379' },
+  optimization:   { label: 'Optimisation',     color: '#7c5fb8' },
+};
+
+// Use cases mapped to lifecycle stages. Each row: what we're solving,
+// how we'd tackle it, the KPIs, success target, and methodology.
+const LIFECYCLE_STAGES_DATA = [
+  {
+    key: 'acq',
+    stage: 'Acquisition',
+    badge: '01',
+    tone: '#1f54c8',
+    summary: 'Find SMEs likely to qualify and convert — before they raise their hand.',
+    cases: [
+      {
+        useCase: 'Pre-qualification scoring',
+        family: 'scoring',
+        approach: 'Score every operating-account holder weekly on revenue trend, balance, delinquency, days-since-last-overdraft and bureau (where available). Push an in-app "you may be eligible" notification — soft pull, no commitment.',
+        kpis: ['Notification CTR', 'Soft-pull → application rate', 'Cost per qualified lead'],
+        success: '≥ 12% CTR · ≥ 25% pre-qual → application · CAC < AED 350',
+        method: 'LightGBM on transaction features · weekly batch · SHAP attribution',
+      },
+      {
+        useCase: 'Look-alike audience',
+        family: 'recommendation',
+        approach: 'Encode top-RAROC, low-loss customers into a feature embedding; match other SMEs by cosine similarity and push hashed audiences to ad platforms.',
+        kpis: ['Look-alike CAC vs broad', 'Approval rate of look-alike leads', 'LTV-weighted CPA'],
+        success: '40% lower CAC · 1.6× approval rate · LTV-CPA ratio ≥ 4.5',
+        method: 'Customer-embedding model + cosine ranking · Meta / Google / TikTok Custom Audiences',
+      },
+      {
+        useCase: 'Channel attribution & mix',
+        family: 'optimization',
+        approach: 'Multi-touch attribution across ad → app-visit → form-start → submit, weighted by 12-mo LTV. Steers spend toward channels that yield high-RAROC SMEs, not just cheap leads.',
+        kpis: ['Channel ROAS', 'LTV-weighted CPA', 'Channel-mix-corrected CAC'],
+        success: 'Blended ROAS ≥ 3.5× by Year 2',
+        method: 'Markov-chain or Shapley attribution · uplift-modelled holdouts',
+      },
+    ],
+  },
+  {
+    key: 'onb',
+    stage: 'Onboarding',
+    badge: '02',
+    tone: '#5a3aa3',
+    summary: 'Onboard fast and clean — extract every signal, verify identity, build the cashflow picture.',
+    cases: [
+      {
+        useCase: 'Document reader (OCR + extraction)',
+        family: 'document',
+        approach: 'Layout-aware parsing of trade licences, MOA, audited financials, Emirates IDs, VAT returns. Structured fields (entity, dates, amounts, signatories) plus table extraction for financial statements.',
+        kpis: ['Field-extraction F1', 'STP rate (no human touch)', 'Avg processing latency'],
+        success: 'F1 ≥ 96% · STP ≥ 85% · < 8s per multi-page doc',
+        method: 'Layout-LLM + table-transformer · vendor blend (AWS Textract + UAE-Arabic fine-tunes) · ground-truth feedback loop',
+      },
+      {
+        useCase: 'Document authenticity / forgery',
+        family: 'identity',
+        approach: 'Detect tampering (clone-stamps, font mismatches, MRZ inconsistencies), template forgery and duplicate hashes. Cross-check trade-licence against MoE registry.',
+        kpis: ['Forgery TPR', 'False-positive rate', 'Review-queue volume'],
+        success: 'TPR ≥ 92% at FPR ≤ 1.5% · queue < 4% of submissions',
+        method: 'CNN ensemble for visual tampering + rule-based MRZ + registry lookup',
+      },
+      {
+        useCase: 'Liveness + face match',
+        family: 'identity',
+        approach: 'Active liveness (nod / blink challenge) plus passive depth check, then face-match to Emirates ID photo via UAE Pass API.',
+        kpis: ['Spoof detection rate', 'False-rejection rate', 'Time-to-pass'],
+        success: 'Spoof detection ≥ 99% · FRR ≤ 1.5% · < 12s',
+        method: 'NIST-PAD-aligned anti-spoof + ArcFace embedding · UAE Pass integration',
+      },
+      {
+        useCase: 'KYB / beneficial-owner ladder',
+        family: 'document',
+        approach: 'Walk MOA + share registry to build the UBO graph to ≥ 25% threshold. Cross-reference sanctions and PEP lists; flag circular ownership.',
+        kpis: ['UBO graph completeness', 'Sanctions hit recall', 'KYB time-to-complete'],
+        success: 'Graph ≥ 95% complete · zero missed hits · < 60s automated',
+        method: 'Graph-extraction LLM + Refinitiv / Acuris screening · automated UBO walking',
+      },
+      {
+        useCase: 'Cashflow analyser',
+        family: 'scoring',
+        approach: 'Ingest 12 months of bank statements via UAE Open Finance / Lean. Parse to canonical category schema; compute DSCR, working-capital cycle, seasonality, volatility into 32 underwriting features.',
+        kpis: ['Transaction-categorisation F1', 'Feature stability', 'PD-model AUC lift'],
+        success: 'F1 ≥ 94% · PD AUC lift ≥ 0.06 vs bureau-only',
+        method: 'Transformer-based transaction classifier · feature-store · monthly retrain',
+      },
+    ],
+  },
+  {
+    key: 'uw',
+    stage: 'Underwriting',
+    badge: '03',
+    tone: '#b06a14',
+    summary: 'Decide quickly, fairly and explainably — with the right limit and the right price for each customer.',
+    cases: [
+      {
+        useCase: 'Probability of default (PD)',
+        family: 'scoring',
+        approach: 'Predict 12-month default probability from cashflow, bureau, exposure, sector and behavioural features. Outputs feed both the approve/decline gate and the pricing engine.',
+        kpis: ['AUC-ROC', 'KS statistic', 'Calibration (Brier score)', 'Population stability index (PSI)'],
+        success: 'AUC ≥ 0.80 · KS ≥ 0.42 · PSI < 0.10 month-over-month',
+        method: 'Gradient-boosted trees with monotonic constraints · SHAP for adverse-action notices · quarterly champion-challenger',
+      },
+      {
+        useCase: 'Affordability assessment',
+        family: 'scoring',
+        approach: 'Compute sustainable working-capital need (30-day cash-cycle × stable revenue). Stress-test against −20% revenue and +200bps rate. Floors approved limit at affordability.',
+        kpis: ['Affordability-cap hit-rate', 'Post-approval distress rate', 'DSCR drift'],
+        success: 'Distress rate (12-mo DPD90+) ≤ 2.5%',
+        method: 'Deterministic affordability calculator + stochastic stress simulator · IFRS-9 ECL aligned',
+      },
+      {
+        useCase: 'Limit sizing',
+        family: 'optimization',
+        approach: 'Bayesian optimisation balancing approval rate, expected loss and customer LTV. Limit recommendation is the maximum the customer can absorb without breaching affordability or concentration.',
+        kpis: ['Limit utilisation', 'Loss vs offered limit', 'Approval rate at fixed loss budget'],
+        success: 'Utilisation ≥ 55% · loss ≤ 2.0% of book · approval rate ≥ 60%',
+        method: 'Bayesian optimisation + Monte-Carlo loss simulation · constrained by policy ceilings',
+      },
+      {
+        useCase: 'Risk-based dynamic pricing',
+        family: 'optimization',
+        approach: 'APR = CoF + μ + Σβⱼxⱼ + Σ G_f[…], passed through portfolio floor and cap. Three driver bands (Affluence / Risk / Sensitivity) interact via NxM grids.',
+        kpis: ['Portfolio NIM', 'Price-elasticity-weighted conversion', 'Margin-per-customer'],
+        success: 'Portfolio NIM hits target ± 30bps · approval rate not penalised',
+        method: 'Linear backbone + 2-way interaction grids · governance min/max · monthly recalibration',
+      },
+      {
+        useCase: 'Alt-data scoring (thin-file)',
+        family: 'scoring',
+        approach: 'For SMEs with < 12 months of bureau history, ingest POS data (Network / Magnati), telecom payments, e-invoicing trail and VAT filings. Build a lightweight scorecard for thin-file approvals.',
+        kpis: ['Thin-file approval rate', 'Loss rate of thin-file vs main book', 'Coverage uplift'],
+        success: '+15pp approval rate vs bureau-only · loss not > 1.5× main book',
+        method: 'Boosted-tree scorecard with mandatory floor on AECB ≥ 550 · explainable feature contributions',
+      },
+      {
+        useCase: 'Credit memo generator',
+        family: 'conversational',
+        approach: 'LLM compiles a structured credit memo from raw features, model outputs and policy gates. Saves 30-40 minutes of analyst write-up per Standard / Plus case.',
+        kpis: ['Analyst-time-to-decision', 'Memo edit-distance vs final', 'Auditor-rated coverage'],
+        success: '70% reduction in write-up time · ≤ 8% edit-distance · 100% policy fields covered',
+        method: 'Retrieval-augmented LLM (Claude / GPT-4) · structured-output enforcement · grounding citations',
+      },
+    ],
+  },
+  {
+    key: 'dis',
+    stage: 'Disbursement',
+    badge: '04',
+    tone: '#0a8056',
+    summary: 'Release cash safely — verify the beneficiary, screen the transaction, route the rails.',
+    cases: [
+      {
+        useCase: 'Beneficiary verification',
+        family: 'identity',
+        approach: 'For supplier-direct payments, validate IBAN ↔ legal-name match via central registry. Cross-check trade-licence and TRN before first payout to a new beneficiary.',
+        kpis: ['First-time-right rate', 'Mis-routed payments', 'Onboarding latency for new beneficiary'],
+        success: 'FTR ≥ 99.5% · zero mis-routes · new beneficiary onboarded < 4hr',
+        method: 'IBAN-name-match service + UAE central registries · positive-payee logic',
+      },
+      {
+        useCase: 'Drawdown fraud sentinel',
+        family: 'identity',
+        approach: 'Real-time check at every drawdown for device-change, location-mismatch, beneficiary-anomaly, velocity-spike. Step-up to OTP or human review at high-confidence flags.',
+        kpis: ['Fraud loss rate', 'Step-up rate', 'False-positive friction'],
+        success: 'Fraud loss ≤ 5bps · step-up rate ≤ 3% · false-positive friction < 0.5% of good actors',
+        method: 'Streaming feature store + sub-second model serving · Isolation-forest + supervised classifier ensemble',
+      },
+      {
+        useCase: 'Settlement-route optimiser',
+        family: 'optimization',
+        approach: 'Choose between AANI, IPP, UAEFTS, SWIFT corridors based on amount, currency, time-of-day, beneficiary bank, and cost. Auto-fail-over on rail outage.',
+        kpis: ['Avg settlement cost', 'Settlement latency p95', 'Failed-payment rate'],
+        success: 'Cost down 25% vs single-rail · latency p95 < 2 min for AED · 0.05% failure rate',
+        method: 'Constrained optimisation with rail-availability heuristics · live monitoring + circuit-breakers',
+      },
+    ],
+  },
+  {
+    key: 'svc',
+    stage: 'Servicing · in-life',
+    badge: '05',
+    tone: '#5a3aa3',
+    summary: 'Keep the customer healthy and informed — anticipate questions, spot anomalies, save time.',
+    cases: [
+      {
+        useCase: 'Cashflow forecaster',
+        family: 'scoring',
+        approach: 'Forecast inflows and outflows for the next 30 / 60 / 90 days at the customer level. Drives proactive nudges ("you have a tight week — top up the limit?").',
+        kpis: ['MAPE (mean absolute percentage error)', 'Customer engagement with nudges', 'Avoided-overdraft rate'],
+        success: 'MAPE ≤ 12% · ≥ 35% nudge engagement',
+        method: 'Temporal Fusion Transformer + customer-level baseline · daily refresh',
+      },
+      {
+        useCase: 'Transaction anomaly detection',
+        family: 'identity',
+        approach: 'Spot volume / velocity / geography / beneficiary outliers in real time. Distinguishes deterministic events (large valid invoice) from systemic drift.',
+        kpis: ['Precision @ alert', 'Customer-friction rate', 'Time to detect'],
+        success: 'Precision ≥ 70% · friction ≤ 0.3% of customers · detect < 60s',
+        method: 'Isolation-forest baseline + supervised classifier on labelled cases · streaming feature pipeline',
+      },
+      {
+        useCase: 'Customer copilot (in-app)',
+        family: 'conversational',
+        approach: 'Bilingual (Ar/En) LLM grounded on the customer\'s own contract, schedule, statement and FAQ. Answers status questions, explains charges, drafts requests — never invents policy.',
+        kpis: ['Containment rate', 'CSAT', 'Hallucination rate (audited)'],
+        success: 'Containment ≥ 65% · CSAT ≥ 4.4 / 5 · hallucination ≤ 0.5% (sampled)',
+        method: 'Retrieval-augmented LLM with policy grounding · response-quality eval set + ongoing red-teaming',
+      },
+      {
+        useCase: 'Reconciliation matcher',
+        family: 'optimization',
+        approach: 'Auto-match incoming wires to invoices, EMIs, partial payments. Splits, merges and fee allocations. Surfaces only true breaks for manual review.',
+        kpis: ['Auto-clear rate', 'Days-to-close break', 'False-match rate'],
+        success: 'Auto-clear ≥ 92% · break-close ≤ 1.5d · false-match < 0.1%',
+        method: 'Supervised matcher (XGBoost on string + numeric features) · LLM tie-breaker for ambiguous cases',
+      },
+    ],
+  },
+  {
+    key: 'ews',
+    stage: 'Early warning',
+    badge: '06',
+    tone: '#b8364b',
+    summary: 'Catch trouble two weeks before it shows up in DPD — prevention is dramatically cheaper than collections.',
+    cases: [
+      {
+        useCase: 'Stress / EWS scoring',
+        family: 'scoring',
+        approach: 'Fuse 32 features across financial, banking, operational, behavioural and macro signals into a single 0-100 score. Score → 4 risk bands → action ladder.',
+        kpis: ['Lead-time vs DPD90', 'Recall at top-decile', 'Action-take-up rate'],
+        success: 'Median lead-time ≥ 14d · top-decile recall ≥ 65% · action-take-up ≥ 50%',
+        method: 'Survival model (Cox / DeepSurv) + classifier ensemble · features refreshed daily',
+      },
+      {
+        useCase: 'Hardship-onset detection',
+        family: 'propensity',
+        approach: 'Predict the probability the customer will enter genuine hardship in the next 30 days. Drives pre-emptive outreach with restructure or holiday options before stigma sets in.',
+        kpis: ['Hardship recall', 'Restructure-acceptance rate', 'Roll-rate to NPL'],
+        success: 'Recall ≥ 60% · acceptance ≥ 40% on offers · roll-rate down 25% on hardship cohort',
+        method: 'Survival classifier on cashflow + behaviour · uplift-modelled offer targeting',
+      },
+      {
+        useCase: 'Behaviour-shift detector',
+        family: 'identity',
+        approach: 'Watch for login-pattern changes, device churn, location moves, communication-cadence drops. Often the earliest signal of hardship or fraud.',
+        kpis: ['Behaviour-shift precision', 'Time to alert', 'Useful-alert rate (post-review)'],
+        success: 'Precision ≥ 60% · time-to-alert < 24h · useful-alert rate ≥ 45%',
+        method: 'Embedding-based anomaly model + change-point detection · ranked alert queue',
+      },
+      {
+        useCase: 'Sector-stress overlay',
+        family: 'scoring',
+        approach: 'Daily macro / sector index based on news, payment-processor data, AECB defaults, sector-wage indices. Adjusts EWS thresholds per industry.',
+        kpis: ['Sector-EWS calibration drift', 'Forward NPL correlation', 'Threshold-adjustment precision'],
+        success: 'Forward NPL R² ≥ 0.55 at sector level · low calibration drift quarter-on-quarter',
+        method: 'NLP on news + structured macro feeds · sector-mixed-effects regression',
+      },
+    ],
+  },
+  {
+    key: 'col',
+    stage: 'Repayment & collections',
+    badge: '07',
+    tone: '#b8364b',
+    summary: 'Pre-empt default; when contact is needed, do it the way the customer prefers — empathetic, well-timed, well-toned.',
+    cases: [
+      {
+        useCase: 'Intent-to-pay scoring',
+        family: 'propensity',
+        approach: 'Score the probability the customer pays this EMI on time without contact. High-intent customers are left alone (zero friction); only low-intent receive proactive outreach.',
+        kpis: ['False-positive rate (on-time customers contacted)', 'On-time payment rate', 'Cost-per-contact saved'],
+        success: 'FP ≤ 5% · on-time rate ≥ 92% · contact savings ≥ AED 0.6M / month at scale',
+        method: 'Boosted-tree classifier on EWS + behaviour features · weekly refresh · uplift-modelled holdouts',
+      },
+      {
+        useCase: 'Propensity-to-pay (cure given contact)',
+        family: 'propensity',
+        approach: 'For customers who slip, predict the probability of cure given a specific contact treatment. Drives action-prioritisation and capacity allocation across the collections queue.',
+        kpis: ['Cure-rate uplift vs control', 'Cost-per-cure', 'Recovery $ per agent-hour'],
+        success: 'Uplift ≥ 8pp · cost-per-cure down 30% · recovery $ per hour up 1.8×',
+        method: 'Causal uplift model (S-learner / X-learner) · A/B holdouts every cycle',
+      },
+      {
+        useCase: 'Best-channel + best-time',
+        family: 'recommendation',
+        approach: 'Per customer, predict which channel (call, SMS, WhatsApp, in-app push) and which time-window has the highest contact + cure yield. Plays into the collections orchestrator.',
+        kpis: ['Right-party-contact (RPC) rate', 'Conversation-to-PTP rate', 'Customer complaint rate'],
+        success: 'RPC ≥ 70% · conversation→PTP ≥ 55% · complaints down 40%',
+        method: 'Multi-class classifier with contextual bandit on top · explore / exploit budget',
+      },
+      {
+        useCase: 'Promise-to-pay reliability',
+        family: 'propensity',
+        approach: 'Predict probability the customer keeps their PTP. Low-reliability promises trigger a reminder ladder and book reserves more conservatively for IFRS-9.',
+        kpis: ['Kept-promise rate', 'Reserve accuracy', 'Roll-rate after broken PTP'],
+        success: 'Kept-promise ≥ 75% on high-confidence band · reserve accuracy ± 5%',
+        method: 'Calibrated classifier with reliability diagram · monthly back-test',
+      },
+      {
+        useCase: 'AI voice agent (bilingual)',
+        family: 'conversational',
+        approach: 'Bilingual Ar/En voice agent calls first. Empathetic script, listens for context, proposes a plan, books a PTP. Hands off to humans for refer / sensitive cases.',
+        kpis: ['Containment rate', 'PTP rate vs human baseline', 'Cost per contact', 'CSAT'],
+        success: 'Containment ≥ 60% · PTP rate +18pp · cost AED 0.40 vs AED 7 human · CSAT ≥ 4.2',
+        method: 'TTS + ASR + dialogue manager · LLM intent classifier · supervised playback dashboard',
+      },
+      {
+        useCase: 'Restructure suitability',
+        family: 'optimization',
+        approach: 'Recommend the right restructure offer (tenor extension, EMI step-down, holiday, settlement) given case features and policy. Sized to maximise expected recovery NPV.',
+        kpis: ['Offer-acceptance rate', 'Recovery NPV', 'Re-default rate at 6 months'],
+        success: 'Acceptance ≥ 45% · recovery NPV up 20% vs flat policy · re-default ≤ 18%',
+        method: 'Constrained optimisation over offer space · expected-NPV objective · policy guardrails',
+      },
+    ],
+  },
+  {
+    key: 'grw',
+    stage: 'Upsell · cross-sell',
+    badge: '08',
+    tone: '#7c5fb8',
+    summary: 'Grow the relationship — top up limits for the right customers, recommend the next product, defend against churn.',
+    cases: [
+      {
+        useCase: 'Limit-uplift propensity',
+        family: 'propensity',
+        approach: 'For active customers, predict the probability they\'ll accept and use a top-up. Combines utilisation, growth signals and behavioural cues with risk gates.',
+        kpis: ['Top-up offer take-up', 'Incremental utilisation', 'Loss on top-up book'],
+        success: 'Take-up ≥ 30% on offered customers · loss on top-up ≤ main-book + 50bps',
+        method: 'Boosted-tree propensity + risk-policy gate · uplift testing',
+      },
+      {
+        useCase: 'Next-best-product (cross-sell)',
+        family: 'recommendation',
+        approach: 'Rank candidate products (FX, payroll, trade finance, payment-processing, insurance) per customer using collaborative filtering plus business rules. Surfaced as in-app recommendations.',
+        kpis: ['Recommendation CTR', 'Cross-sell attach rate', 'Revenue-per-customer'],
+        success: 'CTR ≥ 8% · attach rate ≥ 12% within 6 months · revenue-per-customer +20%',
+        method: 'Hybrid CF + content-based ranker · explore / exploit · monthly catalogue refresh',
+      },
+      {
+        useCase: 'Wallet-share estimator',
+        family: 'scoring',
+        approach: 'Estimate share of the customer\'s total banking spend captured by Mal vs competitors, using transaction-flow proxies (outbound transfers, FX volumes, payroll). Identifies under-penetrated relationships.',
+        kpis: ['Wallet-share lift over time', 'Cross-sell pipeline value', 'Transfer-out volume'],
+        success: 'Wallet share +15pp on actioned cohort over 12 months',
+        method: 'Regression on transaction-flow features + benchmark anchoring · quarterly refresh',
+      },
+      {
+        useCase: 'Churn / attrition risk',
+        family: 'propensity',
+        approach: 'Predict 90-day attrition risk (account-closure or sharp utilisation drop). Triggers retention plays — RM call, fee-waiver offer, alternative product.',
+        kpis: ['Churn lift in top-decile', 'Save-rate on retention plays', 'Net retention'],
+        success: 'Top-decile lift ≥ 5× · save-rate ≥ 25% · net retention ≥ 90%',
+        method: 'Survival model + uplift on retention treatments · quarterly campaign back-test',
+      },
+    ],
+  },
 ];
 
 // Working prototype of the in-house decision-engine — credentials below.
@@ -114,6 +483,7 @@ function SectionAi({ lang, isMobile }) {
       }}>
         <AiHero refFn={setRef('aiHero')} isAr={isAr} isMobile={isMobile}/>
         <AiInventory refFn={setRef('aiInventory')} isAr={isAr} isMobile={isMobile}/>
+        <AiLifecycle refFn={setRef('aiLifecycle')} isAr={isAr} isMobile={isMobile}/>
         <AiArchitecture refFn={setRef('aiArch')} isAr={isAr} isMobile={isMobile}/>
         <AiDecisionEngine refFn={setRef('aiDecision')} isAr={isAr} isMobile={isMobile}/>
         <AiPricing refFn={setRef('aiPricing')} isAr={isAr} isMobile={isMobile}/>
@@ -331,6 +701,302 @@ function DetailCell({ label, value }) {
     }}>
       <div className="mal-caption" style={{ color: 'var(--mal-mid-2)' }}>{label}</div>
       <div style={{ fontSize: 12, color: 'var(--mal-ink)', marginTop: 4 }}>{value}</div>
+    </div>
+  );
+}
+
+// ============================================================
+// LIFECYCLE USE CASES — stage tabs · use-case table · coverage matrix
+// ============================================================
+function AiLifecycle({ refFn, isAr, isMobile }) {
+  const [activeIdx, setActiveIdx] = aiS(0);
+  const stage = LIFECYCLE_STAGES_DATA[activeIdx];
+  const totalCases = aiM(() => LIFECYCLE_STAGES_DATA.reduce((a, s) => a + s.cases.length, 0), []);
+
+  return (
+    <AiSectionWrapper id="aiLifecycle" refFn={refFn}
+      eyebrow={isAr ? 'حالات الاستخدام · المنهجية · المؤشرات' : 'Use cases · methods · KPIs'}
+      title={isAr ? 'الذكاء الاصطناعي عبر دورة حياة الإقراض كاملةً.' : 'AI across every stage of the lending lifecycle.'}>
+      <AiP>
+        {isAr
+          ? `${totalCases} حالة استخدام عبر ٨ مراحل: من الاكتساب إلى البيع المتقاطع. لكل حالة: ما المشكلة، كيف نحلها، أيّ مؤشرات نقيس، ما هو النجاح، وأيّ منهجية نستخدم.`
+          : `${totalCases} use cases mapped across 8 lifecycle stages — from acquisition to cross-sell. For every case: what we're solving, how we'd tackle it, what to measure, what success looks like, and the methodology behind it.`}
+      </AiP>
+
+      {/* Stage chip ribbon */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', gap: 6,
+        margin: '8px 0 18px',
+      }}>
+        {LIFECYCLE_STAGES_DATA.map((s, i) => {
+          const active = i === activeIdx;
+          return (
+            <button key={s.key} onClick={() => setActiveIdx(i)} style={{
+              appearance: 'none', cursor: 'pointer',
+              fontFamily: 'var(--mal-font-ui)', fontSize: 12.5, fontWeight: active ? 700 : 500,
+              padding: '7px 12px', borderRadius: 999,
+              color: active ? '#fff' : 'var(--mal-ink-2)',
+              background: active ? s.tone : 'var(--mal-paper)',
+              border: '1px solid ' + (active ? s.tone : 'var(--mal-line)'),
+              transition: 'all .2s ease',
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+              <span style={{
+                fontFamily: 'var(--mal-font-mono)', fontSize: 10.5,
+                opacity: active ? 0.85 : 0.6,
+              }}>{s.badge}</span>
+              <span>{s.stage}</span>
+              <span style={{
+                fontSize: 10.5, padding: '1px 6px', borderRadius: 999,
+                background: active ? 'rgba(255,255,255,0.2)' : 'var(--mal-surface-2)',
+                color: active ? '#fff' : 'var(--mal-mid)',
+                fontFamily: 'var(--mal-font-mono)',
+              }}>{s.cases.length}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active stage summary */}
+      <div style={{
+        padding: '12px 14px', borderRadius: 12,
+        background: stage.tone + '12',
+        border: '1px solid ' + stage.tone + '38',
+        marginBottom: 14,
+        fontSize: 13.5, color: 'var(--mal-ink-1)', lineHeight: 1.55,
+      }}>
+        <strong style={{ color: stage.tone }}>{stage.stage}</strong> — {stage.summary}
+      </div>
+
+      {/* Use cases — table on desktop, stacked cards on mobile */}
+      {isMobile
+        ? <UseCaseStack stage={stage}/>
+        : <UseCaseTable stage={stage}/>}
+
+      {/* Coverage matrix */}
+      <AiSub>{isAr ? 'تغطية عائلات النماذج عبر المراحل' : 'Model-family coverage across stages'}</AiSub>
+      <AiP>
+        {isAr
+          ? 'النقاط الملوّنة تشير إلى عائلات النماذج التي تنشط في كل مرحلة. أعمدة فارغة = لا توجد نماذج هناك بعد.'
+          : 'Coloured dots show which model families fire at each stage. Empty cells = no model of that family at that stage today.'}
+      </AiP>
+      <CoverageMatrix data={LIFECYCLE_STAGES_DATA} isMobile={isMobile}/>
+    </AiSectionWrapper>
+  );
+}
+
+function FamilyChip({ family }) {
+  const f = MODEL_FAMILIES[family];
+  if (!f) return null;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '2px 8px', borderRadius: 999,
+      fontSize: 10.5, fontWeight: 600, letterSpacing: '.02em',
+      color: f.color,
+      background: f.color + '15',
+      border: '1px solid ' + f.color + '40',
+      whiteSpace: 'nowrap',
+    }}>
+      <span style={{ width: 5, height: 5, borderRadius: 999, background: f.color }}/>
+      {f.label}
+    </span>
+  );
+}
+
+function UseCaseTable({ stage }) {
+  return (
+    <div style={{
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+      borderRadius: 14, overflow: 'hidden',
+    }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{
+          width: '100%', borderCollapse: 'collapse',
+          fontSize: 13, fontFamily: 'var(--mal-font-ui)',
+          tableLayout: 'fixed', minWidth: 920,
+        }}>
+          <colgroup>
+            <col style={{ width: '17%' }}/>
+            <col style={{ width: '30%' }}/>
+            <col style={{ width: '17%' }}/>
+            <col style={{ width: '17%' }}/>
+            <col style={{ width: '19%' }}/>
+          </colgroup>
+          <thead>
+            <tr style={{
+              background: 'var(--mal-surface-2)',
+              borderBottom: '1px solid var(--mal-line)',
+            }}>
+              {['Use case', 'How we tackle it', 'KPIs', 'Success metric', 'Methodology'].map((h) => (
+                <th key={h} style={{
+                  textAlign: 'start', padding: '10px 14px',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '.06em',
+                  textTransform: 'uppercase', color: 'var(--mal-mid)',
+                }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {stage.cases.map((c, i) => (
+              <tr key={i} style={{
+                borderTop: i ? '1px solid var(--mal-line-2)' : 'none',
+                verticalAlign: 'top',
+              }}>
+                <td style={{ padding: '12px 14px' }}>
+                  <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--mal-ink)', lineHeight: 1.4, marginBottom: 6 }}>
+                    {c.useCase}
+                  </div>
+                  <FamilyChip family={c.family}/>
+                </td>
+                <td style={{ padding: '12px 14px', fontSize: 12.5, lineHeight: 1.6, color: 'var(--mal-ink-1)' }}>
+                  {c.approach}
+                </td>
+                <td style={{ padding: '12px 14px', fontSize: 12, lineHeight: 1.55, color: 'var(--mal-ink-1)' }}>
+                  <ul style={{ margin: 0, paddingInlineStart: 16 }}>
+                    {c.kpis.map((k, j) => <li key={j}>{k}</li>)}
+                  </ul>
+                </td>
+                <td style={{ padding: '12px 14px', fontSize: 12.5, lineHeight: 1.55, color: 'var(--mal-ink)', fontFamily: 'var(--mal-font-mono)' }}>
+                  {c.success}
+                </td>
+                <td style={{ padding: '12px 14px', fontSize: 12, lineHeight: 1.55, color: 'var(--mal-mid)' }}>
+                  {c.method}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function UseCaseStack({ stage }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {stage.cases.map((c, i) => (
+        <div key={i} style={{
+          background: 'var(--mal-paper)',
+          border: '1px solid var(--mal-line)',
+          borderRadius: 12, padding: 14,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--mal-ink)' }}>{c.useCase}</div>
+            <FamilyChip family={c.family}/>
+          </div>
+          {[
+            { lab: 'Approach',     val: c.approach,                mono: false },
+            { lab: 'KPIs',         val: c.kpis.join(' · '),        mono: false },
+            { lab: 'Success',      val: c.success,                 mono: true  },
+            { lab: 'Methodology',  val: c.method,                  mono: false },
+          ].map((row, j) => (
+            <div key={j} style={{ marginTop: 6 }}>
+              <div className="mal-caption" style={{ color: 'var(--mal-mid)' }}>{row.lab}</div>
+              <div style={{
+                fontSize: 12.5, lineHeight: 1.55,
+                color: 'var(--mal-ink-1)',
+                fontFamily: row.mono ? 'var(--mal-font-mono)' : 'inherit',
+              }}>{row.val}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CoverageMatrix({ data, isMobile }) {
+  const families = Object.keys(MODEL_FAMILIES);
+  // Build counts: family x stage -> count
+  const counts = {};
+  for (const f of families) counts[f] = {};
+  for (const s of data) {
+    for (const c of s.cases) {
+      counts[c.family][s.key] = (counts[c.family][s.key] || 0) + 1;
+    }
+  }
+
+  return (
+    <div style={{
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+      borderRadius: 14, overflow: 'hidden',
+    }}>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{
+          width: '100%', borderCollapse: 'collapse',
+          fontSize: 12, fontFamily: 'var(--mal-font-ui)',
+          minWidth: 720,
+        }}>
+          <thead>
+            <tr style={{
+              background: 'var(--mal-surface-2)',
+              borderBottom: '1px solid var(--mal-line)',
+            }}>
+              <th style={{
+                textAlign: 'start', padding: '10px 14px',
+                fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em',
+                textTransform: 'uppercase', color: 'var(--mal-mid)',
+              }}>Family</th>
+              {data.map((s) => (
+                <th key={s.key} style={{
+                  textAlign: 'center', padding: '10px 6px',
+                  fontSize: 10.5, fontWeight: 700, letterSpacing: '.04em',
+                  textTransform: 'uppercase', color: s.tone,
+                }}>{s.stage.split(' ')[0].slice(0, 6)}</th>
+              ))}
+              <th style={{
+                textAlign: 'center', padding: '10px 8px',
+                fontSize: 10.5, fontWeight: 700, color: 'var(--mal-mid)',
+              }}>Σ</th>
+            </tr>
+          </thead>
+          <tbody>
+            {families.map((f, i) => {
+              const fam = MODEL_FAMILIES[f];
+              const total = data.reduce((sum, s) => sum + (counts[f][s.key] || 0), 0);
+              return (
+                <tr key={f} style={{
+                  borderTop: i ? '1px solid var(--mal-line-2)' : 'none',
+                }}>
+                  <td style={{ padding: '8px 14px' }}>
+                    <FamilyChip family={f}/>
+                  </td>
+                  {data.map((s) => {
+                    const n = counts[f][s.key] || 0;
+                    const dotSize = n === 0 ? 4 : Math.min(20, 8 + n * 3);
+                    return (
+                      <td key={s.key} style={{ padding: '8px 6px', textAlign: 'center' }}>
+                        {n === 0 ? (
+                          <span style={{
+                            display: 'inline-block',
+                            width: 4, height: 4, borderRadius: 999,
+                            background: 'var(--mal-line)',
+                          }}/>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                            width: dotSize, height: dotSize, borderRadius: 999,
+                            background: fam.color, color: '#fff',
+                            fontSize: 10, fontWeight: 700,
+                          }}>{n}</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td style={{
+                    padding: '8px 8px', textAlign: 'center',
+                    fontFamily: 'var(--mal-font-mono)',
+                    color: 'var(--mal-mid)',
+                  }}>{total}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
