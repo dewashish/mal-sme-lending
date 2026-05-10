@@ -253,27 +253,31 @@ function MalTour({ steps, onClose, isOpen, lang = 'en' }) {
 // ============================================================
 // TourButton — the "Take a tour" pill, top-right corner
 // ============================================================
-function TourButton({ onStart, lang = 'en', floating = false, style }) {
+function TourButton({ onStart, lang = 'en', style }) {
   const isAr = lang === 'ar';
   const baseStyle = {
     all: 'unset', cursor: 'pointer', display: 'inline-flex',
-    alignItems: 'center', gap: 8,
-    padding: '8px 14px',
-    background: 'var(--mal-ink)', color: '#FAF7EE',
-    borderRadius: 999, fontSize: 12, fontWeight: 600,
-    boxShadow: 'var(--mal-sh-2)',
-    transition: 'transform .15s, opacity .15s',
+    alignItems: 'center', gap: 6,
+    padding: '6px 12px',
+    background: 'transparent',
+    color: 'var(--mal-mid)',
+    border: '1px solid var(--mal-line)',
+    borderRadius: 999, fontSize: 11.5, fontWeight: 500,
+    transition: 'color .15s, border-color .15s, background .15s',
   };
-  const fStyle = floating ? {
-    position: 'fixed', top: 70, insetInlineEnd: 18, zIndex: 55,
-  } : {};
   return (
     <button onClick={onStart}
-            onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
-            style={{ ...baseStyle, ...fStyle, ...style }}>
-      <span style={{ fontSize: 14 }}>✨</span>
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--mal-ink)';
+              e.currentTarget.style.borderColor = 'var(--mal-ink)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--mal-mid)';
+              e.currentTarget.style.borderColor = 'var(--mal-line)';
+            }}
+            style={{ ...baseStyle, ...style }}>
       <span>{isAr ? 'خذ جولة' : 'Take a tour'}</span>
+      <span style={{ fontSize: 11, opacity: 0.7 }}>→</span>
     </button>
   );
 }

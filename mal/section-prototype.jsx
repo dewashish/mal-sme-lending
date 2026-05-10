@@ -44,7 +44,7 @@ function SectionPrototype({ lang, isMobile }) {
 
       {TourBtn && (
         <TourBtn lang={lang} onStart={() => setTourOpen(true)}
-                 style={{ position: 'fixed', top: 70, insetInlineEnd: 380, zIndex: 65 }}/>
+                 style={{ position: 'fixed', top: 70, insetInlineStart: 18, zIndex: 65 }}/>
       )}
 
       <div style={{ minHeight: 'calc(100vh - 56px)' }}>
