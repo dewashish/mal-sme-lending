@@ -115,7 +115,7 @@ const DEFAULT_SCENARIO = {
 
   // Other concurrent loans the buyer is running for invoices from different
   // suppliers. Pre-seeded so the demo can illustrate multi-loan limit
-  // utilization without requiring the user to issue more invoices manually.
+  // utilization, multi-supplier scenarios, and bundling into one EMI.
   backgroundLoans: [
     {
       id: 'bg-marina',
@@ -133,7 +133,33 @@ const DEFAULT_SCENARIO = {
       },
       paymentsByEmi: {},
     },
+    {
+      id: 'bg-atlas',
+      invoiceId: 'INV-2026-0397',
+      supplier: 'Atlas Logistics WLL',
+      issuedDay: -8,                  // signed 8 days before simDay=0
+      plan: {
+        type: 'inst3_bg',
+        label: 'Instalments · 3 mo',
+        tenorMonths: 3,
+        principal: 165000,
+        totalCost: 4500,
+        emiAmount: 56500,
+        schedule: [
+          { num: 1, dueDay: 22, amount: 56500 },
+          { num: 2, dueDay: 52, amount: 56500 },
+          { num: 3, dueDay: 82, amount: 56500 },
+        ],
+      },
+      paymentsByEmi: {},
+    },
   ],
+
+  // Consolidation / "Bundle into one EMI" — when set, replaces all active
+  // obligations (primary plan + extension + background loans) with a single
+  // consolidated repayment schedule. Settled-by-bundle markers go on every
+  // unpaid EMI of every original obligation.
+  bundledPlan: null,
 
   // Routes within live phase
   buyerRoute: 'home',
@@ -1419,16 +1445,38 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
   });
   const bgUsedTotal = bgLoanSummaries.reduce((s, b) => s + b.bgRemainingForLimit, 0);
 
+  // Bundled (consolidated) plan outstanding — replaces the per-obligation
+  // utilisation once the bundle is signed.
+  const bundledPlan = scenario.bundledPlan;
+  const bundledPaymentsByEmi = scenario.bundledPaymentsByEmi || {};
+  const bundledPaidAmount = bundledPlan
+    ? bundledPlan.schedule.filter((e) => bundledPaymentsByEmi[e.num])
+                          .reduce((s, e) => s + (e.amount || 0), 0)
+    : 0;
+  const bundledIsClosed = bundledPlan
+    ? bundledPlan.schedule.every((e) => bundledPaymentsByEmi[e.num])
+    : true;
+  const bundledRemaining = bundledPlan && !bundledIsClosed
+    ? Math.max(0, bundledPlan.principal - bundledPaidAmount)
+    : 0;
+
   // Combined utilization across all active obligations
-  const usedAmount = planRemainingForLimit + extRemainingForLimit + bgUsedTotal;
-  const allClosed = isClosed && (!termExtension || extIsClosed) && bgLoanSummaries.every((b) => b.bgIsClosed);
+  const usedAmount = bundledPlan
+    ? bundledRemaining
+    : planRemainingForLimit + extRemainingForLimit + bgUsedTotal;
+  const allClosed = bundledPlan
+    ? bundledIsClosed
+    : isClosed && (!termExtension || extIsClosed) && bgLoanSummaries.every((b) => b.bgIsClosed);
   const availableLimit = 850000 - usedAmount;
   const utilisationPct = Math.round((usedAmount / 850000) * 100);
 
-  // Active-loan count (for the section header)
-  const activeLoanCount = (plan && !isClosed ? 1 : 0)
-                        + (termExtension && !extIsClosed ? 1 : 0)
-                        + bgLoanSummaries.filter((b) => !b.bgIsClosed).length;
+  // Active-loan count (for the section header). Once bundled, only the bundle
+  // counts; original obligations are settled-by-bundle.
+  const activeLoanCount = bundledPlan
+    ? (bundledIsClosed ? 0 : 1)
+    : (plan && !isClosed ? 1 : 0)
+      + (termExtension && !extIsClosed ? 1 : 0)
+      + bgLoanSummaries.filter((b) => !b.bgIsClosed).length;
 
   const showExtendCta = !termExtension && shouldShowExtendCta(plan, simDay, activePayments, !!termExtension);
   const showRefinanceCta = !isRefinanced && !termExtension && canRefinanceNow(plan, simDay, paymentsByEmi, isRefinanced);
@@ -1872,8 +1920,95 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         );
       })()}
 
+      {/* Bundle / Consolidate CTA — show when ≥ 2 active obligations and not bundled. */}
+      {!scenario.bundledPlan && activeLoanCount >= 2 && (
+        <BundleConsolidateCard
+          isAr={isAr}
+          activeLoanCount={activeLoanCount}
+          totalOutstanding={usedAmount}
+          onBundle={(tenorMonths, aprPct, emiAmount) => {
+            // Settle every unpaid EMI of every obligation under "settledByBundle".
+            const newPaymentsByEmi = { ...paymentsByEmi };
+            (plan?.schedule || []).forEach((emi) => {
+              if (!newPaymentsByEmi[emi.num]) {
+                newPaymentsByEmi[emi.num] = { paidOnDay: simDay, withPenalty: 0, settledByBundle: true };
+              }
+            });
+            const newExtensionPaymentsByEmi = { ...extensionPaymentsByEmi };
+            (termExtension?.schedule || []).forEach((emi) => {
+              if (!newExtensionPaymentsByEmi[emi.num]) {
+                newExtensionPaymentsByEmi[emi.num] = { paidOnDay: simDay, withPenalty: 0, settledByBundle: true };
+              }
+            });
+            const newBg = backgroundLoans.map((l) => {
+              const next = { ...l.paymentsByEmi };
+              l.plan.schedule.forEach((emi) => {
+                if (!next[emi.num]) {
+                  next[emi.num] = { paidOnDay: simDay, withPenalty: 0, settledByBundle: true };
+                }
+              });
+              return { ...l, paymentsByEmi: next };
+            });
+            // Build the new consolidated schedule.
+            const principal = usedAmount;
+            const monthly = emiAmount;
+            const schedule = Array.from({ length: tenorMonths }, (_, i) => ({
+              num: i + 1,
+              dueDay: simDay + 30 * (i + 1),
+              amount: monthly,
+            }));
+            patch({
+              paymentsByEmi: newPaymentsByEmi,
+              extensionPaymentsByEmi: newExtensionPaymentsByEmi,
+              backgroundLoans: newBg,
+              bundledPlan: {
+                principal,
+                tenorMonths,
+                aprPct,
+                emiAmount: monthly,
+                startDay: simDay,
+                schedule,
+                signedAt: new Date().toISOString(),
+              },
+              buyerToast: {
+                title: isAr ? 'تم التوحيد · خطة واحدة' : 'Bundled · one plan, one date',
+                sub: isAr
+                  ? `${activeLoanCount} فاتورة → خطة ${tenorMonths} أشهر`
+                  : `${activeLoanCount} invoices → ${tenorMonths}-mo single EMI`,
+                icon: 'check', tone: 'success',
+              },
+            });
+          }}
+        />
+      )}
+
+      {/* Bundled plan card — replaces individual plans when consolidation is signed. */}
+      {scenario.bundledPlan && (
+        <BundledPlanCard
+          isAr={isAr}
+          bundled={scenario.bundledPlan}
+          simDay={simDay}
+          payments={scenario.bundledPaymentsByEmi || {}}
+          onPay={(emiNum, dueDay, amount) => {
+            const dpd = Math.max(0, simDay - dueDay);
+            const penalty = computeLatePenalty(amount, dpd);
+            patch({
+              bundledPaymentsByEmi: {
+                ...(scenario.bundledPaymentsByEmi || {}),
+                [emiNum]: { paidOnDay: simDay, withPenalty: penalty },
+              },
+              buyerToast: {
+                title: isAr ? `قسط الباقة ${emiNum} مدفوع` : `Bundle EMI ${emiNum} paid`,
+                sub: `AED ${(amount + penalty).toLocaleString()}`,
+                icon: 'check', tone: 'success',
+              },
+            });
+          }}
+        />
+      )}
+
       {/* Background loans — concurrent loans for invoices from other suppliers */}
-      {bgLoanSummaries.map(({ idx, loan, bgStatuses, bgPaidCount, bgTotalCount, bgIsClosed, bgPaidAmount, bgRemainingForLimit }) => {
+      {!scenario.bundledPlan && bgLoanSummaries.map(({ idx, loan, bgStatuses, bgPaidCount, bgTotalCount, bgIsClosed, bgPaidAmount, bgRemainingForLimit }) => {
         const bgOverdue = findOverdue(bgStatuses);
         const bgNext = findNextUpcoming(bgStatuses);
         const bgBanner = bgOverdue ? collectionsBanner(bgOverdue.stage, bgOverdue.daysOverdue, isAr) : null;
@@ -2841,6 +2976,233 @@ function DemoFooterHint({ phase, lang, simDay, plan }) {
           : '🎮 Click any phase pill above to navigate. When you reach "Live · Day-by-day", the central dial appears for time control.'
       )}
     </div>
+  );
+}
+
+// ============================================================
+// BundleConsolidateCard — appears when buyer has 2+ active obligations.
+// Lets them merge all outstanding into a single 6-month EMI plan.
+// ============================================================
+function BundleConsolidateCard({ isAr, activeLoanCount, totalOutstanding, onBundle }) {
+  const [open, setOpen] = dmS(false);
+  const [tenor, setTenor] = dmS(6);
+  const tenors = [
+    { mo: 3,  apr: 13.5 },
+    { mo: 6,  apr: 14.5 },
+    { mo: 9,  apr: 16.0 },
+    { mo: 12, apr: 17.5 },
+  ];
+  const t = tenors.find((x) => x.mo === tenor) || tenors[1];
+  // Simple monthly EMI math: principal * (1 + apr * months/12) / months
+  const totalCost = Math.round(totalOutstanding * (t.apr / 100) * (t.mo / 12));
+  const emiAmount = Math.round((totalOutstanding + totalCost) / t.mo);
+
+  return (
+    <div style={{
+      padding: 16,
+      borderRadius: 14,
+      background: 'linear-gradient(135deg, var(--mal-primary-50), var(--mal-paper))',
+      border: '1px solid var(--mal-primary-3)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: open ? 12 : 4 }}>
+        <span style={{
+          width: 32, height: 32, borderRadius: 999,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--mal-primary)', color: '#fff', fontSize: 14,
+        }}>⊕</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11, color: 'var(--mal-primary)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+            {isAr ? 'وحّد فواتيرك' : 'Bundle into one plan'}
+          </div>
+          <div style={{ fontSize: 13.5, color: 'var(--mal-ink)', marginTop: 2 }}>
+            {isAr
+              ? `لديك ${activeLoanCount} فواتير نشطة بإجمالي ${(totalOutstanding/1000).toFixed(0)} ألف د.إ. ادمجها في خطة واحدة بقسط واحد.`
+              : `${activeLoanCount} active invoices totalling AED ${totalOutstanding.toLocaleString()}. Merge them into one plan, one due date.`}
+          </div>
+        </div>
+        {!open && (
+          <button onClick={() => setOpen(true)} style={{
+            all: 'unset', cursor: 'pointer',
+            padding: '7px 14px', borderRadius: 999,
+            background: 'var(--mal-primary)', color: '#fff',
+            fontSize: 12, fontWeight: 600,
+          }}>
+            {isAr ? 'عرض الخيارات' : 'Show options →'}
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 12 }}>
+            {tenors.map((opt) => {
+              const active = opt.mo === tenor;
+              return (
+                <button key={opt.mo} onClick={() => setTenor(opt.mo)} style={{
+                  all: 'unset', cursor: 'pointer',
+                  textAlign: 'center', padding: '8px 4px', borderRadius: 10,
+                  background: active ? 'var(--mal-primary)' : 'var(--mal-paper)',
+                  color: active ? '#fff' : 'var(--mal-ink-2)',
+                  border: '1px solid ' + (active ? 'var(--mal-primary)' : 'var(--mal-line)'),
+                  transition: 'background .15s, color .15s',
+                }}>
+                  <div style={{
+                    fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+                    fontSize: 16,
+                  }}>{opt.mo}{isAr ? ' شهر' : ' mo'}</div>
+                  <div style={{ fontSize: 10.5, opacity: 0.75, marginTop: 2 }}>
+                    {opt.apr}% APR
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{
+            padding: '10px 12px', borderRadius: 10, marginBottom: 12,
+            background: 'var(--mal-surface-2)',
+            display: 'flex', justifyContent: 'space-between',
+            fontSize: 12.5, color: 'var(--mal-ink)',
+          }}>
+            <span>{isAr ? 'القسط الجديد' : 'New EMI'}</span>
+            <span style={{ fontWeight: 600, fontFamily: 'var(--mal-font-mono)' }}>
+              AED {emiAmount.toLocaleString()} × {t.mo}
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setOpen(false)} style={{
+              all: 'unset', cursor: 'pointer',
+              padding: '8px 14px', borderRadius: 999,
+              border: '1px solid var(--mal-line)',
+              background: 'var(--mal-paper)', color: 'var(--mal-ink-2)',
+              fontSize: 12, fontWeight: 500,
+            }}>
+              {isAr ? 'إلغاء' : 'Cancel'}
+            </button>
+            <button onClick={() => onBundle(t.mo, t.apr, emiAmount)} style={{
+              all: 'unset', cursor: 'pointer', flex: 1, textAlign: 'center',
+              padding: '8px 14px', borderRadius: 999,
+              background: 'var(--mal-primary)', color: '#fff',
+              fontSize: 12.5, fontWeight: 600,
+            }}>
+              {isAr ? 'وحّد عبر UAE Pass' : 'Sign · UAE Pass · Bundle now'}
+            </button>
+          </div>
+          <div style={{
+            fontSize: 10.5, color: 'var(--mal-mid-2)', marginTop: 8,
+            lineHeight: 1.5,
+          }}>
+            {isAr
+              ? 'يدفع Mal جميع الموردين اليوم. أنت تدفع لـMal فقط، قسطاً واحداً، تاريخ استحقاق واحد. الخطط الأصلية تُغلق ويتم تسويتها بواسطة Mal.'
+              : 'Mal settles every supplier today. You repay Mal only — one EMI, one due date. Original plans close and are marked settled by Mal.'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// BundledPlanCard — replaces individual loan cards once the bundle
+// is signed. Single schedule, single Pay button per EMI.
+// ============================================================
+function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
+  const total = bundled.schedule.length;
+  const paidCount = bundled.schedule.filter((e) => payments[e.num]).length;
+  const isClosed = paidCount === total;
+  const next = bundled.schedule.find((e) => !payments[e.num] && simDay <= e.dueDay)
+            || bundled.schedule.find((e) => !payments[e.num]);
+
+  return (
+    <Card padded>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <span style={{
+          padding: '2px 8px', borderRadius: 999,
+          background: 'rgba(90,58,163,0.10)', border: '1px solid rgba(90,58,163,0.32)',
+          fontSize: 10.5, fontWeight: 700, color: 'var(--mal-primary)',
+          letterSpacing: '.06em', textTransform: 'uppercase',
+        }}>{isAr ? 'باقة موحّدة' : 'Bundled'}</span>
+        <div className="mal-caption" style={{ marginLeft: 'auto' }}>
+          {isAr ? `${total} قسط` : `${total} EMIs`}
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+        <span style={{
+          fontFamily: 'var(--mal-font-display)', fontSize: 22, fontStyle: 'italic',
+        }}>
+          {isAr ? `خطة موحّدة · ${bundled.tenorMonths} شهر` : `Bundled plan · ${bundled.tenorMonths} mo`}
+        </span>
+        <Pill tone={isClosed ? 'success' : 'info'} dot>
+          {isClosed ? (isAr ? 'مُغلق' : 'Closed') : (isAr ? 'في الوقت' : 'On track')}
+        </Pill>
+      </div>
+      <div style={{
+        display: 'flex', gap: 10, fontSize: 12, color: 'var(--mal-mid)',
+        marginBottom: 12,
+      }}>
+        <span>{isAr ? 'أصل' : 'Principal'} AED {bundled.principal.toLocaleString()}</span>
+        <span>·</span>
+        <span>APR {bundled.aprPct}%</span>
+        <span>·</span>
+        <span>{isAr ? 'القسط' : 'EMI'} AED {bundled.emiAmount.toLocaleString()}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {bundled.schedule.map((e) => {
+          const paid = payments[e.num];
+          const dpd = paid ? 0 : Math.max(0, simDay - e.dueDay);
+          const status = paid ? 'paid' : (dpd > 0 ? 'overdue' : 'upcoming');
+          const isNext = next && next.num === e.num;
+          const isSoonOrLate = status === 'overdue' || (status === 'upcoming' && (e.dueDay - simDay) <= 7);
+          return (
+            <div key={e.num} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 12px', borderRadius: 12,
+              background: status === 'overdue' ? 'var(--mal-danger-bg)'
+                        : status === 'paid' ? 'var(--mal-success-bg)'
+                        : 'var(--mal-surface-2)',
+              border: isNext ? '1.5px solid var(--mal-primary)' : 'none',
+            }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 999,
+                background: status === 'paid' ? 'var(--mal-success)'
+                          : status === 'overdue' ? 'var(--mal-danger)'
+                          : '#fff',
+                color: status === 'upcoming' ? 'var(--mal-mid)' : '#fff',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 12, fontWeight: 600, flexShrink: 0,
+                boxShadow: status === 'upcoming' ? 'inset 0 0 0 1px var(--mal-line)' : 'none',
+              }}>{paid ? '✓' : status === 'overdue' ? '!' : e.num}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>
+                  {isAr ? `قسط ${e.num} من ${total}` : `EMI ${e.num} of ${total}`}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+                  {paid
+                    ? (isAr ? `دُفع · ${formatSimDay(paid.paidOnDay)}` : `Paid · ${formatSimDay(paid.paidOnDay)}`)
+                    : status === 'overdue'
+                    ? (isAr ? `متأخّر بـ ${dpd} يوم` : `${dpd}d overdue`)
+                    : (isAr ? `يستحق ${formatSimDay(e.dueDay)}` : `Due ${formatSimDay(e.dueDay)}`)}
+                </div>
+              </div>
+              <span className="mal-num" style={{ fontSize: 13, fontWeight: 500 }}>
+                AED {e.amount.toLocaleString()}
+              </span>
+              {!paid && isSoonOrLate && (
+                <button onClick={() => onPay(e.num, e.dueDay, e.amount)} style={{
+                  all: 'unset', cursor: 'pointer',
+                  padding: '6px 12px', borderRadius: 999,
+                  background: status === 'overdue' ? 'var(--mal-danger)' : 'var(--mal-ink)',
+                  color: '#FAF7EE', fontSize: 11, fontWeight: 600,
+                }}>
+                  {isAr ? 'ادفع' : (status === 'overdue' ? 'Pay now' : 'Pay early')}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </Card>
   );
 }
 
