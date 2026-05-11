@@ -307,9 +307,13 @@ function GroupedProductSelector({ catalogue, productId, entryId, onPickProduct, 
     ? (entry ? product.short + ' · ' + entry.label : product.short)
     : (isAr ? 'اختر' : 'Select');
 
+  // Container always establishes a stacking context so the open menu
+  // floats above the phone frames below it (which set their own
+  // shadows / borders that can otherwise create competing stacking
+  // contexts).
   const containerStyle = variant === 'floating'
-    ? { position: 'fixed', top: 70, insetInlineEnd: 18, zIndex: 60 }
-    : { position: 'relative', display: 'inline-block' };
+    ? { position: 'fixed', top: 70, insetInlineEnd: 18, zIndex: 70 }
+    : { position: 'relative', display: 'inline-block', zIndex: open ? 70 : 'auto' };
 
   return (
     <div ref={ref} style={containerStyle}>
@@ -362,6 +366,7 @@ function GroupedProductSelector({ catalogue, productId, entryId, onPickProduct, 
           boxShadow: 'var(--mal-sh-3)',
           padding: 8,
           animation: 'mal-fade-up .18s ease-out',
+          zIndex: 75,
         }}>
           <div style={{
             padding: '6px 10px 8px', fontSize: 10.5, fontWeight: 600,
