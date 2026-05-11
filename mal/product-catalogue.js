@@ -206,10 +206,15 @@ window.MAL_PRODUCT_CATALOGUE = [
       {
         id: 'a11-pos-mca',
         code: 'A11',
-        title: 'POS-Receivables Merchant Cash Advance',
-        short: 'POS MCA',
+        title: 'Embedded POS Finance',
+        short: 'POS Finance',
         status: 'in-progress',
-        blurb: 'MCA repaid as a daily slice of card-acquirer settlements. Targets F&B, retail, and clinics with high card-payment share.',
+        blurb: 'Working capital advance to F&B / retail / salon SMEs, repaid as a daily slice of POS-acquirer settlements. Underwritten silently from POS + bank + VAT data — no document uploads.',
+        finKey: 'a11',
+        protoEntries: [
+          { id: 'demo', label: 'Merchant + Mal (side-by-side)' },
+        ],
+        defaultEntry: 'demo',
       },
       {
         id: 'a12-marketplace-seller',

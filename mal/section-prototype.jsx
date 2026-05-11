@@ -29,9 +29,13 @@ function SectionPrototype({ lang, setLang, isMobile }) {
   const tourSteps = buildPrototypeTourSteps(isAr, entryId);
 
   // Map product id → which prototype to mount. P1 = Smart Invoice (full).
-  // P2 = Healthcare Receivables (in-progress prototype, mounts but stays
-  // flagged 'in-progress' in the catalogue). Other products show ComingSoon.
-  const hasPrototype = productId === 'p1-smart-invoice' || productId === 'p2-healthcare-receivables';
+  // P2 = Healthcare Receivables (in-progress prototype). A11 = Embedded POS
+  // Finance (in-progress prototype, the "P3" slot in the live demo).
+  // Other products show ComingSoon.
+  const hasPrototype =
+    productId === 'p1-smart-invoice' ||
+    productId === 'p2-healthcare-receivables' ||
+    productId === 'a11-pos-mca';
   const showProto = hasPrototype && entryId === 'demo';
 
   return (
@@ -61,6 +65,9 @@ function SectionPrototype({ lang, setLang, isMobile }) {
         )}
         {showProto && productId === 'p2-healthcare-receivables' && window.HealthcareDemo && (
           <window.HealthcareDemo lang={lang} isMobile={isMobile}/>
+        )}
+        {showProto && productId === 'a11-pos-mca' && window.PosFinanceDemo && (
+          <window.PosFinanceDemo lang={lang} isMobile={isMobile}/>
         )}
         {hasPrototype && entryId && entryId !== 'demo' && (
           <PersonaMount persona={entryId} lang={lang} isMobile={isMobile}/>
