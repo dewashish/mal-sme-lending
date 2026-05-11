@@ -2123,9 +2123,6 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         );
       })()}
 
-      {/* Trust dashboard. Regulator + bureau + ISO badges */}
-      {!allClosed && <TrustBadgesRow isAr={isAr}/>}
-
       {/* Notification preference centre. Channel + language picker, with timeline preview */}
       {!allClosed && (
         <NotifPrefsCard
@@ -2345,6 +2342,9 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         );
       })}
 
+      {/* Trust dashboard. Sits at the very bottom of the home so it
+          doesn't interrupt the loan schedule above. */}
+      <TrustBadgesRow isAr={isAr}/>
     </div>
   );
 }
