@@ -83,7 +83,7 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
           {isAr ? <>رأس مال<br/><span className="mal-iri-text">يتحرّك معك.</span></> : <>Capital that<br/><span className="mal-iri-text">moves with you.</span></>}
         </h1>
         <p style={{ fontSize: 15, color: 'var(--mal-mid)', maxWidth: 320, lineHeight: 1.5 }}>
-          {isAr ? 'افتح حسابك في ١٠ دقائق. ادفع موردينك الآن، اقبض من عملائك مبكراً.' : 'Open your account in 10 minutes. Pay suppliers now, get paid by buyers earlier.'}
+          {isAr ? 'افتح حسابك في ١٠ دقائق. اشترِ الآن، ادفع خلال ٣٠ إلى ١٢٠ يوم — مال يسدّد موردك اليوم.' : 'Open your account in 10 minutes. Buy now, pay in 30 to 120 days — Mal settles your supplier today.'}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 36 }}>
           <Button kind="primary" size="lg" full iconRight="arrow" onClick={next}>{isAr ? 'افتح حساباً' : 'Open an account'}</Button>

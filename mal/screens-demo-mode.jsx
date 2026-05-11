@@ -155,6 +155,10 @@ const DEFAULT_SCENARIO = {
     },
   ],
 
+  // Most recent meaningful user action — drives the live ExplainerDock
+  // at the bottom of the stage. Shape: { id, day, extra }.
+  lastAction: { id: 'demo-loaded', day: 0 },
+
   // Consolidation / "Bundle into one EMI" — when set, replaces all active
   // obligations (primary plan + extension + background loans) with a single
   // consolidated repayment schedule. Settled-by-bundle markers go on every
@@ -644,30 +648,35 @@ function DemoTimelineHorizontal({ phase, setPhase, lang }) {
 function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, stepDay, lang, isMobile }) {
   const stack = isMobile;
   return (
-    <div style={{
-      display: 'flex', flexDirection: stack ? 'column' : 'row', gap: 26,
-      alignItems: 'flex-start', justifyContent: 'center',
-      // Reserve 80px on the left for the floating dotnav (only on desktop)
-      padding: stack ? '8px 12px 24px' : '20px 22px 40px 90px',
-      flexWrap: 'wrap',
-    }}>
-      <DemoPanel side="buyer" title="Buyer SME" sub="Aisha · Crescent Trading FZE" tone="lilac"
-                 spotlight={scenario.spotlight === 'buyer'} toast={scenario.buyerToast} lang={lang}>
-        <BuyerSurface phase={phase} setPhase={setPhase} scenario={scenario} patch={patch} lang={lang}/>
-      </DemoPanel>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      <div style={{
+        display: 'flex', flexDirection: stack ? 'column' : 'row', gap: 26,
+        alignItems: 'flex-start', justifyContent: 'center',
+        // Reserve 80px on the left for the floating dotnav (only on desktop)
+        padding: stack ? '8px 12px 24px' : '20px 22px 0 90px',
+        flexWrap: 'wrap',
+      }}>
+        <DemoPanel side="buyer" title="Buyer SME" sub="Aisha · Crescent Trading FZE" tone="lilac"
+                   spotlight={scenario.spotlight === 'buyer'} toast={scenario.buyerToast} lang={lang}>
+          <BuyerSurface phase={phase} setPhase={setPhase} scenario={scenario} patch={patch} lang={lang}/>
+        </DemoPanel>
 
-      {/* CENTRAL COLUMN: in live phase shows the CircularDayDial; otherwise
-          shows the iridescent sync-flow indicator we already had. */}
-      {!stack && (
-        phase === 'live'
-          ? <DemoCenterColumnLive scenario={scenario} setSimDay={setSimDay} stepDay={stepDay} setPhase={setPhase} patch={patch} lang={lang}/>
-          : <SyncIndicatorNarrative phase={phase} lang={lang}/>
-      )}
+        {/* CENTRAL COLUMN: in live phase shows the CircularDayDial; otherwise
+            shows the iridescent sync-flow indicator we already had. */}
+        {!stack && (
+          phase === 'live'
+            ? <DemoCenterColumnLive scenario={scenario} setSimDay={setSimDay} stepDay={stepDay} setPhase={setPhase} patch={patch} lang={lang}/>
+            : <SyncIndicatorNarrative phase={phase} lang={lang}/>
+        )}
 
-      <DemoPanel side="supplier" title="Supplier SME" sub="Marwan · Atlas Packaging FZ" tone="sky"
-                 spotlight={scenario.spotlight === 'supplier'} toast={scenario.supplierToast} lang={lang}>
-        <SupplierSurface phase={phase} setPhase={setPhase} scenario={scenario} patch={patch} lang={lang}/>
-      </DemoPanel>
+        <DemoPanel side="supplier" title="Supplier SME" sub="Marwan · Atlas Packaging FZ" tone="sky"
+                   spotlight={scenario.spotlight === 'supplier'} toast={scenario.supplierToast} lang={lang}>
+          <SupplierSurface phase={phase} setPhase={setPhase} scenario={scenario} patch={patch} lang={lang}/>
+        </DemoPanel>
+      </div>
+
+      {/* Live explainer dock — product overview + last-action narrator */}
+      <ExplainerDock scenario={scenario} phase={phase} lang={lang} isMobile={isMobile}/>
     </div>
   );
 }
@@ -1045,7 +1054,15 @@ function BuyerSurface({ phase, setPhase, scenario, patch, lang }) {
   if (phase === 'funded') return <DemoBuyerJustSigned lang={lang} scenario={scenario} onProceed={() => setPhase('live')}/>;
   if (phase === 'live') {
     const route = scenario.buyerRoute || 'home';
-    const setBuyerRoute = (r) => patch({ buyerRoute: r });
+    const setBuyerRoute = (r) => {
+      const patches = { buyerRoute: r };
+      // Emit a lastAction for the explainer dock when entering key flows.
+      const day = scenario.simDay;
+      if (r === 'refinance-hero')      patches.lastAction = { id: 'refinance-opened', day };
+      else if (r === 'extend-hero')    patches.lastAction = { id: 'extend-opened', day };
+      else if (r === 'refinance-success') patches.lastAction = { id: 'refinance-signed', day, extra: { tenor: scenario.refinanceDraft?.tenorMonths } };
+      patch(patches);
+    };
     return <DemoBuyerLive route={route} setBuyerRoute={setBuyerRoute}
                           scenario={scenario} patch={patch} lang={lang}/>;
   }
@@ -1121,7 +1138,7 @@ function DemoIntroBuyer({ lang, onProceed }) {
           {isAr ? <>رأس مال<br/><span className="mal-iri-text">يتحرّك معك.</span></> : <>Capital that<br/><span className="mal-iri-text">moves with you.</span></>}
         </h1>
         <p style={{ fontSize: 13, color: 'var(--mal-mid)', maxWidth: 280, lineHeight: 1.5, marginBottom: 24 }}>
-          {isAr ? 'افتح حسابك في ١٠ دقائق. ادفع موردينك الآن، اقبض من عملائك مبكراً.' : 'Open your account in 10 minutes. Pay suppliers now, get paid by buyers earlier.'}
+          {isAr ? 'افتح حسابك في ١٠ دقائق. اشترِ الآن، ادفع خلال ٣٠ إلى ١٢٠ يوم — مال يسدّد موردك اليوم.' : 'Open your account in 10 minutes. Buy now, pay in 30 to 120 days — Mal settles your supplier today.'}
         </p>
         <Button kind="primary" size="lg" full iconRight="arrow" onClick={onProceed}>
           {isAr ? 'افتح حساباً' : 'Get started'}
@@ -1230,7 +1247,10 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
   dmE(() => {
     if (signing) {
       const t = setTimeout(() => {
-        patch({ signed: true, signing: false });
+        patch({
+          signed: true, signing: false,
+          lastAction: { id: 'plan-signed', day: scenario.simDay, extra: { planLabel: scenario.plan?.label } },
+        });
         setSigning(false);
         onSigned && onSigned();
       }, 1300);
@@ -1256,7 +1276,10 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
         ].map((opt) => {
           const active = variant === opt.v;
           return (
-            <button key={opt.v} onClick={() => patch({ productVariant: opt.v })} style={{
+            <button key={opt.v} onClick={() => patch({
+              productVariant: opt.v,
+              lastAction: { id: 'variant-toggled', day: scenario.simDay, extra: { variant: opt.v } },
+            })} style={{
               all: 'unset', cursor: 'pointer',
               padding: '5px 12px', borderRadius: 999,
               fontSize: 11.5, fontWeight: active ? 700 : 500,
@@ -1289,7 +1312,10 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
                       // Each preset has a real schedule, so the lifecycle simulator
                       // works for any plan the buyer picks.
                       const preset = PLAN_DEFS[p.key] || PLAN_DEFS.installment_4;
-                      patch({ plan: preset, paymentsByEmi: {} });
+                      patch({
+                        plan: preset, paymentsByEmi: {},
+                        lastAction: { id: 'plan-selected', day: scenario.simDay, extra: { planLabel: p.label, fee: p.cost } },
+                      });
                     }}
                     className={`mal-plan-row ${selected ? 'selected' : 'mal-fade-up'}`}
                     style={{
@@ -1453,6 +1479,7 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
               sub: `New ${tenor}-mo term loan begins · AED ${emi.toLocaleString()}/mo`,
               icon: 'check', tone: 'success',
             },
+            lastAction: { id: 'extend-signed', day: s.simDay, extra: { tenor } },
           };
         });
       }
@@ -1593,6 +1620,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         sub: isAr ? 'دورتك تستمرّ' : 'Cycle continues',
         icon: 'check', tone: 'success',
       },
+      lastAction: { id: 'emi-paid', day: simDay, extra: { emiNum, amount, withPenalty: penalty } },
     });
   };
 
@@ -1617,6 +1645,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         sub: `AED ${(amount + penalty).toLocaleString()} · ${backgroundLoans[loanIdx].supplier}`,
         icon: 'check', tone: 'success',
       },
+      lastAction: { id: 'bg-emi-paid', day: simDay, extra: { supplier: backgroundLoans[loanIdx].supplier, amount } },
     });
   };
 
@@ -1781,6 +1810,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
                     sub: isAr ? `${plan.label} → ${preset.label}` : `${plan.label} → ${preset.label}`,
                     icon: 'check', tone: 'success',
                   },
+                  lastAction: { id: 'switch-term', day: simDay, extra: { from: plan.label, to: preset.label } },
                 });
               }}
             />
@@ -2158,8 +2188,10 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
                   : `${activeLoanCount} invoices → ${tenorMonths}-mo single EMI`,
                 icon: 'check', tone: 'success',
               },
+              lastAction: { id: 'bundle-signed', day: simDay, extra: { tenor: tenorMonths, count: activeLoanCount } },
             });
           }}
+          onOpen={() => patch({ lastAction: { id: 'bundle-opened', day: simDay, extra: { count: activeLoanCount, total: usedAmount } } })}
         />
       )}
 
@@ -3139,7 +3171,7 @@ function DemoFooterHint({ phase, lang, simDay, plan }) {
 // BundleConsolidateCard — appears when buyer has 2+ active obligations.
 // Lets them merge all outstanding into a single 6-month EMI plan.
 // ============================================================
-function BundleConsolidateCard({ isAr, activeLoanCount, totalOutstanding, onBundle }) {
+function BundleConsolidateCard({ isAr, activeLoanCount, totalOutstanding, onBundle, onOpen }) {
   const [open, setOpen] = dmS(false);
   const [tenor, setTenor] = dmS(6);
   const tenors = [
@@ -3177,7 +3209,7 @@ function BundleConsolidateCard({ isAr, activeLoanCount, totalOutstanding, onBund
           </div>
         </div>
         {!open && (
-          <button onClick={() => setOpen(true)} style={{
+          <button onClick={() => { setOpen(true); onOpen && onOpen(); }} style={{
             all: 'unset', cursor: 'pointer',
             padding: '7px 14px', borderRadius: 999,
             background: 'var(--mal-primary)', color: '#fff',
@@ -3873,4 +3905,256 @@ function TawarruqVisualiser({ isAr, principal, totalCost, tenorMonths, onClose, 
 }
 
 // ============================================================
-// BundleConsolidateCard — appears when buyer has 2+ active obligations.
+// ExplainerDock — bottom-of-stage live narrator.
+// Left pane: product manifest (what it is · who it serves · why · differentiators).
+// Right pane: live action narrator driven by scenario.lastAction.
+// ============================================================
+
+const PRODUCT_EXPLAINER_P1 = {
+  name: 'Smart Invoice · B2B Pay-and-Get-Paid',
+  oneLine: 'Suppliers paid day one. Buyers settle over 30–120 days. Mal sits in between with the receivable.',
+  solves: 'The UAE SME working-capital gap: suppliers wait 60–90 days for buyer payment; buyers want to defer their outflow without choking the supplier.',
+  parties: [
+    { who: 'Supplier', verb: 'Issues invoice',     outcome: '93% advance day 0' },
+    { who: 'Buyer',    verb: 'Picks plan & signs', outcome: 'Pays Mal over 30–120d' },
+    { who: 'Mal',      verb: 'Buys receivable',    outcome: 'Holds risk · services repayment' },
+  ],
+  differentiators: [
+    'Sub-4-hour funding',
+    'Sharia-native (Tawarruq)',
+    'Anchor pre-clearance',
+    'Multi-invoice bundle',
+    'AECB-soft restructures',
+  ],
+};
+
+const ACTION_EXPLAINERS = {
+  'demo-loaded': () => ({
+    title: 'Live prototype loaded',
+    what: 'Both buyer and supplier apps are mounted side-by-side with synced state. Drag the central dial, click any phase, or open one of the journey screens to drive a flow.',
+    why: 'Two-pane view lets you see the buyer-side decision land on the supplier side in real time — the same way the platform would behave in production.',
+    business: 'No real money moves. Pure simulator for journey, policy, and economics.',
+    who: 'You · the demo operator.',
+  }),
+  'plan-selected': ({ planLabel, fee }) => ({
+    title: `Plan selected · ${planLabel || 'plan'}`,
+    what: `The buyer chose ${planLabel || 'a plan'} for this invoice. Total cost to buyer: ${fee || '0%'}. Nothing has been signed yet — the buyer can switch plans freely until UAE Pass signature.`,
+    why: 'Each plan trades buyer convenience against fee. Pay-in-30 is free; longer tenors carry a small spread that funds Mal\'s book.',
+    business: 'No commitment yet · zero impact on supplier · zero impact on credit bureau.',
+    who: 'Buyer-side only. Supplier still in awaiting state.',
+  }),
+  'variant-toggled': ({ variant }) => ({
+    title: variant === 'sharia' ? 'Sharia variant selected' : 'Conventional variant selected',
+    what: variant === 'sharia'
+      ? 'The buyer chose Commodity Murabaha (Tawarruq) structuring. Signing now opens a 4-leg trade visualiser: Mal buys commodity → sells to buyer on deferred terms → buyer sells spot for cash → repays Mal monthly.'
+      : 'The buyer chose conventional credit structuring. Standard interest-bearing loan; signing proceeds directly to UAE Pass.',
+    why: variant === 'sharia'
+      ? '~50% of UAE SME owners require Sharia-compliant credit. Mal offers it as a first-class variant with AAOIFI-aligned governance.'
+      : 'Conventional is the default and faster to sign.',
+    business: variant === 'sharia'
+      ? 'Same economics for the buyer. Mal accrues profit via the commodity-trade spread rather than interest. DMCC executes the underlying trade.'
+      : 'Standard finance structure; no commodity trade involved.',
+    who: 'Buyer-side decision. Supplier is settled either way.',
+  }),
+  'plan-signed': ({ planLabel }) => ({
+    title: 'Plan signed via UAE Pass',
+    what: `The buyer digitally signed the ${planLabel || 'plan'} contract. Mal immediately wires 93% (AED 232,500) to the supplier; the 7% holdback (AED 17,500) is held until original Day 30 (or released early on extension/bundle).`,
+    why: 'UAE Pass signature is binding under federal e-signature law. Mal records the contract hash on the audit ledger.',
+    business: 'Supplier cashflow lands within 4 hours. Buyer limit drawn against the gross invoice value. Activity log marks "Plan signed · advance wired".',
+    who: 'Buyer signs; supplier sees the advance hit; Mal books the receivable.',
+  }),
+  'emi-paid': ({ emiNum, amount, withPenalty }) => ({
+    title: withPenalty ? `EMI ${emiNum} paid · with late fee` : `EMI ${emiNum} paid on time`,
+    what: withPenalty
+      ? `The buyer cleared EMI ${emiNum} (AED ${(amount || 0).toLocaleString()}) plus a AED ${withPenalty.toLocaleString()} late fee (0.5%/day capped at 10%).`
+      : `The buyer cleared EMI ${emiNum} (AED ${(amount || 0).toLocaleString()}) on schedule. Activity log updates on both sides.`,
+    why: withPenalty
+      ? 'Late fees compound until paid — capped to protect the buyer. AECB is notified only at field/legal stages.'
+      : 'On-time payment feeds positive AECB tradelines that grow the buyer\'s limit over time.',
+    business: 'Mal\'s NIM accrues on the paid principal. Supplier holdback releases automatically on Day 30 if all conditions are met.',
+    who: 'Buyer · Mal · AECB (positive tradeline build).',
+  }),
+  'bg-emi-paid': ({ supplier, amount }) => ({
+    title: `${supplier || 'Other supplier'} EMI paid`,
+    what: 'The buyer cleared an EMI on a concurrent loan (different supplier · same Mal limit). The shared limit math updates immediately on the buyer\'s home.',
+    why: 'A real SME holds invoices from multiple suppliers simultaneously. Mal aggregates them under one credit limit so the buyer sees one consolidated view.',
+    business: 'Recovers limit headroom for new invoices. Lowers concentration risk in Mal\'s book.',
+    who: 'Buyer · Mal · the other supplier.',
+  }),
+  'refinance-opened': () => ({
+    title: 'Reschedule flow opened',
+    what: 'The buyer is exploring rescheduling the remaining balance across 3 / 6 / 9 / 12 months. AECB records it as a rescheduled-tradeline, not a default.',
+    why: 'Most cashflow tightness is a 3-6 month timing problem, not a credit-quality problem. Offering the option early prevents escalation to legal recovery.',
+    business: 'Mal earns a 1.5% processing fee; preserves the receivable as performing; avoids a write-off. APR moves to 13.5–17.5% based on tenor.',
+    who: 'Buyer-initiated. AECB notified as rescheduled (not default).',
+  }),
+  'refinance-signed': ({ tenor }) => ({
+    title: `Reschedule signed · ${tenor || 6} months`,
+    what: `Remaining balance now amortises over ${tenor || 6} months at the picked APR. Original plan is closed under "refinanced from".`,
+    why: 'Locking in a smaller monthly EMI restores cashflow breathing room. Mal\'s exposure stays performing.',
+    business: 'Activity log records "rescheduled" on both sides. Buyer-home reorganises around the new schedule.',
+    who: 'Buyer · Mal. Supplier unaffected (already settled).',
+  }),
+  'extend-opened': () => ({
+    title: 'Tenure extension flow opened',
+    what: 'The buyer is exploring converting the invoice obligation into a longer unsecured term loan with Mal — 3 / 6 / 9 / 12 months at 9.9–14.5% APR.',
+    why: 'When the buyer can\'t pay on the original due date, an extension lets Mal step fully into the receivable: supplier paid in full today, buyer pays Mal monthly.',
+    business: 'Mal effectively pays the supplier\'s 7% holdback early and books a fresh term loan. Supplier sees holdback released the same day.',
+    who: 'Buyer-initiated. Supplier benefits via early holdback release.',
+  }),
+  'extend-signed': ({ tenor }) => ({
+    title: `Extension signed · ${tenor || 6} months`,
+    what: `Mal has just settled the original invoice on the buyer\'s behalf. Buyer now owes Mal the term-extension EMIs for ${tenor || 6} months. Supplier holdback releases today, not Day 30.`,
+    why: 'Once Mal pays the supplier in full, the buyer\'s contract is purely with Mal. The original invoice is closed; collections cadence resets.',
+    business: 'Supplier total received jumps from 93% to 100% on the signing day. Buyer\'s limit utilisation shifts from invoice-financing to term-loan exposure.',
+    who: 'Buyer · Mal · supplier (early settlement bonus).',
+  }),
+  'bundle-opened': ({ count, total }) => ({
+    title: 'Bundle / consolidation flow opened',
+    what: `The buyer is exploring merging ${count || 3} active invoices (total AED ${(total || 499000).toLocaleString()}) into one consolidated EMI plan with a single due date.`,
+    why: 'Managing 3–5 invoices from different suppliers means 3–5 different due dates. Bundling collapses that into one EMI on one date.',
+    business: 'Mal earns processing margin; reduces operational complexity on collections; deepens the buyer relationship.',
+    who: 'Buyer-initiated. Every original supplier sees their holdback released early.',
+  }),
+  'bundle-signed': ({ tenor, count }) => ({
+    title: `Bundled · ${count || 3} invoices → 1 plan`,
+    what: `Mal has settled all original suppliers today. Buyer now owes Mal a single consolidated balance, repayable over ${tenor || 6} months on one due date.`,
+    why: 'All original plans / extensions / background loans get marked "settled by bundle". Buyer home flips to show only the new bundled plan.',
+    business: 'Each supplier\'s holdback releases early (same-day). Mal\'s exposure consolidates onto a single underwrite.',
+    who: 'Buyer · Mal · every supplier touched by the bundle.',
+  }),
+  'switch-term': ({ from, to }) => ({
+    title: `Term switched · ${from || 'old'} → ${to || 'new'}`,
+    what: 'The buyer one-tap-switched the active plan to a different tenor before any EMI accrued. Schedule + total cost update instantly; no new signature required.',
+    why: 'Mondu-style post-purchase flexibility. SMEs change their minds about cashflow needs in the first week; letting them switch keeps them in-flow.',
+    business: 'Mal\'s margin shifts with the new fee. Supplier sees the same advance — they\'re already paid.',
+    who: 'Buyer-only. Supplier unaffected.',
+  }),
+};
+
+function ExplainerDock({ scenario, phase, lang, isMobile }) {
+  const isAr = lang === 'ar';
+  if (isMobile) return null;
+  const last = scenario.lastAction || { id: 'demo-loaded', day: scenario.simDay };
+  const product = PRODUCT_EXPLAINER_P1;
+  const builder = ACTION_EXPLAINERS[last.id] || ACTION_EXPLAINERS['demo-loaded'];
+  const card = builder(last.extra || {});
+
+  return (
+    <div style={{
+      maxWidth: 1080, margin: '0 auto', padding: '0 22px 30px',
+      display: 'grid', gridTemplateColumns: '0.4fr 0.6fr', gap: 14,
+    }}>
+      {/* LEFT — product manifest */}
+      <div style={{
+        padding: 16, borderRadius: 16,
+        background: 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)',
+        color: '#fff', position: 'relative', overflow: 'hidden',
+      }}>
+        <div className="mal-orb" style={{
+          position: 'absolute', width: 180, height: 180, top: -80,
+          insetInlineEnd: -60, opacity: 0.32,
+        }}/>
+        <div style={{ position: 'relative' }}>
+          <div style={{ fontSize: 10, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
+            {isAr ? 'حول هذا المنتج' : 'About this product'}
+          </div>
+          <div style={{
+            fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+            fontSize: 22, lineHeight: 1.15, marginBottom: 8,
+          }}>{product.name}</div>
+          <div style={{ fontSize: 12.5, lineHeight: 1.55, opacity: 0.95, marginBottom: 12 }}>
+            {product.oneLine}
+          </div>
+
+          <div style={{ fontSize: 10.5, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
+            {isAr ? 'يحلّ' : 'Solves'}
+          </div>
+          <div style={{ fontSize: 11.5, lineHeight: 1.5, opacity: 0.92, marginBottom: 12 }}>
+            {product.solves}
+          </div>
+
+          <div style={{ fontSize: 10.5, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
+            {isAr ? 'الأطراف' : 'Parties'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+            {product.parties.map((p, i) => (
+              <div key={i} style={{ fontSize: 11, lineHeight: 1.5 }}>
+                <strong>{p.who}</strong>:
+                <span style={{ opacity: 0.85 }}> {p.verb}</span>
+                <span style={{ opacity: 0.6 }}> → {p.outcome}</span>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ fontSize: 10.5, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>
+            {isAr ? 'الفروق' : 'Differentiators'}
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+            {product.differentiators.map((d, i) => (
+              <span key={i} style={{
+                fontSize: 10, padding: '2px 8px', borderRadius: 999,
+                background: 'rgba(255,255,255,0.14)',
+                border: '1px solid rgba(255,255,255,0.22)',
+              }}>{d}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* RIGHT — live action narrator */}
+      <div key={last.id + '·' + last.day} style={{
+        padding: 16, borderRadius: 16,
+        background: 'var(--mal-paper)',
+        border: '1px solid var(--mal-line)',
+        animation: 'mal-fade-up .35s ease',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 999,
+            fontSize: 9.5, fontWeight: 700, letterSpacing: '.08em',
+            color: 'var(--mal-primary)', background: 'var(--mal-primary-50)',
+            border: '1px solid var(--mal-primary-3)',
+            textTransform: 'uppercase',
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: 999,
+              background: 'var(--mal-primary)',
+            }}/>
+            {isAr ? 'يحدث الآن' : 'What just happened'}
+          </span>
+          <span style={{ fontSize: 10.5, color: 'var(--mal-mid-2)', fontFamily: 'var(--mal-font-mono)' }}>
+            Day {last.day != null ? last.day : scenario.simDay}
+          </span>
+        </div>
+
+        <div style={{
+          fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+          fontSize: 20, lineHeight: 1.15, color: 'var(--mal-ink)',
+          marginBottom: 10,
+        }}>{card.title}</div>
+
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10,
+          fontSize: 11.5, lineHeight: 1.55,
+        }}>
+          {[
+            { lab: isAr ? 'ماذا' : 'What',     body: card.what,     tone: '#1f54c8' },
+            { lab: isAr ? 'لماذا' : 'Why',      body: card.why,      tone: '#5a3aa3' },
+            { lab: isAr ? 'الأثر' : 'Business impact', body: card.business, tone: '#0a8056' },
+            { lab: isAr ? 'الأطراف' : 'Who',     body: card.who,      tone: '#b06a14' },
+          ].map((row, i) => (
+            <div key={i}>
+              <div style={{
+                fontSize: 9.5, fontWeight: 700, letterSpacing: '.06em',
+                textTransform: 'uppercase', color: row.tone, marginBottom: 3,
+              }}>{row.lab}</div>
+              <div style={{ color: 'var(--mal-ink)' }}>{row.body}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
