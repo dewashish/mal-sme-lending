@@ -127,7 +127,10 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
         }}>
           {SECTIONS.map((s, i) => (
             <SectionCard key={s.id} section={s} index={i} isAr={isAr} isMobile={isMobile}
-                         onClick={() => onLaunch && onLaunch(s.id)}/>
+                         onClick={() => {
+                           if (window.malTrack) window.malTrack('landing.' + s.id);
+                           onLaunch && onLaunch(s.id);
+                         }}/>
           ))}
         </div>
       </section>
