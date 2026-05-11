@@ -2798,25 +2798,36 @@ function DemoSupplierFunded({ lang, scenario }) {
 // retained by Mal as the loss buffer; supplier keeps the 93%.
 function DemoSupplierLive({ lang, scenario }) {
   const isAr = lang === 'ar';
-  const { simDay, plan, signed } = scenario;
+  const { simDay, plan, signed, termExtension, bundledPlan } = scenario;
   const ADVANCE = 232500;          // 93% of 250K
   const HOLDBACK = 17500;          // 7% of 250K
   const TOTAL = ADVANCE + HOLDBACK;
   const DUE_DAY = 30;              // original invoice due date
   const GRACE_DAYS = 30;           // hold the holdback for 30d past due before forfeit
 
-  // Settlement event: buyer entered ANY plan with Mal (signed=true) by/before
-  // due date. Mal then absorbs the buyer-side risk; holdback is released to
-  // supplier on the original due date.
-  const settled = !!(plan && signed);
+  // Settlement event: buyer entered ANY plan with Mal — original plan, or
+  // a term extension, or a bundled-consolidation plan. Any of these means
+  // Mal has stepped into the receivable and the supplier-side risk is gone.
+  const settled = !!((plan && signed) || termExtension || bundledPlan);
+
+  // The buyer signed an extension or bundle: Mal has effectively paid off
+  // the invoice on the buyer's behalf, so the holdback releases on the
+  // signing day (not the original Day 30), giving the supplier cash earlier.
+  const earlyReleaseSourceDay = termExtension?.startDay
+    ?? bundledPlan?.startDay
+    ?? null;
+  const earlyReleaseSource = termExtension ? 'extension' : (bundledPlan ? 'bundle' : null);
 
   // Holdback status:
-  //   pending   — before due date, awaiting buyer settlement
-  //   released  — settled, holdback wired to supplier on due date
-  //   held      — past due, buyer hasn't settled, within grace
-  //   forfeit   — past due + grace, supplier keeps the 93% only
+  //   pending     — before due/release date, awaiting buyer settlement
+  //   released    — settled, holdback wired to supplier (released day depends on source)
+  //   held        — past due, buyer hasn't settled, within grace
+  //   forfeit     — past due + grace, supplier keeps the 93% only
   let holdbackStatus = 'pending';
-  if (settled && simDay >= DUE_DAY) holdbackStatus = 'released';
+  const releaseDay = earlyReleaseSourceDay != null
+    ? Math.max(0, earlyReleaseSourceDay)        // released the day buyer signed extension/bundle
+    : DUE_DAY;                                  // otherwise on the original due date
+  if (settled && simDay >= releaseDay) holdbackStatus = 'released';
   else if (!settled && simDay > DUE_DAY && simDay <= DUE_DAY + GRACE_DAYS) holdbackStatus = 'held';
   else if (!settled && simDay > DUE_DAY + GRACE_DAYS) holdbackStatus = 'forfeit';
 
@@ -2920,7 +2931,13 @@ function DemoSupplierLive({ lang, scenario }) {
                           color: holdbackStatus === 'released' ? 'var(--mal-success)'
                                : holdbackStatus === 'forfeit' ? 'var(--mal-mid)' : 'var(--mal-mid)' }}>
               {holdbackStatus === 'pending' && (isAr ? `يُحرَّر يوم ${DUE_DAY} · ${formatSimDay(DUE_DAY)}` : `Releases Day ${DUE_DAY} · ${formatSimDay(DUE_DAY)}`)}
-              {holdbackStatus === 'released' && (isAr ? `حُرِّر · يوم ${DUE_DAY}` : `Released · Day ${simDay >= DUE_DAY ? DUE_DAY : simDay}`)}
+              {holdbackStatus === 'released' && (
+                earlyReleaseSource
+                  ? (isAr
+                      ? `حُرِّر مبكراً · يوم ${releaseDay} · ${earlyReleaseSource === 'extension' ? 'مدّد المشتري' : 'وحّد المشتري'}`
+                      : `Released early · Day ${releaseDay} · buyer ${earlyReleaseSource === 'extension' ? 'extended' : 'bundled'}`)
+                  : (isAr ? `حُرِّر · يوم ${DUE_DAY}` : `Released · Day ${DUE_DAY}`)
+              )}
               {holdbackStatus === 'held' && (isAr ? `محجوز · لم يُسوِّ المشتري بعد` : `Held · buyer hasn't settled yet`)}
               {holdbackStatus === 'forfeit' && (isAr ? `محتفظ به من قِبَل مال (مصدّ خسارة)` : `Retained by Mal as loss buffer (non-recourse)`)}
             </div>
@@ -2944,12 +2961,20 @@ function DemoSupplierLive({ lang, scenario }) {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-success)' }}>
-                {isAr ? 'فاتورة مُسدّدة بالكامل · تمّ تحرير الاحتجاز' : 'Invoice fully settled · holdback released'}
+                {earlyReleaseSource
+                  ? (isAr
+                      ? `فاتورة مُسدّدة · ${earlyReleaseSource === 'extension' ? 'مدّد المشتري' : 'وحّد المشتري'} · تحرير مبكر`
+                      : `Invoice settled · buyer ${earlyReleaseSource === 'extension' ? 'extended' : 'bundled'} · holdback released early`)
+                  : (isAr ? 'فاتورة مُسدّدة بالكامل · تمّ تحرير الاحتجاز' : 'Invoice fully settled · holdback released')}
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
-                {isAr
-                  ? `استلمتَ AED ${TOTAL.toLocaleString()} كاملاً. التزام المشتري للسداد يقع الآن مع مال — أيّ تأخّر هو مشكلة مال، ليس مشكلتك.`
-                  : `You received AED ${TOTAL.toLocaleString()} in full. The buyer's payment commitment now sits with Mal — any delay is Mal's problem, not yours.`}
+                {earlyReleaseSource
+                  ? (isAr
+                      ? `وقّع المشتري ${earlyReleaseSource === 'extension' ? 'تمديد القرض' : 'باقة موحّدة'} مع مال يوم ${releaseDay}. مال يأخذ على عاتقه الفاتورة بالكامل ويحرّر الـ ٧٪ المتبقّية لك مبكراً — قبل تاريخ الاستحقاق الأصلي.`
+                      : `Buyer signed a ${earlyReleaseSource === 'extension' ? 'term extension' : 'consolidation bundle'} with Mal on Day ${releaseDay}. Mal has stepped fully into the receivable and released your remaining 7% early — before the original due date. You received AED ${TOTAL.toLocaleString()} in total.`)
+                  : (isAr
+                      ? `استلمتَ AED ${TOTAL.toLocaleString()} كاملاً. التزام المشتري للسداد يقع الآن مع مال — أيّ تأخّر هو مشكلة مال، ليس مشكلتك.`
+                      : `You received AED ${TOTAL.toLocaleString()} in full. The buyer's payment commitment now sits with Mal — any delay is Mal's problem, not yours.`)}
               </div>
             </div>
           </div>
