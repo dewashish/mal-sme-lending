@@ -51,7 +51,7 @@ function SectionPrototype({ lang, setLang, isMobile }) {
 
   const Tour = window.MalTour;
   const TourBtn = window.MalTourButton;
-  const tourSteps = buildPrototypeTourSteps(isAr, entryId);
+  const tourSteps = buildPrototypeTourSteps(isAr, productId, entryId);
 
   // Map product id → which prototype to mount. P1 = Smart Invoice (full).
   // P2 = Healthcare Receivables (in-progress prototype). A11 = Embedded POS
@@ -122,7 +122,7 @@ function PrototypeToolbar({
       padding: isMobile ? '10px 14px' : '14px 22px',
       background: 'transparent',
     }}>
-      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      <div data-tour-id="reset-lang" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {onStartTour && (
           <button onClick={onStartTour} className="mal-pill-btn">
             <span>{isAr ? 'خذ جولة' : 'Take a tour'}</span>
@@ -146,73 +146,197 @@ function PrototypeToolbar({
 // ============================================================
 // Tour steps for the Prototype section
 // ============================================================
-function buildPrototypeTourSteps(isAr, entryId) {
-  const inDemo = entryId === 'demo';
+// ============================================================
+// Tour steps. Product-aware — the journey changes based on the
+// currently-selected catalogue entry. Selectors target real DOM
+// hooks so the spotlight actually lands on the right element.
+// Three live tracks: P1 Smart Invoice, P2 Healthcare, A11 POS.
+// Anything else falls back to the catalogue / coming-soon track.
+// ============================================================
+const PICKER_PILL = 'button[aria-haspopup="menu"]';
+
+function tourIntro(isAr, productCode, productName) {
   return [
     { title: isAr ? 'مرحباً بك في النموذج الحي' : 'Welcome to the live prototype',
       body: [
         isAr
-          ? 'هذه هي الواجهة التشغيلية لـMal، كيف ستبدو التطبيقات على الهاتف للمشتري والمورد.'
-          : 'This is the live prototype. What the buyer and supplier mobile apps will actually look and behave like.',
+          ? `أنت تنظر حالياً إلى ${productCode} · ${productName}. هذه واجهة تشغيلية حقيقية — تطبيقات الجوال والويب التي سيراها العميل.`
+          : `You're looking at ${productCode} · ${productName}. This is the live, interactive prototype — the actual mobile / web experience the customer will see.`,
         isAr
-          ? 'الفاتورة الذكية فقط مفعلة كاملة. المنتجات الـ٢٠ الأخرى في الكتالوج تظهر بطاقة "قيد الإعداد".'
-          : 'Only Smart Invoice is fully wired. The other 20 products in the catalogue route to an "in progress" card.',
+          ? 'ثلاثة منتجات مفعّلة بالكامل: P1 الفاتورة الذكية، P2 إيرادات الرعاية الصحية، A11 تمويل نقاط البيع. الباقي يظهر بطاقة "قيد الإعداد".'
+          : 'Three prototypes are fully wired: P1 Smart Invoice, P2 Healthcare Receivables, A11 Embedded POS Finance. The rest of the 21-product catalogue routes to a "coming soon" card.',
       ],
       position: 'center', selector: null },
 
-    { title: isAr ? 'كتالوج المنتجات' : 'Product catalogue',
+    { title: isAr ? 'كتالوج المنتجات' : 'Browse the catalogue',
       body: isAr
-        ? 'منسدلة في الزاوية اليمنى، ٢١ منتجاً في ٦ فئات: تمويل الفواتير، الرعاية الصحية، سلسلة التوريد، رأس المال العامل، المضمن، والمتخصص.'
-        : '21 products grouped into 6 categories. Click a category header to expand it, then hover any product for a one-line description.',
-      selector: '.mal-section-page button[aria-haspopup="menu"], div[style*="position: fixed"] button[aria-haspopup="menu"]' },
+        ? '٢١ منتجاً في ٦ فئات. الذي يحمل شارة LIVE خضراء يفتح بنموذج كامل، والباقي يعرض بطاقة قيد الإعداد. انقر الزر أعلاه لاستكشافها.'
+        : '21 products across 6 categories. Anything with a green LIVE pill opens the full prototype; the rest land on a "coming soon" card. Click the pill above to explore.',
+      selector: PICKER_PILL, position: 'bottom' },
 
-    { title: isAr ? 'الفاتورة الذكية · ثلاث طرق دخول' : 'Smart Invoice · three entry modes',
+    { title: isAr ? 'إعادة التعيين واللغة' : 'Reset · Language',
+      body: isAr
+        ? 'زر إعادة التعيين يمحو حالة العرض ويُعيد التحميل من البداية. مفتاح EN/AR يبدّل النموذج كاملاً إلى العربية مع تخطيط من اليمين لليسار.'
+        : 'Reset clears the demo state and reloads from the start. The EN/AR pill flips the whole prototype to Arabic with full right-to-left layout.',
+      selector: '[data-tour-id="reset-lang"]', position: 'bottom' },
+  ];
+}
+
+function tourP1(isAr, inDemo) {
+  return [
+    inDemo ? {
+      title: isAr ? 'إطاران متزامنان' : 'Two phones, one story',
+      body: isAr
+        ? 'يسار: المشتري (SME الذي يدفع الفاتورة). يمين: المورد (SME الذي يستلم السلفة). الإجراءات في أحدهما تنعكس في الآخر مباشرةً.'
+        : 'Left phone is the buyer SME (paying the invoice). Right phone is the supplier SME (receiving the advance). Actions on one side reflect on the other in real time.',
+      position: 'center', selector: null,
+    } : {
+      title: isAr ? 'ثلاث طرق دخول' : 'Three entry modes',
       body: [
-        isAr ? 'العرض الجانبي: الهاتفان معاً (المشتري + المورد) لرؤية النفقات بالتزامن.' : 'Side-by-side demo: both phones (buyer + supplier) so you see flows synced in real time.',
+        isAr ? 'العرض الجانبي: الهاتفان معاً.' : 'Side-by-side demo: both phones in one stage.',
         isAr ? 'المشتري المستقل: تطبيق المشتري وحده.' : 'Buyer SME standalone: just the buyer app.',
         isAr ? 'المورد المستقل: تطبيق المورد وحده.' : 'Supplier SME standalone: just the supplier app.',
       ],
+      position: 'center', selector: null,
+    },
+
+    { title: isAr ? 'اختيار خطة السداد' : 'Pick a repayment plan',
+      body: isAr
+        ? 'يختار المشتري Pay-30 / BNPL 60-90 / تقسيط 3 أو 4 / تمديد ٦ أشهر. كل خيار يبدّل تجربة المورد ودورة السلفة.'
+        : 'Buyer picks Pay-30, BNPL 60–90, Installments-3/4, or 6-month Term Extension. Each option flips the supplier-side view and the advance timeline.',
       position: 'center', selector: null },
 
     inDemo ? {
-      title: isAr ? 'الإطاران' : 'The two phone frames',
+      title: isAr ? 'مؤشر التحكم بالوقت' : 'Day dial · scrub the timeline',
       body: isAr
-        ? 'يسار: المشتري (SME الذي يدفع الفاتورة). يمين: المورد (SME الذي يتلقى التمويل).'
-        : 'Left frame: buyer SME (the one paying an invoice). Right frame: supplier SME (the one receiving the advance against the invoice).',
+        ? 'القرص الدوّار في الأسفل يقدّم محاكاة الأيام (٠ → ٢٠٠). اسحبه لرؤية الإشعارات، السلفة، التمديد، أو السداد المتأخر.'
+        : 'The rotary day dial at the bottom advances the simulator from day 0 to day 200. Drag it to see notifications, advance, term extension, or overdue states.',
       position: 'center', selector: null,
     } : null,
 
-    inDemo ? {
-      title: isAr ? 'مؤشر التحكم بالوقت' : 'Time control / day dial',
+    { title: isAr ? 'إعادة التمويل والتمديد' : 'Refinance + term extension',
       body: isAr
-        ? 'في الأسفل ستجد مفتاح التنقل بين أيام السيناريو. اسحب أو انقر اليوم لرؤية كيف تتطور الحالة.'
-        : 'At the bottom of the stage there\'s a day dial. Drag or click any day to see how the buyer and supplier flows evolve through the 30/60/90/180-day cycle.',
-      position: 'center', selector: null,
-    } : null,
+        ? 'الفاتورة الذكية تدعم تحويل خطة BNPL إلى قرض ٦ أشهر، أو تمديد مدة الدفع بعد بدء الأقساط. كلاهما متاح من شاشة "الخطة النشطة" داخل تطبيق المشتري.'
+        : 'Smart Invoice can convert a BNPL plan into a 6-month loan, or extend the term mid-cycle. Both flows live on the "Active plan" card inside the buyer app.',
+      position: 'center', selector: null },
+  ].filter(Boolean);
+}
 
-    { title: isAr ? 'التنقل بين المراحل' : 'Phase navigation',
+function tourP2(isAr) {
+  return [
+    { title: isAr ? 'مهنّن وشركات تأمين · جنباً إلى جنب' : 'Provider + insurers, side by side',
       body: isAr
-        ? 'مراحل المنتج: التهيئة → اختيار الخطة → الحياة (الأقساط) → التمديد إذا لزم. كل مرحلة لها واجهة مختلفة.'
-        : 'Product phases: onboarding → plan picker → live (instalments) → extension if needed. Each phase has its own UI states.',
+        ? 'يسار: عيادة Crescent Medical (د. أحمد). يمين: لوحة تسوية متعددة شركات التأمين (Daman، Thiqa، ADNIC، AXA، BUPA، MetLife). في المنتصف: لوحة عمليات Mal لكل مرحلة.'
+        : 'Left phone: Crescent Medical Center (Dr. Ahmed). Right phone: multi-payer settlement panel (Daman, Thiqa, ADNIC, AXA, BUPA, MetLife). Centre: Mal\'s ops ledger for each phase.',
       position: 'center', selector: null },
 
-    { title: isAr ? 'تجربة منتج "قيد الإعداد"' : 'Try an "in progress" product',
+    { title: isAr ? 'المراحل · شريط التنقّل العائم' : 'Phases · floating dotnav',
       body: isAr
-        ? 'انقر أي منتج آخر في القائمة (مثل الرعاية الصحية أو SCF). ستظهر بطاقة "قيد الإعداد" مع تفسير المنتج.'
-        : 'Click any other product in the dropdown (e.g. Healthcare Receivables or Anchor SCF). You\'ll see a clean "in progress" card with the product\'s blurb and category.',
+        ? 'خمس مراحل: مرحباً ← التأهيل ← لجنة الائتمان ← الدُفعة مرفوعة ← الحياة اليومية. انقر أي نقطة على الحافة اليسرى للقفز إليها.'
+        : 'Five phases: Welcome → Onboarding → Credit committee → Batch uploaded → Live · Day-by-day. Click any dash on the left edge to jump.',
+      selector: '.mal-dotnav', position: 'right' },
+
+    { title: isAr ? 'الذكاء الاصطناعي · التحكيم التنبئي' : 'AI · predictive adjudication',
+      body: isAr
+        ? 'في مرحلتي "الدُفعة" و"الحياة"، يقيّم محرّك AI كل مطالبة (٠-١٠٠) ويُظهر أعلى ٣ عوامل تتحكم بالنتيجة. انقر أي مطالبة لفتح نافذة التفاصيل.'
+        : 'In the Batch and Live phases, the AI engine scores each claim (0–100) and surfaces the top 3 features driving the score. Click any claim row to open the drill-in modal.',
       position: 'center', selector: null },
 
-    { title: isAr ? 'انتهت الجولة' : 'End of tour',
+    { title: isAr ? 'السياسة · حدود التركيز' : 'Risk policy · concentration caps',
+      body: isAr
+        ? 'سياسة المخاطر تعمل على ثلاث طبقات: حدّ تأمين، حدّ عيادة دوّار، وقواعد قبول الدُفعة. زر "Risk Hub" في العمود الأوسط يُظهر السياسات وبطاقة الأسعار.'
+        : 'Risk policy runs in three layers: per-insurer concentration caps, the clinic\'s revolving line, and per-batch admission rules. The "Risk Hub" button in the centre column opens the policy + rate card.',
+      position: 'center', selector: null },
+
+    { title: isAr ? 'مؤشّر الأيام في الحياة اليومية' : 'Day-by-day · per-payer cycle',
+      body: isAr
+        ? 'في مرحلة "الحياة"، يحرّك مفتاح الأيام دورة التسوية لكل شركة تأمين (Daman ٢٨ يوم → MetLife ٧٨ يوم). الإحالات والرفض قابلة لإعادة الإرسال.'
+        : 'In the Live phase, the day scrubber drives the per-payer settlement cycle (Daman 28d → MetLife 78d). Refers and rejections can be resubmitted from the drill-in modal.',
+      position: 'center', selector: null },
+  ];
+}
+
+function tourP3(isAr) {
+  return [
+    { title: isAr ? 'التاجر + بيانات Mal' : 'Merchant + Mal\'s data feeds',
+      body: isAr
+        ? 'يسار: مطعم Saffron Kitchen (٣ فروع في دبي). يمين: بيانات نقاط البيع + البنك + ضريبة القيمة المضافة التي يقرأها محرّك Mal. في المنتصف: لوحة عمليات Mal لكل مرحلة.'
+        : 'Left phone: Saffron Kitchen (F&B, 3 outlets in Dubai). Right phone: the live POS + bank + VAT feeds Mal\'s engine reads from. Centre: Mal\'s operator ledger per phase.',
+      position: 'center', selector: null },
+
+    { title: isAr ? 'ست مراحل · شريط التنقّل العائم' : 'Six phases · floating dotnav',
+      body: isAr
+        ? 'مرحباً ← اربط البيانات ← الاكتتاب ← العرض المعتمد ← الصرف ← الحياة · الخصم اليومي. كل نقطة على الحافة اليسرى تقفز إلى مرحلتها.'
+        : 'Welcome → Connect data → Underwriting → Pre-approved offer → Disbursal → Live · Daily sweep. Each dash on the left edge jumps to its phase.',
+      selector: '.mal-dotnav', position: 'right' },
+
+    { title: isAr ? 'الاكتتاب · ٧ عوامل' : 'Underwriting · 7 factors',
+      body: isAr
+        ? 'في مرحلة "الاكتتاب"، المحرّك يصنّف ٧ عوامل (حجم نقاط البيع، تذبذب المبيعات، رصيد البنك، VAT، إلخ.) إلى نتيجة مركّبة وفئة A/B/C.'
+        : 'In the Underwriting phase the engine scores 7 factors — POS GMV, weekly volatility, bank-balance buffer, VAT history, etc. — into a composite score and a tier (A / B / C).',
+      position: 'center', selector: null },
+
+    { title: isAr ? 'العرض · ثلاث شرائح' : 'Offer · three tiers',
+      body: isAr
+        ? 'العرض يُقدَّم كثلاثة مستويات راحة (محافظ / متوازن / جريء) بدلاً من مدة قرض. يختار التاجر نسبة الخصم اليومي والسداد يُشتقّ من مبيعاته.'
+        : 'The offer comes as three comfort tiers (Conservative / Balanced / Aggressive) instead of a fixed tenor. The merchant picks a sweep %, and payoff is derived from their daily sales.',
+      position: 'center', selector: null },
+
+    { title: isAr ? 'الخصم اليومي · إعادة تمويل تلقائي' : 'Daily sweep · auto top-up',
+      body: isAr
+        ? 'في مرحلة "الحياة"، يُسحب جزء من كل تسوية يومية من Network International و NeoPay قبل دفعها للتاجر. عند سداد ٥٠٪، تظهر بطاقة عرض إضافي تلقائياً.'
+        : 'In Live, Mal sweeps a slice of every daily settlement from Network International and NeoPay before payout. Once 50% is repaid, a top-up offer card appears automatically.',
+      position: 'center', selector: null },
+  ];
+}
+
+function tourComingSoon(isAr, productCode, productName) {
+  return [
+    { title: isAr ? 'قيد الإعداد' : 'Coming soon',
+      body: isAr
+        ? `${productCode} · ${productName} لم يُنفَّذ كنموذج تفاعلي بعد. ستجد هنا بطاقة بملخّص المنتج وفئته. للتجارب الكاملة، اختر منتجاً يحمل شارة LIVE.`
+        : `${productCode} · ${productName} isn\'t built out as an interactive prototype yet. You\'ll see a clean coming-soon card with the product\'s blurb and category. For full flows, pick one of the LIVE products.`,
+      position: 'center', selector: null },
+  ];
+}
+
+function tourOutro(isAr) {
+  return [
+    { title: isAr ? 'انتهت الجولة' : 'You\'re set',
       body: [
         isAr
-          ? 'هذا كل شيء، جربها. الجولة محفوظة في زر "خذ جولة" أعلى اليمين.'
-          : 'That\'s it، go play. The tour stays one click away via the "Take a tour" button.',
+          ? 'هذا كل شيء. جرّب الشاشات، اسحب القرص الزمني، بدّل بين المنتجات. الجولة محفوظة في زر "خذ جولة" أعلى اليسار.'
+          : 'That\'s the tour. Play with the screens, scrub the timeline, switch between products. The tour stays one click away in the toolbar.',
         isAr
-          ? 'إذا أردت رؤية النموذج المالي، انتقل لقسم الاقتصاد.'
+          ? 'لرؤية النموذج المالي خلف هذه التدفقات، انتقل لقسم الاقتصاد.'
           : 'For the financial model behind these flows, head to the Economics section.',
       ],
       position: 'center', selector: null },
-  ].filter(Boolean);
+  ];
+}
+
+function buildPrototypeTourSteps(isAr, productId, entryId) {
+  const inDemo = entryId === 'demo';
+  const product = window.MAL_PRODUCT_BY_ID?.[productId];
+  const code = product?.code || '';
+  const name = product?.short || product?.title || '';
+
+  let body;
+  if (productId === 'p1-smart-invoice') {
+    body = tourP1(isAr, inDemo);
+  } else if (productId === 'p2-healthcare-receivables') {
+    body = tourP2(isAr);
+  } else if (productId === 'a11-pos-mca') {
+    body = tourP3(isAr);
+  } else {
+    body = tourComingSoon(isAr, code, name);
+  }
+
+  return [
+    ...tourIntro(isAr, code, name),
+    ...body,
+    ...tourOutro(isAr),
+  ];
 }
 
 // ============================================================
