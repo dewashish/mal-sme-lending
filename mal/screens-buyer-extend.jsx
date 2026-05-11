@@ -55,8 +55,9 @@ function ExtendBanner({ lang, onClick, daysToDue = 12, principal = 250000 }) {
 // ============================================================
 // 01 · Hero. Explains the concept
 // ============================================================
-function BuyerExtendHero({ lang, setRoute, viewport }) {
+function BuyerExtendHero({ lang, setRoute, viewport, principal = 250000 }) {
   const isAr = lang === 'ar';
+  const midLoan = principal < 250000;
   return (
     <div style={{ padding: 0 }}>
       {viewport === 'mobile' && <MobileTopBar title={isAr ? 'تمديد الدفع' : 'Extend payment'} onBack={() => setRoute('invoice')}/>}
@@ -69,14 +70,18 @@ function BuyerExtendHero({ lang, setRoute, viewport }) {
           <div className="mal-orb" style={{ position: 'absolute', width: 220, height: 220, top: -60, insetInlineEnd: -60, opacity: .55, animation: 'mal-orb-spin 14s linear infinite' }}/>
           <div style={{ position: 'absolute', inset: 0, padding: 20, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div style={{ fontSize: 11, opacity: .7, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-              {isAr ? 'منتج جديد' : 'A new way to pay'}
+              {isAr
+                ? (midLoan ? 'الرصيد المتبقّي' : 'منتج جديد')
+                : (midLoan ? 'Outstanding balance' : 'A new way to pay')}
             </div>
             <div>
               <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 30, lineHeight: 1.05, fontStyle: 'italic', letterSpacing: '-0.02em' }}>
-                {isAr ? 'مدّد فاتورتك،\nادفع شهرياً.' : 'Extend the term.\nPay monthly.'}
+                {isAr ? 'مدّد المدّة،\nادفع شهرياً.' : 'Extend the tenure.\nPay monthly.'}
               </div>
               <div style={{ fontSize: 12, opacity: .85, marginTop: 8, maxWidth: 280 }}>
-                {isAr ? 'يحصل المورّد على المبلغ في موعده. أنت تختار مدة سداد تصل إلى ١٢ شهراً.' : 'Your supplier gets paid on time. You choose a tenor up to 12 months. Unsecured, fully digital.'}
+                {isAr
+                  ? `AED ${principal.toLocaleString()} · مدّة حتى ١٢ شهر · غير مضمون.`
+                  : `AED ${principal.toLocaleString()} outstanding · tenor up to 12 months · unsecured, fully digital.`}
               </div>
             </div>
           </div>

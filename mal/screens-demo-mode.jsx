@@ -214,13 +214,14 @@ function findNextUpcoming(statuses) {
 }
 
 function shouldShowExtendCta(plan, simDay, paymentsByEmi, hasActiveExtension) {
+  // Merged extend + refinance flow: show whenever the buyer has an
+  // active plan with any unpaid balance, regardless of pre-due / mid-
+  // loan / overdue state. The flow itself adapts to whichever situation
+  // the buyer is in.
   if (!plan || hasActiveExtension) return false;
   const statuses = computeEmiStatuses(plan, simDay, paymentsByEmi);
-  const overdue = findOverdue(statuses);
-  if (overdue && overdue.daysOverdue <= 4) return true;
-  const next = findNextUpcoming(statuses);
-  if (next && (next.dueDay - simDay) >= 0 && (next.dueDay - simDay) <= 7) return true;
-  return false;
+  const allPaid = statuses.every((e) => e.status === 'paid');
+  return !allPaid;
 }
 
 function formatSimDay(day) {
@@ -1431,12 +1432,15 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
   }
   if (route === 'loan-detail') return <DemoBuyerLoanDetail lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute}/>;
 
-  // Term-extension routes
-  if (route === 'extend-hero')    return <BuyerExtendHero lang={lang} setRoute={setBuyerRoute} viewport="mobile"/>;
-  if (route === 'extend-pick')    return <BuyerExtendPicker lang={lang} setRoute={setBuyerRoute} viewport="mobile"/>;
-  if (route === 'extend-agree')   return <BuyerExtendAgreement lang={lang} setRoute={setBuyerRoute} viewport="mobile"/>;
+  // Term-extension routes. The principal is derived dynamically so the
+  // same flow can serve both pre-due (full face value) and mid-loan
+  // (remaining outstanding) cases. Merged extend + refinance flow.
+  const extendPrincipal = computeRemainingPrincipal(scenario.plan, scenario.simDay, scenario.paymentsByEmi) || 250000;
+  if (route === 'extend-hero')    return <BuyerExtendHero lang={lang} setRoute={setBuyerRoute} viewport="mobile" principal={extendPrincipal}/>;
+  if (route === 'extend-pick')    return <BuyerExtendPicker lang={lang} setRoute={setBuyerRoute} viewport="mobile" principal={extendPrincipal}/>;
+  if (route === 'extend-agree')   return <BuyerExtendAgreement lang={lang} setRoute={setBuyerRoute} viewport="mobile" principal={extendPrincipal}/>;
   if (route === 'extend-confirm') {
-    return <BuyerExtendConfirm lang={lang} setRoute={(r) => {
+    return <BuyerExtendConfirm lang={lang} principal={extendPrincipal} setRoute={(r) => {
       if (r === 'extend-success') {
         // Signing the extension means Mal *takes over* the original invoice:
         // every unpaid EMI of the current plan flips to "settled by Mal via
@@ -1453,10 +1457,15 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
               };
             }
           });
-          // Build the extension's 6-month EMI schedule starting one month
-          // after the sign date.
+          // Build the extension's EMI schedule starting one month after
+          // sign date. Principal is dynamic: if any EMIs have been paid
+          // already, we extend the REMAINING balance only (merged
+          // refinance + extend flow). Otherwise we extend the full face.
           const tenor = 6;
-          const emi = 44063;
+          const remainingPrincipal = computeRemainingPrincipal(s.plan, s.simDay, s.paymentsByEmi) || 250000;
+          // EMI math: extension's flat 11.5% APR, total cost spread evenly
+          const totalCost = Math.round(remainingPrincipal * 0.115 * (tenor / 12));
+          const emi = Math.round((remainingPrincipal + totalCost) / tenor);
           const startDay = s.simDay;
           const schedule = Array.from({ length: tenor }, (_, i) => ({
             num: i + 1,
@@ -1467,8 +1476,8 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
             paymentsByEmi: newPaid,
             termExtension: {
               type: 'term_extension_6mo',
-              label: '6-mo term extension',
-              principal: 250000,
+              label: `${tenor}-mo term extension`,
+              principal: remainingPrincipal,
               tenorMonths: tenor,
               aprPct: 11.5,
               emi: emi,
@@ -1691,11 +1700,10 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
                           onClick={() => payEmiPlan(overdue.num, overdue.dueDay, overdue.amount)}>
                     {isAr ? 'ادفع الآن' : `Pay AED ${(overdue.amount + computeLatePenalty(overdue.amount, overdue.daysOverdue)).toLocaleString()}`}
                   </Button>
-                  {!isRefinanced && (
-                    <Button kind="ghost" size="sm" onClick={() => setBuyerRoute('refinance-hero')}>
-                      {isAr ? 'إعادة جدولة' : 'Reschedule'}
-                    </Button>
-                  )}
+                  {/* Single "Extend tenure" CTA replaces the previous
+                      Reschedule + Extend pair. The extend flow handles
+                      both states (full face + mid-loan remaining) under
+                      one banner. */}
                   {!termExtension && (
                     <Button kind="ghost" size="sm" onClick={() => setBuyerRoute('extend-hero')}>
                       {isAr ? 'مدّد المدّة' : 'Extend tenure'}
@@ -1926,63 +1934,34 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         </div>
       </Card>
 
-      {/* Loan-action CTAs. Sit right under the active-plan card so the buyer
-          sees Extend / Reschedule options near the loan, not buried at bottom. */}
+      {/* Unified "Need more time?" CTA. One purple/orb card replaces the
+          previous Extend + Refinance pair. The underlying flow adapts to
+          state automatically: pre-due means Mal takes over the full
+          invoice; mid-loan means the remaining balance is rolled into the
+          extension. Buyer always sees a single, consistent intent. */}
       {(showExtendCta || showRefinanceCta) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {showExtendCta && (
-            <button onClick={() => setBuyerRoute('extend-hero')} style={{
-              all: 'unset', cursor: 'pointer',
-              padding: '14px 16px', borderRadius: 14,
-              background: 'linear-gradient(135deg, #2A1F6F 0%, #5B3FB2 60%, #C97AB6 100%)',
-              color: '#fff',
-              display: 'flex', alignItems: 'center', gap: 12,
-              position: 'relative', overflow: 'hidden',
-            }}>
-              <div className="mal-orb" style={{ width: 32, height: 32, animation: 'mal-orb-spin 18s linear infinite' }}/>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, opacity: .8, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-                  {isAr ? 'جديد · مال' : 'New · Mal'}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>
-                  {isAr ? 'تحتاج وقتاً أطول؟ مدّد لـ ١٢ شهر' : 'Need more time? Extend up to 12 months'}
-                </div>
-                <div style={{ fontSize: 11, opacity: .8, marginTop: 2 }}>
-                  {isAr ? 'قرض جديد على فاتورة جديدة · UAE Pass' : 'New unsecured loan · UAE Pass'}
-                </div>
-              </div>
-              {dmIco.arrow ? dmIco.arrow({ color: '#fff' }) : '→'}
-            </button>
-          )}
-          {showRefinanceCta && (
-            <button onClick={() => setBuyerRoute('refinance-hero')} style={{
-              all: 'unset', cursor: 'pointer',
-              padding: '14px 16px', borderRadius: 14,
-              background: 'var(--mal-paper)',
-              border: '1.5px solid var(--mal-primary)',
-              display: 'flex', alignItems: 'center', gap: 12,
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: 'var(--mal-primary-50)', color: 'var(--mal-primary)',
-                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-              }}>
-                {dmIco.refresh ? dmIco.refresh({ width: 18, height: 18 }) : '↻'}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-primary)' }}>
-                  {isAr ? 'حوّل الرصيد المتبقّي إلى أقساط أطول' : 'Convert remaining to longer EMI'}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
-                  {isAr
-                    ? 'قسّط ما تبقّى على ٣ · ٦ · ٩ · ١٢ شهور · رسم ١٫٥٪'
-                    : 'Reschedule the balance over 3 · 6 · 9 · 12 mo · 1.5% fee'}
-                </div>
-              </div>
-              {dmIco.arrow ? dmIco.arrow({ color: 'var(--mal-primary)' }) : '→'}
-            </button>
-          )}
-        </div>
+        <button onClick={() => setBuyerRoute('extend-hero')} style={{
+          all: 'unset', cursor: 'pointer',
+          padding: '14px 16px', borderRadius: 14,
+          background: 'linear-gradient(135deg, #2A1F6F 0%, #5B3FB2 60%, #C97AB6 100%)',
+          color: '#fff',
+          display: 'flex', alignItems: 'center', gap: 12,
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div className="mal-orb" style={{ width: 32, height: 32, animation: 'mal-orb-spin 18s linear infinite' }}/>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, opacity: .8, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+              {isAr ? 'جديد · مال' : 'New · Mal'}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>
+              {isAr ? 'تحتاج وقتاً أطول؟ مدّد لـ ١٢ شهر' : 'Need more time? Extend up to 12 months'}
+            </div>
+            <div style={{ fontSize: 11, opacity: .8, marginTop: 2 }}>
+              {isAr ? 'APR ٩٫٩ - ١٤٫٥٪ · UAE Pass · لا رسوم' : '9.9 - 14.5% APR · UAE Pass · no fees'}
+            </div>
+          </div>
+          {dmIco.arrow ? dmIco.arrow({ color: '#fff' }) : '→'}
+        </button>
       )}
 
       {/* Extension card. Full EMI ladder with Pay buttons */}
