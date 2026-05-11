@@ -150,9 +150,51 @@ function advancePctForClaim(score) {
   return 0.60;
 }
 
+// Phase metadata for the floating dotnav + central narrative ledger.
+// Mirrors P1's DM_PHASES pattern so the two products share the same
+// navigation language.
+const HC_PHASES = [
+  { id: 'intro',      label: 'Welcome' },
+  { id: 'onboard',    label: 'Onboarding' },
+  { id: 'underwrite', label: 'Credit committee' },
+  { id: 'batch',      label: 'Batch uploaded' },
+  { id: 'live',       label: 'Live · Day-by-day' },
+];
+
+// Narrative for the Mal action ledger. Three rows per phase: what Mal
+// does + what the clinic + insurer need to do. Drives the central
+// column when not in live phase.
+const HC_PHASE_LEDGER = {
+  intro: {
+    mal:    'Awaiting provider · referral or DHA inbound',
+    clinic: 'Lands on Mal · clicks Get started',
+    insurer:'Standby · no exposure yet',
+  },
+  onboard: {
+    mal:    'Pulls DHA licence · scores KYB · verifies IBAN via Open Finance',
+    clinic: 'Signs UAE Pass · picks payer panel · confirms IBAN',
+    insurer:'Webhook · new provider on Mal · panel registered',
+  },
+  underwrite: {
+    mal:    'Credit committee · composite score · issues revolving limit',
+    clinic: 'Awaits decision · reviews rate card',
+    insurer:'Concentration cap re-checked vs new clinic exposure',
+  },
+  batch: {
+    mal:    'Layer-3 admission · AI scores 12 claims · wires advance in 4h',
+    clinic: 'Uploads batch (CSV) or syncs from DHA Insurance Hub',
+    insurer:'Receives forward claim with Mal noted as payee',
+  },
+  live: {
+    mal:    'Tracks per-payer cycle · resolves refers · collects at settlement',
+    clinic: 'Cash in hand · continues to see patients',
+    insurer:'Adjudicates claims · settles at 28–78d cycle',
+  },
+};
+
 function buildDefaultScenario() {
   return {
-    phase: 'live',            // intro | onboard | underwrite | batch | live
+    phase: 'intro',           // intro | onboard | underwrite | batch | live
     onboardStep: 0,
     payerPanel: ['daman', 'thiqa', 'adnic', 'axa', 'bupa', 'metlife'],
     simDay: 0,
@@ -227,6 +269,7 @@ function HealthcareDemo({ lang = 'en', isMobile }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+      {!isMobile && <HcTimelineSidebar phase={phase} setPhase={setPhase}/>}
       <div style={{
         display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 20,
         alignItems: 'flex-start', justifyContent: 'center',
@@ -1371,13 +1414,9 @@ function HcCentralOps({ scenario, setSimDay, setPhase, phase, claimStates, total
   const refers = claimStates.filter((c) => c.status === 'refer').length;
   const advanced = claimStates.filter((c) => c.status === 'advanced' || c.computedStatus === 'paid').length;
 
-  const phasePills = [
-    { id: 'intro',      label: isAr ? 'البداية' : 'Intro',      badge: '1' },
-    { id: 'onboard',    label: isAr ? 'التسجيل' : 'Onboard',    badge: '2' },
-    { id: 'underwrite', label: isAr ? 'الضمان' : 'Underwrite', badge: '3' },
-    { id: 'batch',      label: isAr ? 'الرفع' : 'Batch',         badge: '4' },
-    { id: 'live',       label: isAr ? 'حيّ' : 'Live',           badge: '5' },
-  ];
+  const phaseIdx = HC_PHASES.findIndex((p) => p.id === phase);
+  const phaseMeta = HC_PHASES[phaseIdx] || HC_PHASES[0];
+  const ledger = HC_PHASE_LEDGER[phase] || HC_PHASE_LEDGER.intro;
 
   const cyclePills = [
     { day: 0,   label: 'Day 0',   sub: 'submit' },
@@ -1394,29 +1433,41 @@ function HcCentralOps({ scenario, setSimDay, setPhase, phase, claimStates, total
       width: 260, display: 'flex', flexDirection: 'column',
       alignItems: 'center', gap: 14, paddingTop: 40, flexShrink: 0,
     }}>
-      {/* Phase ribbon */}
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 3 }}>
-        <div className="mal-caption" style={{ color: 'var(--mal-mid)', textAlign: 'center', marginBottom: 4 }}>
-          {isAr ? 'المرحلة' : 'Phase'}
+      {/* Mal action ledger — what each party does this phase */}
+      <div style={{
+        width: '100%', padding: 12, borderRadius: 14,
+        background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div className="mal-caption" style={{ color: 'var(--mal-primary)' }}>
+            {isAr ? 'مال · هذه المرحلة' : 'Mal · this phase'}
+          </div>
+          <span style={{ fontSize: 9.5, fontFamily: 'var(--mal-font-mono)', color: 'var(--mal-mid-2)' }}>
+            {String(phaseIdx + 1).padStart(2, '0')}/{String(HC_PHASES.length).padStart(2, '0')}
+          </span>
         </div>
-        {phasePills.map((p) => {
-          const active = phase === p.id;
-          return (
-            <button key={p.id} onClick={() => setPhase(p.id)} style={{
-              all: 'unset', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '5px 10px', borderRadius: 999,
-              background: active ? 'var(--mal-primary)' : 'var(--mal-paper)',
-              color: active ? '#fff' : 'var(--mal-ink-2)',
-              border: '1px solid ' + (active ? 'var(--mal-primary)' : 'var(--mal-line)'),
-              fontSize: 11, fontWeight: active ? 700 : 500,
-              transition: 'background .15s, color .15s',
-            }}>
-              <span style={{ fontFamily: 'var(--mal-font-mono)', fontSize: 9.5, opacity: 0.7 }}>{p.badge}</span>
-              <span>{p.label}</span>
-            </button>
-          );
-        })}
+        <div style={{
+          fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+          fontSize: 17, lineHeight: 1.2, marginBottom: 10,
+        }}>{phaseMeta.label}</div>
+
+        {[
+          { role: 'Mal',     who: isAr ? 'مال' : 'Mal',    body: ledger.mal,     tone: 'var(--mal-primary)' },
+          { role: 'Clinic',  who: isAr ? 'المركز' : 'Clinic',  body: ledger.clinic,  tone: '#0a8056' },
+          { role: 'Insurer', who: isAr ? 'التأمين' : 'Insurer', body: ledger.insurer, tone: '#1f54c8' },
+        ].map((row) => (
+          <div key={row.role} style={{
+            display: 'grid', gridTemplateColumns: '52px 1fr', gap: 8, alignItems: 'flex-start',
+            padding: '6px 0',
+            borderTop: '1px solid var(--mal-line)',
+          }}>
+            <span style={{
+              fontSize: 9.5, fontWeight: 700, color: row.tone,
+              letterSpacing: '.06em', textTransform: 'uppercase', paddingTop: 1,
+            }}>{row.who}</span>
+            <span style={{ fontSize: 11, lineHeight: 1.5, color: 'var(--mal-ink)' }}>{row.body}</span>
+          </div>
+        ))}
       </div>
 
       {/* Risk Hub launcher — Mal-side credit committee view */}
@@ -1439,8 +1490,8 @@ function HcCentralOps({ scenario, setSimDay, setPhase, phase, claimStates, total
         <span style={{ fontSize: 11, opacity: 0.8 }}>→</span>
       </button>
 
-      {/* AI adjudication card */}
-      <div style={{
+      {/* AI adjudication card — only meaningful once a batch exists */}
+      {(phase === 'batch' || phase === 'live') && <div style={{
         width: '100%', padding: 12, borderRadius: 14,
         background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
         textAlign: 'center',
@@ -1467,7 +1518,7 @@ function HcCentralOps({ scenario, setSimDay, setPhase, phase, claimStates, total
             <div>{isAr ? 'إحالة' : 'refer'}</div>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Day dial */}
       {phase === 'live' && (
@@ -2619,6 +2670,34 @@ function HcRiskHubRateCard({ isAr }) {
           : '✓ Final fee = base + (1 - recovery × insurer-tier multiplier) + (cycle × cost-of-funds) + ops load.'}
       </div>
     </div>
+  );
+}
+
+
+// ============================================================
+// HcTimelineSidebar — floating vertical dotnav, mirrors P1's
+// DemoTimelineSidebar so the two products share the same phase-nav
+// idiom. Pinned to the left edge, fades up on hover, each dash
+// tooltips its label.
+// ============================================================
+function HcTimelineSidebar({ phase, setPhase }) {
+  const idx = HC_PHASES.findIndex((p) => p.id === phase);
+  return (
+    <nav className="mal-dotnav" aria-label="Phase navigation">
+      {HC_PHASES.map((p, i) => {
+        const active = i === idx;
+        const past   = i < idx;
+        const state = active ? 'active' : past ? 'past' : 'upcoming';
+        const label = `${String(i + 1).padStart(2, '0')} · ${p.label}`;
+        return (
+          <button key={p.id}
+                  onClick={() => setPhase(p.id)}
+                  className={`mal-dotnav-btn mal-dotnav-${state}`}
+                  data-label={label}
+                  aria-label={label}/>
+        );
+      })}
+    </nav>
   );
 }
 
