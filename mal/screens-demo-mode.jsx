@@ -1658,9 +1658,14 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
                           onClick={() => payEmiPlan(overdue.num, overdue.dueDay, overdue.amount)}>
                     {isAr ? 'ادفع الآن' : `Pay AED ${(overdue.amount + computeLatePenalty(overdue.amount, overdue.daysOverdue)).toLocaleString()}`}
                   </Button>
-                  {(overdue.stage === 'tele-call' || overdue.stage === 'field') && !isRefinanced && (
+                  {!isRefinanced && (
                     <Button kind="ghost" size="sm" onClick={() => setBuyerRoute('refinance-hero')}>
-                      {isAr ? 'إعادة هيكلة' : 'Restructure'}
+                      {isAr ? 'إعادة جدولة' : 'Reschedule'}
+                    </Button>
+                  )}
+                  {!termExtension && (
+                    <Button kind="ghost" size="sm" onClick={() => setBuyerRoute('extend-hero')}>
+                      {isAr ? 'مدّد المدّة' : 'Extend tenure'}
                     </Button>
                   )}
                 </div>
@@ -1886,6 +1891,65 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
           <span>{isAr ? 'متبقّي' : 'Remaining'}: AED {Math.max(0, plan.principal - planTotalPaidAmount).toLocaleString()}</span>
         </div>
       </Card>
+
+      {/* Loan-action CTAs — sit right under the active-plan card so the buyer
+          sees Extend / Reschedule options near the loan, not buried at bottom. */}
+      {(showExtendCta || showRefinanceCta) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {showExtendCta && (
+            <button onClick={() => setBuyerRoute('extend-hero')} style={{
+              all: 'unset', cursor: 'pointer',
+              padding: '14px 16px', borderRadius: 14,
+              background: 'linear-gradient(135deg, #2A1F6F 0%, #5B3FB2 60%, #C97AB6 100%)',
+              color: '#fff',
+              display: 'flex', alignItems: 'center', gap: 12,
+              position: 'relative', overflow: 'hidden',
+            }}>
+              <div className="mal-orb" style={{ width: 32, height: 32, animation: 'mal-orb-spin 18s linear infinite' }}/>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, opacity: .8, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                  {isAr ? 'جديد · مال' : 'New · Mal'}
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>
+                  {isAr ? 'تحتاج وقتاً أطول؟ مدّد لـ ١٢ شهر' : 'Need more time? Extend up to 12 months'}
+                </div>
+                <div style={{ fontSize: 11, opacity: .8, marginTop: 2 }}>
+                  {isAr ? 'قرض جديد على فاتورة جديدة · UAE Pass' : 'New unsecured loan · UAE Pass'}
+                </div>
+              </div>
+              {dmIco.arrow ? dmIco.arrow({ color: '#fff' }) : '→'}
+            </button>
+          )}
+          {showRefinanceCta && (
+            <button onClick={() => setBuyerRoute('refinance-hero')} style={{
+              all: 'unset', cursor: 'pointer',
+              padding: '14px 16px', borderRadius: 14,
+              background: 'var(--mal-paper)',
+              border: '1.5px solid var(--mal-primary)',
+              display: 'flex', alignItems: 'center', gap: 12,
+            }}>
+              <div style={{
+                width: 36, height: 36, borderRadius: 10,
+                background: 'var(--mal-primary-50)', color: 'var(--mal-primary)',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                {dmIco.refresh ? dmIco.refresh({ width: 18, height: 18 }) : '↻'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-primary)' }}>
+                  {isAr ? 'حوّل الرصيد المتبقّي إلى أقساط أطول' : 'Convert remaining to longer EMI'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
+                  {isAr
+                    ? 'قسّط ما تبقّى على ٣ · ٦ · ٩ · ١٢ شهور · رسم ١٫٥٪'
+                    : 'Reschedule the balance over 3 · 6 · 9 · 12 mo · 1.5% fee'}
+                </div>
+              </div>
+              {dmIco.arrow ? dmIco.arrow({ color: 'var(--mal-primary)' }) : '→'}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Extension card — full EMI ladder with Pay buttons */}
       {termExtension && (() => {
@@ -2245,61 +2309,6 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         );
       })}
 
-      {/* Need more time CTA */}
-      {showExtendCta && (
-        <button onClick={() => setBuyerRoute('extend-hero')} style={{
-          all: 'unset', cursor: 'pointer',
-          padding: '14px 16px', borderRadius: 14,
-          background: 'linear-gradient(135deg, #2A1F6F 0%, #5B3FB2 60%, #C97AB6 100%)',
-          color: '#fff',
-          display: 'flex', alignItems: 'center', gap: 12,
-          position: 'relative', overflow: 'hidden',
-        }}>
-          <div className="mal-orb" style={{ width: 32, height: 32, animation: 'mal-orb-spin 18s linear infinite' }}/>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, opacity: .8, textTransform: 'uppercase', letterSpacing: '.08em' }}>
-              {isAr ? 'جديد · مال' : 'New · Mal'}
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 500, marginTop: 2 }}>
-              {isAr ? 'تحتاج وقتاً أطول؟ مدّد لـ ١٢ شهر' : 'Need more time? Extend up to 12 months'}
-            </div>
-            <div style={{ fontSize: 11, opacity: .8, marginTop: 2 }}>
-              {isAr ? 'قرض جديد على فاتورة جديدة · UAE Pass' : 'New unsecured loan · UAE Pass'}
-            </div>
-          </div>
-          {dmIco.arrow ? dmIco.arrow({ color: '#fff' }) : '→'}
-        </button>
-      )}
-
-      {/* Refinance CTA */}
-      {showRefinanceCta && (
-        <button onClick={() => setBuyerRoute('refinance-hero')} style={{
-          all: 'unset', cursor: 'pointer',
-          padding: '14px 16px', borderRadius: 14,
-          background: 'var(--mal-paper)',
-          border: '1.5px solid var(--mal-primary)',
-          display: 'flex', alignItems: 'center', gap: 12,
-        }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: 'var(--mal-primary-50)', color: 'var(--mal-primary)',
-            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          }}>
-            {dmIco.refresh ? dmIco.refresh({ width: 18, height: 18 }) : '↻'}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--mal-primary)' }}>
-              {isAr ? 'حوّل الرصيد المتبقّي إلى أقساط أطول' : 'Convert remaining to longer EMI'}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
-              {isAr
-                ? 'قسّط ما تبقّى على ٣ · ٦ · ٩ · ١٢ شهور · رسم ١٫٥٪'
-                : 'Reschedule the balance over 3 · 6 · 9 · 12 mo · 1.5% fee'}
-            </div>
-          </div>
-          {dmIco.arrow ? dmIco.arrow({ color: 'var(--mal-primary)' }) : '→'}
-        </button>
-      )}
     </div>
   );
 }
