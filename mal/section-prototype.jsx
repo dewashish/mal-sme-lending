@@ -8,7 +8,7 @@
 
 const { useState: pS, useEffect: pE, useRef: pR } = React;
 
-function SectionPrototype({ lang, isMobile }) {
+function SectionPrototype({ lang, setLang, isMobile }) {
   const isAr = lang === 'ar';
   const catalogue = window.MAL_PRODUCT_CATALOGUE || [];
   const flagshipId = 'p1-smart-invoice';
@@ -50,6 +50,12 @@ function SectionPrototype({ lang, isMobile }) {
       {isLive && (
         <ResetDemoButton lang={lang}
                          style={{ position: 'fixed', top: 70, insetInlineStart: 140, zIndex: 65 }}/>
+      )}
+
+      {/* EN/AR toggle: only relevant while the phones are on screen. */}
+      {isLive && setLang && (
+        <PrototypeLangToggle lang={lang} setLang={setLang}
+                             style={{ position: 'fixed', top: 70, insetInlineEnd: 18, zIndex: 65 }}/>
       )}
 
       <div style={{ minHeight: 'calc(100vh - 56px)' }}>
@@ -139,6 +145,40 @@ function buildPrototypeTourSteps(isAr, entryId) {
       ],
       position: 'center', selector: null },
   ].filter(Boolean);
+}
+
+// ============================================================
+// PrototypeLangToggle. Compact EN/AR pill, only mounted from inside
+// the Prototype section while phones are visible. Keeps the Arabic
+// switch out of the global header for the other (English-only)
+// sections.
+// ============================================================
+function PrototypeLangToggle({ lang, setLang, style }) {
+  return (
+    <div role="tablist" aria-label="Language" style={{
+      display: 'inline-flex', padding: 3, gap: 2, borderRadius: 999,
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+      boxShadow: 'var(--mal-sh-1, 0 1px 2px rgba(0,0,0,0.06))',
+      ...style,
+    }}>
+      {[{ v: 'en', l: 'EN' }, { v: 'ar', l: 'AR' }].map((opt) => {
+        const active = lang === opt.v;
+        return (
+          <button key={opt.v} role="tab" aria-selected={active}
+                  onClick={() => setLang(opt.v)} style={{
+            all: 'unset', cursor: 'pointer',
+            fontFamily: 'var(--mal-font-ui)',
+            fontSize: 11.5, fontWeight: active ? 700 : 500,
+            padding: '5px 14px', borderRadius: 999,
+            color: active ? '#FAF7EE' : 'var(--mal-mid)',
+            background: active ? 'var(--mal-ink)' : 'transparent',
+            transition: 'background .15s, color .15s',
+          }}>{opt.l}</button>
+        );
+      })}
+    </div>
+  );
 }
 
 // ============================================================

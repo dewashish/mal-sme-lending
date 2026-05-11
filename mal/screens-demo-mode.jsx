@@ -4049,45 +4049,54 @@ function ExplainerDock({ scenario, phase, lang, isMobile }) {
 
   return (
     <div style={{
-      maxWidth: SHOW_LIVE_NARRATOR ? 1080 : 560,
+      maxWidth: SHOW_LIVE_NARRATOR ? 1080 : 1080,
       margin: '0 auto', padding: '0 22px 30px',
       display: SHOW_LIVE_NARRATOR ? 'grid' : 'block',
       gridTemplateColumns: SHOW_LIVE_NARRATOR ? '0.4fr 0.6fr' : undefined,
       gap: 14,
     }}>
-      {/* LEFT. Product manifest */}
+      {/* About this product. Horizontal strip with title on the left and
+          Solves / Parties / Differentiators in 3 columns on the right. */}
       <div style={{
         padding: 16, borderRadius: 16,
         background: 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)',
         color: '#fff', position: 'relative', overflow: 'hidden',
+        display: 'grid',
+        gridTemplateColumns: '0.95fr 1.05fr 1.4fr 0.9fr',
+        gap: 18, alignItems: 'flex-start',
       }}>
         <div className="mal-orb" style={{
           position: 'absolute', width: 180, height: 180, top: -80,
-          insetInlineEnd: -60, opacity: 0.32,
+          insetInlineEnd: -60, opacity: 0.32, pointerEvents: 'none',
         }}/>
-        <div style={{ position: 'relative' }}>
+
+        {/* Title column */}
+        <div style={{ position: 'relative', minWidth: 0 }}>
           <div style={{ fontSize: 10, opacity: 0.7, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
             {isAr ? 'حول هذا المنتج' : 'About this product'}
           </div>
           <div style={{
             fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
-            fontSize: 22, lineHeight: 1.15, marginBottom: 8,
+            fontSize: 20, lineHeight: 1.15,
           }}>{product.name}</div>
-          <div style={{ fontSize: 12.5, lineHeight: 1.55, opacity: 0.95, marginBottom: 12 }}>
-            {product.oneLine}
-          </div>
+        </div>
 
-          <div style={{ fontSize: 10.5, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
+        {/* Solves */}
+        <div style={{ position: 'relative', minWidth: 0 }}>
+          <div style={{ fontSize: 10, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
             {isAr ? 'يحلّ' : 'Solves'}
           </div>
-          <div style={{ fontSize: 11.5, lineHeight: 1.5, opacity: 0.92, marginBottom: 12 }}>
+          <div style={{ fontSize: 11.5, lineHeight: 1.5, opacity: 0.92 }}>
             {product.solves}
           </div>
+        </div>
 
-          <div style={{ fontSize: 10.5, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
+        {/* Parties */}
+        <div style={{ position: 'relative', minWidth: 0 }}>
+          <div style={{ fontSize: 10, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 4 }}>
             {isAr ? 'الأطراف' : 'Parties'}
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {product.parties.map((p, i) => (
               <div key={i} style={{ fontSize: 11, lineHeight: 1.5 }}>
                 <strong>{p.who}</strong>:
@@ -4096,8 +4105,11 @@ function ExplainerDock({ scenario, phase, lang, isMobile }) {
               </div>
             ))}
           </div>
+        </div>
 
-          <div style={{ fontSize: 10.5, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>
+        {/* Differentiators */}
+        <div style={{ position: 'relative', minWidth: 0 }}>
+          <div style={{ fontSize: 10, opacity: 0.65, textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: 6 }}>
             {isAr ? 'الفروق' : 'Differentiators'}
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
@@ -4109,6 +4121,15 @@ function ExplainerDock({ scenario, phase, lang, isMobile }) {
               }}>{d}</span>
             ))}
           </div>
+        </div>
+
+        {/* One-line pitch as a thin strip below the 4-column grid */}
+        <div style={{
+          gridColumn: '1 / -1', position: 'relative',
+          fontSize: 12, lineHeight: 1.55, opacity: 0.95,
+          paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.12)',
+        }}>
+          {product.oneLine}
         </div>
       </div>
 

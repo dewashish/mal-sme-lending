@@ -246,15 +246,15 @@
 <script type="text/babel" src="mal/persona-picker.jsx"></script>
 <script type="text/babel" src="mal/screens-demo-mode.jsx"></script>
 <script type="text/babel" src="mal/charts.jsx"></script>
-<script type="text/babel" src="mal/tour.jsx?v=20260511-5"></script>
-<script type="text/babel" src="mal/strategy-visuals.jsx?v=20260511-5"></script>
-<script src="mal/strategy-doc.js?v=20260511-5"></script>
+<script type="text/babel" src="mal/tour.jsx?v=20260511-6"></script>
+<script type="text/babel" src="mal/strategy-visuals.jsx?v=20260511-6"></script>
+<script src="mal/strategy-doc.js?v=20260511-6"></script>
 <script src="mal/p1-model-data.js"></script>
 <script src="mal/product-catalogue.js"></script>
-<script type="text/babel" src="mal/section-prototype.jsx?v=20260511-5"></script>
-<script type="text/babel" src="mal/section-strategy.jsx?v=20260511-5"></script>
-<script type="text/babel" src="mal/section-financial.jsx?v=20260511-5"></script>
-<script type="text/babel" src="mal/section-ai.jsx?v=20260511-5"></script>
+<script type="text/babel" src="mal/section-prototype.jsx?v=20260511-6"></script>
+<script type="text/babel" src="mal/section-strategy.jsx?v=20260511-6"></script>
+<script type="text/babel" src="mal/section-financial.jsx?v=20260511-6"></script>
+<script type="text/babel" src="mal/section-ai.jsx?v=20260511-6"></script>
 
 <script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
@@ -510,11 +510,9 @@ function AppFrame({ section, setSection, lang, setLang, isMobile, onHome }) {
           </nav>
         )}
 
-        <div className="mal-app-bar-actions">
-          <Tabs value={lang} onChange={setLang} size="sm" items={[
-            { value: 'en', label: 'EN' }, { value: 'ar', label: 'AR' },
-          ]} />
-        </div>
+        {/* EN/AR toggle is owned by the Prototype section now (only relevant
+            when the phone demo is showing). Other sections stay in English. */}
+        <div className="mal-app-bar-actions"/>
       </header>
 
       {/* Mobile section selector */}
@@ -537,7 +535,7 @@ function AppFrame({ section, setSection, lang, setLang, isMobile, onHome }) {
       {/* Section body */}
       <main>
         {section === 'strategy'  && <SectionStrategy   lang={lang} isMobile={isMobile}/>}
-        {section === 'prototype' && <SectionPrototype  lang={lang} isMobile={isMobile}/>}
+        {section === 'prototype' && <SectionPrototype  lang={lang} setLang={setLang} isMobile={isMobile}/>}
         {section === 'financial' && <SectionFinancial  lang={lang} isMobile={isMobile}/>}
         {section === 'ai'        && <SectionAi         lang={lang} isMobile={isMobile}/>}
       </main>
