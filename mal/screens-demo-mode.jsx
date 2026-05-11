@@ -652,7 +652,7 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
         display: 'flex', flexDirection: stack ? 'column' : 'row', gap: 26,
         alignItems: 'flex-start', justifyContent: 'center',
         // Reserve 80px on the left for the floating dotnav (only on desktop)
-        padding: stack ? '8px 12px 24px' : '20px 22px 0 90px',
+        padding: stack ? '8px 12px 24px' : '20px 90px 0 90px',
         flexWrap: 'wrap',
       }}>
         <DemoPanel side="buyer" title="Buyer SME" sub="Aisha · Crescent Trading FZE" tone="lilac"

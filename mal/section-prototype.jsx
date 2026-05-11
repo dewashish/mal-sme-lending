@@ -85,9 +85,7 @@ function PrototypeToolbar({
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       gap: 10, flexWrap: 'wrap',
       padding: isMobile ? '10px 14px' : '14px 22px',
-      background: 'var(--mal-paper)',
-      borderBottom: '1px solid var(--mal-line)',
-      position: 'sticky', top: 0, zIndex: 60,
+      background: 'transparent',
     }}>
       <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         {onStartTour && (
