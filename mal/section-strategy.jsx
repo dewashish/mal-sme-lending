@@ -468,6 +468,79 @@ const DIAGRAM_INJECT = {
   'd-3-risk-waterfall-and-fldg-mechanics':   { type: 'fldg-waterfall' },
 };
 
+// Heading IDs after which a "Open live prototype" CTA card should be
+// injected. Lets readers jump straight from the product write-up in the
+// strategy doc into the matching interactive prototype.
+const PROTOTYPE_INJECT = {
+  '3-product-1-smart-invoice-with-flexible-installmen': 'p1-smart-invoice',
+  '4-product-2-healthcare-insurance-receivables-engin': 'p2-healthcare-receivables',
+  'a11-pos-receivables-merchant-cash-advance':           'a11-pos-mca',
+};
+
+function PrototypeLaunchCard({ productId, isAr }) {
+  const product = window.MAL_PRODUCT_BY_ID?.[productId];
+  if (!product) return null;
+  const onOpen = () => {
+    // Stash productId on window so SectionPrototype picks it up when it
+    // mounts (the mal:nav section switch happens at Root level and remounts
+    // SectionPrototype, racing past any in-flight listener).
+    window.__malNextProductId = productId;
+    window.dispatchEvent(new CustomEvent('mal:nav', { detail: { section: 'prototype', productId } }));
+  };
+  const blurb = isAr
+    ? 'افتح النموذج التفاعلي لهذا المنتج في قسم النموذج التجريبي'
+    : product.blurb;
+  return (
+    <div onClick={onOpen} role="button" tabIndex={0}
+         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(); } }}
+         style={{
+           display: 'flex', alignItems: 'center', gap: 16,
+           margin: '18px 0 28px', padding: '14px 18px',
+           borderRadius: 14, cursor: 'pointer',
+           background: 'linear-gradient(135deg, var(--mal-primary-50) 0%, rgba(31,84,200,0.08) 100%)',
+           border: '1px solid var(--mal-primary-3, var(--mal-line))',
+           transition: 'transform .15s ease, box-shadow .15s ease',
+         }}
+         onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = 'var(--mal-sh-2)'; }}
+         onMouseLeave={(e) => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}>
+      <div style={{
+        width: 44, height: 44, borderRadius: 12,
+        background: 'var(--mal-ink)', color: '#FAF7EE',
+        fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+        fontSize: 16, fontWeight: 700, letterSpacing: '.02em',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>{product.code}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--mal-mid)' }}>
+            {isAr ? 'نموذج تفاعلي مباشر' : 'Live interactive prototype'}
+          </span>
+          {product.status === 'live' && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: '.06em',
+              padding: '2px 6px', borderRadius: 999,
+              background: 'var(--mal-success)', color: '#fff',
+            }}>LIVE</span>
+          )}
+        </div>
+        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--mal-ink)', marginTop: 2 }}>
+          {product.title}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--mal-mid)', marginTop: 4, lineHeight: 1.5 }}>
+          {blurb}
+        </div>
+      </div>
+      <button onClick={(e) => { e.stopPropagation(); onOpen(); }}
+              className="mal-pill-btn"
+              style={{ flexShrink: 0, background: 'var(--mal-ink)', color: '#FAF7EE', borderColor: 'var(--mal-ink)' }}>
+        <span>{isAr ? 'افتح النموذج' : 'Open prototype'}</span>
+        <span style={{ transform: isAr ? 'scaleX(-1)' : 'none', display: 'inline-flex' }}>→</span>
+      </button>
+    </div>
+  );
+}
+
 function renderInjectedDiagram(type, isAr) {
   const v = window.MalStrategyVisuals || {};
   switch (type) {
@@ -623,6 +696,7 @@ function DocBody({ doc, chapters, sectionRefs, isAr, isMobile }) {
         if (p.tag === 'h1' && p.id) {
           const chIdx = chapterIdxById[p.id];
           pendingDropCap = true;
+          const protoPid = PROTOTYPE_INJECT[p.id];
           return (
             <React.Fragment key={'h1-' + p.key}>
               {chIdx > 0 && visuals.ChapterDivider && (
@@ -632,17 +706,30 @@ function DocBody({ doc, chapters, sectionRefs, isAr, isMobile }) {
               {visuals.ChapterHero && (
                 <visuals.ChapterHero chapter={{ id: p.id, text: p.text }} isAr={isAr}/>
               )}
+              {protoPid && <PrototypeLaunchCard productId={protoPid} isAr={isAr}/>}
             </React.Fragment>
           );
         }
 
-        // H2. Check for unit-econ injection or diagram injection
-        if (p.tag === 'h2' && p.id && DIAGRAM_INJECT[p.id]) {
+        // H2. Check for unit-econ injection, diagram injection, or prototype CTA
+        if (p.tag === 'h2' && p.id && (DIAGRAM_INJECT[p.id] || PROTOTYPE_INJECT[p.id])) {
           const diag = DIAGRAM_INJECT[p.id];
+          const protoPid = PROTOTYPE_INJECT[p.id];
           return (
             <React.Fragment key={'inj-' + p.key}>
               <ParaBlock para={p} sectionRefs={sectionRefs}/>
-              {renderInjectedDiagram(diag.type, isAr)}
+              {diag && renderInjectedDiagram(diag.type, isAr)}
+              {protoPid && <PrototypeLaunchCard productId={protoPid} isAr={isAr}/>}
+            </React.Fragment>
+          );
+        }
+
+        // H3 prototype CTA (e.g., A11 appendix entry sits at h3 level)
+        if (p.tag === 'h3' && p.id && PROTOTYPE_INJECT[p.id]) {
+          return (
+            <React.Fragment key={'inj3-' + p.key}>
+              <ParaBlock para={p} sectionRefs={sectionRefs}/>
+              <PrototypeLaunchCard productId={PROTOTYPE_INJECT[p.id]} isAr={isAr}/>
             </React.Fragment>
           );
         }

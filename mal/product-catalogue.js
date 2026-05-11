@@ -68,7 +68,7 @@ window.MAL_PRODUCT_CATALOGUE = [
         code: 'P2',
         title: 'Healthcare Insurance Receivables Engine',
         short: 'Healthcare Receivables',
-        status: 'in-progress',
+        status: 'live',
         blurb: 'Same-day claim advance for clinics and hospitals against insurer receivables, with predictive adjudication. Multi-payer.',
         finKey: 'p2',
         protoEntries: [
@@ -208,7 +208,7 @@ window.MAL_PRODUCT_CATALOGUE = [
         code: 'A11',
         title: 'Embedded POS Finance',
         short: 'POS Finance',
-        status: 'in-progress',
+        status: 'live',
         blurb: 'Working capital advance to F&B / retail / salon SMEs, repaid as a daily slice of POS-acquirer settlements. Underwritten silently from POS + bank + VAT data — no document uploads.',
         finKey: 'a11',
         protoEntries: [

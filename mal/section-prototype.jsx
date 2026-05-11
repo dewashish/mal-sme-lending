@@ -13,7 +13,17 @@ function SectionPrototype({ lang, setLang, isMobile }) {
   const catalogue = window.MAL_PRODUCT_CATALOGUE || [];
   const flagshipId = 'p1-smart-invoice';
 
-  const [productId, setProductId] = pS(flagshipId);
+  // Honour cross-section deep-links: strategy doc CTAs stash the target
+  // productId on window before navigating; pick it up on mount and clear.
+  const initialProductId = (() => {
+    const hint = typeof window !== 'undefined' ? window.__malNextProductId : null;
+    if (hint && window.MAL_PRODUCT_BY_ID?.[hint]) {
+      window.__malNextProductId = null;
+      return hint;
+    }
+    return flagshipId;
+  })();
+  const [productId, setProductId] = pS(initialProductId);
   const [tourOpen, setTourOpen] = pS(false);
   const product = window.MAL_PRODUCT_BY_ID[productId] || window.MAL_PRODUCT_BY_ID[flagshipId];
 
@@ -23,6 +33,21 @@ function SectionPrototype({ lang, setLang, isMobile }) {
     const p = window.MAL_PRODUCT_BY_ID[productId];
     setEntryId(p?.defaultEntry || null);
   }, [productId]);
+
+  // Cross-section deep-link support: when a 'mal:nav' event arrives with
+  // section='prototype' and a productId, pre-select that product. Fired
+  // from inline links in the strategy doc so users can jump straight from
+  // "Product 2 · Healthcare Receivables" → the matching live prototype.
+  pE(() => {
+    const onNav = (e) => {
+      const target = e?.detail?.section;
+      const pid = e?.detail?.productId;
+      if (target !== 'prototype' || !pid) return;
+      if (window.MAL_PRODUCT_BY_ID[pid]) setProductId(pid);
+    };
+    window.addEventListener('mal:nav', onNav);
+    return () => window.removeEventListener('mal:nav', onNav);
+  }, []);
 
   const Tour = window.MalTour;
   const TourBtn = window.MalTourButton;
