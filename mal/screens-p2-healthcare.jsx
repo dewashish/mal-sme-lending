@@ -138,9 +138,9 @@ function HealthcareDemo({ lang = 'en', isMobile }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div style={{
-        display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 26,
+        display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 20,
         alignItems: 'flex-start', justifyContent: 'center',
-        padding: isMobile ? '8px 12px 24px' : '20px 90px 0 90px',
+        padding: isMobile ? '8px 12px 24px' : '20px 32px 0 32px',
         flexWrap: 'wrap',
       }}>
         <HcPanel side="provider" title="Provider SME" sub="Dr. Ahmed · Crescent Medical Center" tone="lilac">

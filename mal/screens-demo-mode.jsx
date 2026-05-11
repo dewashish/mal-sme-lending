@@ -650,10 +650,13 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div style={{
-        display: 'flex', flexDirection: stack ? 'column' : 'row', gap: 26,
+        display: 'flex', flexDirection: stack ? 'column' : 'row', gap: 20,
         alignItems: 'flex-start', justifyContent: 'center',
-        // Reserve 80px on the left for the floating dotnav (only on desktop)
-        padding: stack ? '8px 12px 24px' : '20px 90px 0 90px',
+        // Slim horizontal padding so 2 phones + central column fit on
+        // 1280-wide laptops without wrapping. Floating dotnav is fixed
+        // at left:16 (z-index above content) so we only need ~32px
+        // breathing room on each side.
+        padding: stack ? '8px 12px 24px' : '20px 32px 0 32px',
         flexWrap: 'wrap',
       }}>
         <DemoPanel side="buyer" title="Buyer SME" sub="Aisha · Crescent Trading FZE" tone="lilac"
@@ -666,7 +669,10 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
             The footer hint sits below the central widget so users see the
             usage tip between the two phone frames, not buried under them. */}
         {!stack && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center',
+            width: 240, flexShrink: 0,
+          }}>
             {phase === 'live'
               ? <DemoCenterColumnLive scenario={scenario} setSimDay={setSimDay} stepDay={stepDay} setPhase={setPhase} patch={patch} lang={lang}/>
               : <SyncIndicatorNarrative phase={phase} lang={lang}/>}
@@ -3133,8 +3139,8 @@ function DemoFooterHint({ phase, lang, simDay, plan }) {
   const isAr = lang === 'ar';
   return (
     <div style={{
-      maxWidth: 280, marginInline: 'auto', textAlign: 'center',
-      padding: '6px 10px', color: 'var(--mal-mid)', fontSize: 11, lineHeight: 1.5,
+      maxWidth: 220, marginInline: 'auto', textAlign: 'center',
+      padding: '6px 8px', color: 'var(--mal-mid)', fontSize: 11, lineHeight: 1.5,
     }}>
       {phase === 'live' && (
         isAr
