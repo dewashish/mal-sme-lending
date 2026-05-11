@@ -36,7 +36,10 @@ function SectionPrototype({ lang, setLang, isMobile }) {
 
   return (
     <div dir={isAr ? 'rtl' : 'ltr'} style={{
-      position: 'relative', minHeight: 'calc(100vh - 56px)', background: 'var(--mal-surface)',
+      position: 'relative', minHeight: 'calc(100vh - 56px)',
+      // Lavender wash so the toolbar and the around-phones area share
+      // the same bluish background as the phone landing-screen gradient.
+      background: 'linear-gradient(180deg, var(--mal-primary-50) 0%, var(--mal-surface) 380px)',
     }}>
       {/* Unified toolbar band at the top. All four controls live on one
           row so phones never overlap with any of them. */}

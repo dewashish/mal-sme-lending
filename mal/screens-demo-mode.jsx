@@ -692,7 +692,7 @@ function SyncIndicatorNarrative({ phase, lang }) {
                   : (phase === 'sign' || phase === 'funded') ? 'l2r' : null;
   return (
     <div style={{
-      width: 70, alignSelf: 'stretch', display: 'flex',
+      width: 70, marginInline: 'auto', display: 'flex',
       flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: 8,
       paddingTop: 96, flexShrink: 0,
     }}>
