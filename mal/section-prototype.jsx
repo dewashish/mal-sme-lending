@@ -52,10 +52,12 @@ function SectionPrototype({ lang, setLang, isMobile }) {
                          style={{ position: 'fixed', top: 70, insetInlineStart: 140, zIndex: 65 }}/>
       )}
 
-      {/* EN/AR toggle: only relevant while the phones are on screen. */}
+      {/* EN/AR toggle: only relevant while the phones are on screen.
+          Positioned below the Take-a-tour / Reset-demo row on the left
+          so it never overlaps with the product-catalogue dropdown on the right. */}
       {isLive && setLang && (
         <PrototypeLangToggle lang={lang} setLang={setLang}
-                             style={{ position: 'fixed', top: 70, insetInlineEnd: 18, zIndex: 65 }}/>
+                             style={{ position: 'fixed', top: 112, insetInlineStart: 18, zIndex: 65 }}/>
       )}
 
       <div style={{ minHeight: 'calc(100vh - 56px)' }}>
