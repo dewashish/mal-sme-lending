@@ -356,8 +356,13 @@ function GroupedProductSelector({ catalogue, productId, entryId, onPickProduct, 
         <div role="menu" style={{
           position: 'absolute',
           top: 'calc(100% + 8px)',
-          insetInlineEnd: variant === 'floating' ? 0 : 'auto',
-          insetInlineStart: variant === 'floating' ? 'auto' : 0,
+          // Both variants anchor the menu to the RIGHT edge of the
+          // trigger so it opens leftward into the viewport. The trigger
+          // sits at the right side of the toolbar (and the floating
+          // variant sits at top-right), so a left-anchored menu would
+          // overflow the right edge.
+          insetInlineEnd: 0,
+          insetInlineStart: 'auto',
           width: 420, maxWidth: '94vw',
           maxHeight: 560, overflowY: 'auto',
           background: 'var(--mal-paper)',
