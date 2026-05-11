@@ -45,6 +45,16 @@ const PAYER_KEYS_ORDER = ['daman', 'thiqa', 'adnic', 'axa', 'bupa', 'metlife'];
 
 // Each claim carries a procedure code (ICD / CPT) and a short ML
 // adjudication trace: top 3 features that drove the score.
+// Pre-auth status. Drives Mal's risk model far more than denial-risk
+// scoring does — UAE clinics almost always pre-authorise before service,
+// so "approved" claims are near-zero risk and just bridge the 28-78d
+// insurer cycle. Direct-pay is the genuine risk segment.
+const PREAUTH = {
+  approved: { tone: '#0a8056', label: 'Pre-auth approved',  fee: 0.025 },
+  pending:  { tone: '#b06a14', label: 'Pre-auth pending',   fee: 0.025 },  // advance held until approved
+  direct:   { tone: '#5a3aa3', label: 'Direct-pay · premium', fee: 0.05 }, // VIP / emergency / Mal underwrites
+};
+
 const DEFAULT_BATCH = {
   id: 'BATCH-2026-0042',
   provider: 'Crescent Medical Center',
@@ -52,18 +62,18 @@ const DEFAULT_BATCH = {
   submittedDay: 0,
   totalFace: 0,
   claims: [
-    { id: 'CLM-2026-1001', payer: 'daman',   patient: 'P. Hashmi',    procedure: 'Upper GI Endoscopy',     cpt: '43235', amount: 18500, score: 94, status: 'advanced', risk: ['Coverage match 98%', 'Provider in-network', 'Pre-auth not required'] },
-    { id: 'CLM-2026-1002', payer: 'daman',   patient: 'A. Khalid',    procedure: 'MRI · Lumbar Spine',     cpt: '72148', amount: 26000, score: 91, status: 'advanced', risk: ['Coverage match 95%', 'Pre-auth attached', 'No history of denial for this code'] },
-    { id: 'CLM-2026-1003', payer: 'daman',   patient: 'D. Roy',       procedure: 'Diabetes follow-up',     cpt: '99214', amount:  6500, score: 96, status: 'advanced', risk: ['Coverage match 99%', 'Standard chronic-care visit', 'Patient policy active'] },
-    { id: 'CLM-2026-1004', payer: 'thiqa',   patient: 'M. Saeed',     procedure: 'Cardiac stress test',    cpt: '93015', amount: 22000, score: 88, status: 'advanced', risk: ['Coverage match 92%', 'Pre-auth attached', 'Mild seasonal denial rate (Aug)'] },
-    { id: 'CLM-2026-1005', payer: 'thiqa',   patient: 'N. Al-Hashmi', procedure: 'Paediatric ER visit',    cpt: '99284', amount:  8400, score: 95, status: 'advanced', risk: ['Coverage match 97%', 'ER under emergency rule', 'No prior denials this provider'] },
-    { id: 'CLM-2026-1006', payer: 'thiqa',   patient: 'T. Khalifa',   procedure: 'GP consult x3',          cpt: '99213', amount:  4800, score: 97, status: 'advanced', risk: ['Coverage match 99%', 'Standard primary-care', 'Repeat patient'] },
-    { id: 'CLM-2026-1007', payer: 'adnic',   patient: 'R. Patel',     procedure: 'Orthopaedic surgery',    cpt: '27447', amount: 42000, score: 79, status: 'advanced', risk: ['Coverage match 84%', 'High-value, payer often disputes anaesthesia line', 'Pre-auth ID on file'] },
-    { id: 'CLM-2026-1008', payer: 'adnic',   patient: 'K. Hussain',   procedure: 'Dental crown · 3 units', cpt: 'D2740', amount: 11000, score: 65, status: 'refer',    risk: ['Coverage match 68%', 'Dental policy excludes 2 of 3 crowns', 'Resubmit with itemised line items'] },
-    { id: 'CLM-2026-1009', payer: 'axa',     patient: 'S. Ali',       procedure: 'Maternity package',      cpt: '59400', amount: 31000, score: 82, status: 'advanced', risk: ['Coverage match 87%', 'Maternity rider active', 'Slight historic delay (~58d)'] },
-    { id: 'CLM-2026-1010', payer: 'axa',     patient: 'M. Tanaka',    procedure: 'Physiotherapy x10',      cpt: '97110', amount: 15500, score: 86, status: 'advanced', risk: ['Coverage match 90%', 'Visit count below cap (10/20)', 'Standard rehab'] },
-    { id: 'CLM-2026-1011', payer: 'bupa',    patient: 'F. Yousef',    procedure: 'CT · Abdomen',           cpt: '74170', amount:  9200, score: 90, status: 'advanced', risk: ['Coverage match 94%', 'Pre-auth attached', 'BUPA international rider'] },
-    { id: 'CLM-2026-1012', payer: 'metlife', patient: 'L. Chen',      procedure: 'Eye surgery · cataract', cpt: '66984', amount: 19500, score: 71, status: 'advanced', risk: ['Coverage match 77%', 'Bilateral procedure flag', 'MetLife long cycle (78d historic)'] },
+    { id: 'CLM-2026-1001', payer: 'daman',   patient: 'P. Hashmi',    procedure: 'Upper GI Endoscopy',     cpt: '43235', amount: 18500, score: 94, preAuth: 'approved', insurancePct: 0.90, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 98%', 'Pre-auth on file (PA-DAM-77412)', 'In-network · standard cycle 28d'] },
+    { id: 'CLM-2026-1002', payer: 'daman',   patient: 'A. Khalid',    procedure: 'MRI · Lumbar Spine',     cpt: '72148', amount: 26000, score: 91, preAuth: 'approved', insurancePct: 0.80, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 95%', 'Pre-auth on file (PA-DAM-77419)', 'No history of denial for this code'] },
+    { id: 'CLM-2026-1003', payer: 'daman',   patient: 'D. Roy',       procedure: 'Diabetes follow-up',     cpt: '99214', amount:  6500, score: 96, preAuth: 'approved', insurancePct: 1.00, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 99%', 'Chronic-care exempt from pre-auth', 'Patient policy active'] },
+    { id: 'CLM-2026-1004', payer: 'thiqa',   patient: 'M. Saeed',     procedure: 'Cardiac stress test',    cpt: '93015', amount: 22000, score: 88, preAuth: 'approved', insurancePct: 0.90, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 92%', 'Pre-auth on file (PA-THQ-22481)', 'Mild seasonal denial rate (Aug)'] },
+    { id: 'CLM-2026-1005', payer: 'thiqa',   patient: 'N. Al-Hashmi', procedure: 'Paediatric ER visit',    cpt: '99284', amount:  8400, score: 95, preAuth: 'approved', insurancePct: 1.00, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 97%', 'ER auto-approved under emergency rule', 'No prior denials this provider'] },
+    { id: 'CLM-2026-1006', payer: 'thiqa',   patient: 'T. Khalifa',   procedure: 'GP consult x3',          cpt: '99213', amount:  4800, score: 97, preAuth: 'approved', insurancePct: 0.90, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 99%', 'Primary-care no pre-auth needed', 'Repeat patient'] },
+    { id: 'CLM-2026-1007', payer: 'adnic',   patient: 'R. Patel',     procedure: 'Orthopaedic surgery',    cpt: '27447', amount: 42000, score: 79, preAuth: 'pending',  insurancePct: 0.80, status: 'advanced', eligibility: 'active',   risk: ['Pre-auth requested · awaiting ADNIC clinical review', 'Mal advance held until approval lands', 'Expected approval in 24-48 hours'] },
+    { id: 'CLM-2026-1008', payer: 'adnic',   patient: 'K. Hussain',   procedure: 'Dental crown · 3 units', cpt: 'D2740', amount: 11000, score: 65, preAuth: 'approved', insurancePct: 0.60, status: 'refer',    eligibility: 'active',   risk: ['Coverage match 68%', 'Dental policy excludes 2 of 3 crowns', 'Resubmit with itemised line items'] },
+    { id: 'CLM-2026-1009', payer: 'axa',     patient: 'S. Ali',       procedure: 'Maternity package',      cpt: '59400', amount: 31000, score: 82, preAuth: 'approved', insurancePct: 0.90, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 87%', 'Maternity rider active', 'Pre-auth on file (PA-AXA-90118)'] },
+    { id: 'CLM-2026-1010', payer: 'axa',     patient: 'M. Tanaka',    procedure: 'Physiotherapy x10',      cpt: '97110', amount: 15500, score: 86, preAuth: 'approved', insurancePct: 0.85, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 90%', 'Visit count below cap (10/20)', 'Standard rehab'] },
+    { id: 'CLM-2026-1011', payer: 'bupa',    patient: 'F. Yousef',    procedure: 'CT · Abdomen',           cpt: '74170', amount:  9200, score: 90, preAuth: 'approved', insurancePct: 0.90, status: 'advanced', eligibility: 'active',   risk: ['Coverage match 94%', 'Pre-auth on file (PA-BUP-44012)', 'BUPA international rider'] },
+    { id: 'CLM-2026-1012', payer: 'metlife', patient: 'L. Chen',      procedure: 'Eye surgery · cataract', cpt: '66984', amount: 19500, score: 71, preAuth: 'direct',   insurancePct: 0.70, status: 'advanced', eligibility: 'active',   risk: ['VIP plan · service delivered before pre-auth', 'Mal underwrites direct-pay risk · 5% premium fee', 'MetLife historic 78d cycle'] },
   ],
 };
 DEFAULT_BATCH.totalFace = DEFAULT_BATCH.claims.reduce((s, c) => s + c.amount, 0);
@@ -94,6 +104,7 @@ function buildDefaultScenario() {
     rejectionsByClaim: {},
     selectedClaimId: null,
     batchUploadProgress: 0,
+    denialProtection: false,  // opt-in rider: +0.4% covers any post-service denial
   };
 }
 
@@ -126,12 +137,24 @@ function HealthcareDemo({ lang = 'en', isMobile }) {
   }, [scenario]);
 
   const totals = hM(() => {
-    const advanced = claimStates.reduce((s, c) => c.status === 'advanced' ? s + c.amount * advancePctForClaim(c.score) : s, 0);
+    // Pre-auth-approved claims advance immediately. Pre-auth-pending
+    // claims are held until approval lands. Direct-pay claims advance
+    // too, just at the 5% premium fee.
+    const advancedClaims = claimStates.filter((c) => c.status === 'advanced' && c.preAuth !== 'pending');
+    const advanced = advancedClaims.reduce((s, c) => s + c.amount * advancePctForClaim(c.score), 0);
+    const held = claimStates.filter((c) => c.preAuth === 'pending').reduce((s, c) => s + c.amount, 0);
     const paid = claimStates.reduce((s, c) => c.paid ? s + c.paid.gross : s, 0);
     const rejected = claimStates.reduce((s, c) => c.rejected ? s + c.amount : s, 0);
     const outstanding = scenario.batch.totalFace - paid - rejected;
-    return { advanced, paid, rejected, outstanding };
-  }, [claimStates, scenario.batch.totalFace]);
+    // Co-pay / patient-pay portion: the slice the patient owes (out of pocket)
+    const patientPay = claimStates.reduce((s, c) => s + c.amount * (1 - (c.insurancePct ?? 1)), 0);
+    // Denial-protection rider premium = 0.4% of face value
+    const denialRiderFee = scenario.denialProtection ? Math.round(scenario.batch.totalFace * 0.004) : 0;
+    // Mal's blended fee = 2.5% baseline + extra 2.5% on direct-pay claims
+    const standardFee = Math.round(advancedClaims.filter((c) => c.preAuth !== 'direct').reduce((s, c) => s + c.amount, 0) * 0.025);
+    const directFee = Math.round(advancedClaims.filter((c) => c.preAuth === 'direct').reduce((s, c) => s + c.amount, 0) * 0.05);
+    return { advanced, held, paid, rejected, outstanding, patientPay, denialRiderFee, standardFee, directFee };
+  }, [claimStates, scenario.batch.totalFace, scenario.denialProtection]);
 
   const selectedClaim = claimStates.find((c) => c.id === scenario.selectedClaimId) || null;
 
@@ -147,7 +170,7 @@ function HealthcareDemo({ lang = 'en', isMobile }) {
           {phase === 'intro'   && <HcProviderIntro    isAr={isAr} onStart={() => setPhase('onboard')}/>}
           {phase === 'onboard' && <HcProviderOnboard  isAr={isAr} scenario={scenario} patch={patch} onDone={() => setPhase('batch')}/>}
           {phase === 'batch'   && <HcProviderBatch    isAr={isAr} scenario={scenario} patch={patch} onSubmitted={() => setPhase('live')}/>}
-          {phase === 'live'    && <HcProviderHome     isAr={isAr} scenario={scenario} claimStates={claimStates} totals={totals} onSelectClaim={(id) => patch({ selectedClaimId: id })}/>}
+          {phase === 'live'    && <HcProviderHome     isAr={isAr} scenario={scenario} claimStates={claimStates} totals={totals} patch={patch} onSelectClaim={(id) => patch({ selectedClaimId: id })}/>}
         </HcPanel>
 
         {!isMobile && (
@@ -524,8 +547,15 @@ function HcProviderBatch({ isAr, scenario, patch, onSubmitted }) {
 // ============================================================
 // Provider home: limit hero, batch summary, per-claim ladder
 // ============================================================
-function HcProviderHome({ isAr, scenario, claimStates, totals, onSelectClaim }) {
+function HcProviderHome({ isAr, scenario, claimStates, totals, onSelectClaim, patch }) {
   const { batch, simDay } = scenario;
+  const directClaims = claimStates.filter((c) => c.preAuth === 'direct');
+  const pendingPreAuth = claimStates.filter((c) => c.preAuth === 'pending');
+  const eligibilityCounts = {
+    active: claimStates.filter((c) => c.eligibility === 'active').length,
+    total: claimStates.length,
+  };
+
   return (
     <div className="mal-scroll" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflowY: 'auto' }}>
       <div className="mal-caption">{isAr ? 'مرحباً، د. أحمد' : 'Hi, Dr. Ahmed'}</div>
@@ -582,6 +612,106 @@ function HcProviderHome({ isAr, scenario, claimStates, totals, onSelectClaim }) 
         </div>
       </div>
 
+      {/* Eligibility check banner — runs real-time policy verification
+          for every patient before the batch is submitted. */}
+      <div style={{
+        padding: '10px 12px', borderRadius: 12,
+        background: 'rgba(10,128,86,0.08)',
+        border: '1px solid rgba(10,128,86,0.24)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            width: 22, height: 22, borderRadius: 999, flexShrink: 0,
+            background: '#0a8056', color: '#fff',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 11, fontWeight: 700,
+          }}>✓</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 600, color: '#0a8056' }}>
+              {isAr
+                ? `الأهلية مُتحقَّقة · ${eligibilityCounts.active} من ${eligibilityCounts.total} مرضى`
+                : `Eligibility verified · ${eligibilityCounts.active} / ${eligibilityCounts.total} patients`}
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 1 }}>
+              {isAr
+                ? 'فحص فوري للبوليصة عبر جميع شركات التأمين'
+                : 'Real-time policy check across all 6 payers'}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Pre-auth pending notice — visible only if any claim is awaiting approval */}
+      {pendingPreAuth.length > 0 && (
+        <div style={{
+          padding: '10px 12px', borderRadius: 12,
+          background: 'rgba(176,106,20,0.10)',
+          border: '1px solid rgba(176,106,20,0.32)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14 }}>⏳</span>
+            <div style={{ flex: 1, fontSize: 11.5, color: 'var(--mal-ink)', lineHeight: 1.5 }}>
+              <strong style={{ color: '#b06a14' }}>
+                {pendingPreAuth.length} {isAr ? 'مطالبة بانتظار الموافقة المسبقة' : pendingPreAuth.length === 1 ? 'claim awaiting pre-auth' : 'claims awaiting pre-auth'}
+              </strong>
+              <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 1 }}>
+                {isAr ? 'سُلفة مال مُعلَّقة حتى تصل الموافقة' : 'Mal advance held until approval lands'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Direct-pay segment — VIP / emergency / unauthorized claims that
+          Mal underwrites at a 5% premium fee. */}
+      {directClaims.length > 0 && (
+        <div style={{
+          padding: '10px 12px', borderRadius: 12,
+          background: 'linear-gradient(135deg, rgba(90,58,163,0.10), var(--mal-paper))',
+          border: '1px solid rgba(90,58,163,0.32)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 14 }}>⚡</span>
+            <div style={{ flex: 1, fontSize: 11.5, color: 'var(--mal-ink)', lineHeight: 1.5 }}>
+              <strong style={{ color: '#5a3aa3' }}>
+                {directClaims.length} {isAr ? 'مطالبة مباشرة الدفع · مال يتحمّل المخاطر' : directClaims.length === 1 ? 'direct-pay claim · Mal underwrites' : 'direct-pay claims · Mal underwrites'}
+              </strong>
+              <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 1 }}>
+                {isAr ? 'VIP / طوارئ · رسم ٥٪' : 'VIP / emergency · 5% premium fee · advance on day 1'}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Denial-protection rider toggle */}
+      <button onClick={() => patch({ denialProtection: !scenario.denialProtection })} style={{
+        all: 'unset', cursor: 'pointer',
+        padding: '10px 12px', borderRadius: 12,
+        background: scenario.denialProtection ? 'rgba(10,128,86,0.10)' : 'var(--mal-surface-2)',
+        border: '1px solid ' + (scenario.denialProtection ? 'rgba(10,128,86,0.32)' : 'var(--mal-line)'),
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <div style={{
+          width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+          background: scenario.denialProtection ? '#0a8056' : '#fff',
+          border: '1px solid ' + (scenario.denialProtection ? '#0a8056' : 'var(--mal-line)'),
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          color: '#fff', fontSize: 11, fontWeight: 700,
+        }}>{scenario.denialProtection ? '✓' : ''}</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--mal-ink)' }}>
+            🛡 {isAr ? 'حماية من رفض المطالبات' : 'Denial-protection rider'}
+            <span style={{ fontSize: 10.5, color: 'var(--mal-mid)', fontWeight: 500, marginLeft: 6 }}>
+              +0.4% · AED {Math.round(scenario.batch.totalFace * 0.004).toLocaleString()}
+            </span>
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 1 }}>
+            {isAr ? 'مال يُغطّي أي مطالبة مرفوضة بعد تقديم الخدمة' : 'Mal covers any post-service denial in this batch'}
+          </div>
+        </div>
+      </button>
+
       <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--mal-mid)', textTransform: 'uppercase', marginTop: 4 }}>
         {isAr ? 'سُلم المطالبات · انقر لعرض التفاصيل' : 'Claim ladder · tap to drill in'}
       </div>
@@ -600,15 +730,22 @@ function ClaimRow({ claim, simDay, isAr, onClick }) {
   const payer = c.payerObj;
   const advPct = advancePctForClaim(c.score);
   const status = c.computedStatus;
+  const preAuth = PREAUTH[c.preAuth || 'approved'];
+  const insPct = Math.round((c.insurancePct ?? 1) * 100);
+  const patPct = 100 - insPct;
+  const isDirect = c.preAuth === 'direct';
+  const isPending = c.preAuth === 'pending';
   const statusTone = status === 'paid' ? '#0a8056'
                   : status === 'rejected' ? '#b8364b'
                   : status === 'refer' ? '#b06a14'
                   : status === 'due' ? '#b06a14'
+                  : isPending ? '#b06a14'
                   : 'var(--mal-mid)';
   const statusLabel = status === 'paid' ? (isAr ? 'مدفوعة' : 'Settled')
                     : status === 'rejected' ? (isAr ? 'مرفوضة' : 'Rejected')
                     : status === 'refer' ? (isAr ? 'إحالة · للفحص' : 'Refer · fixable')
                     : status === 'due' ? (isAr ? 'مستحقة' : 'Due')
+                    : isPending ? (isAr ? 'سُلفة معلَّقة' : 'Advance held')
                     : (isAr ? 'مُسلَّفة' : 'Advanced');
   const daysToEta = c.etaDay - simDay;
 
@@ -619,8 +756,13 @@ function ClaimRow({ claim, simDay, isAr, onClick }) {
       background: status === 'paid' ? 'var(--mal-success-bg)'
                 : status === 'rejected' ? 'var(--mal-danger-bg)'
                 : status === 'refer' ? 'rgba(176,106,20,0.10)'
+                : isPending ? 'rgba(176,106,20,0.06)'
+                : isDirect ? 'linear-gradient(135deg, rgba(90,58,163,0.08), var(--mal-surface-2))'
                 : 'var(--mal-surface-2)',
-      border: '1px solid ' + (status === 'refer' ? 'rgba(176,106,20,0.32)' : 'var(--mal-line)'),
+      border: '1px solid ' + (status === 'refer' ? 'rgba(176,106,20,0.32)'
+                            : isDirect ? 'rgba(90,58,163,0.32)'
+                            : isPending ? 'rgba(176,106,20,0.32)'
+                            : 'var(--mal-line)'),
       display: 'grid',
       gridTemplateColumns: '8px 1fr auto',
       gap: 8, alignItems: 'center',
@@ -641,12 +783,25 @@ function ClaimRow({ claim, simDay, isAr, onClick }) {
             fontWeight: 700,
           }}>{payer.name}</span>
           <span>{c.procedure}</span>
+          {/* Pre-auth badge */}
+          <span style={{
+            fontSize: 9, padding: '1px 5px', borderRadius: 999,
+            background: preAuth.tone + '18', color: preAuth.tone,
+            fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase',
+          }}>
+            {c.preAuth === 'approved' ? '✓ pre-auth' : c.preAuth === 'pending' ? '⏳ pre-auth' : '⚡ direct'}
+          </span>
         </div>
         <div style={{ fontSize: 10, color: 'var(--mal-mid)', marginTop: 1 }}>
           {c.id} · {c.patient}
-          {' · '}
-          {isAr ? 'AI' : 'AI score'} <strong style={{ color: c.score >= 85 ? '#0a8056' : c.score >= 70 ? '#b06a14' : '#b8364b' }}>{c.score}</strong>
-          {status === 'advanced' && daysToEta > 0 && ` · ${isAr ? `يستحق خلال ${daysToEta}ي` : `ETA ${daysToEta}d`}`}
+          {/* Co-pay split */}
+          <span style={{ marginLeft: 4 }}>
+            · <span style={{ color: '#0a8056', fontWeight: 600 }}>{insPct}%</span>
+            <span style={{ color: 'var(--mal-mid-2)' }}> ins </span>
+            / <span style={{ color: patPct > 0 ? '#b06a14' : 'var(--mal-mid-2)', fontWeight: patPct > 0 ? 600 : 400 }}>{patPct}%</span>
+            <span style={{ color: 'var(--mal-mid-2)' }}> pt</span>
+          </span>
+          {status === 'advanced' && daysToEta > 0 && !isPending && ` · ${isAr ? `يستحق خلال ${daysToEta}ي` : `ETA ${daysToEta}d`}`}
           {status === 'paid' && ` · ${isAr ? `دُفع يوم ${c.paid.paidOnDay}` : `paid day ${c.paid.paidOnDay}`}`}
           {status === 'rejected' && c.rejected && ` · ${c.rejected.reason}`}
         </div>
@@ -657,7 +812,8 @@ function ClaimRow({ claim, simDay, isAr, onClick }) {
         </div>
         <div style={{ fontSize: 9.5, color: statusTone, fontWeight: 600 }}>
           {statusLabel}
-          {status === 'advanced' && ` · ${(advPct * 100).toFixed(0)}%`}
+          {status === 'advanced' && !isPending && ` · ${(advPct * 100).toFixed(0)}%`}
+          {isDirect && status === 'advanced' && !isPending && ' · 5% fee'}
         </div>
       </div>
     </button>
@@ -716,6 +872,51 @@ function HcClaimDrillIn({ isAr, claim, simDay, onClose, onResubmit }) {
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {/* Pre-auth + coverage card */}
+          {(() => {
+            const pa = PREAUTH[claim.preAuth || 'approved'];
+            const insPct = Math.round((claim.insurancePct ?? 1) * 100);
+            const insAmt = Math.round(claim.amount * (claim.insurancePct ?? 1));
+            const ptAmt = claim.amount - insAmt;
+            const fee = Math.round(claim.amount * pa.fee);
+            return (
+              <div style={{
+                padding: 12, borderRadius: 12,
+                background: pa.tone + '12',
+                border: '1px solid ' + pa.tone + '40',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{
+                    fontSize: 11, padding: '2px 8px', borderRadius: 999,
+                    background: pa.tone, color: '#fff',
+                    fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase',
+                  }}>{pa.label}</span>
+                  <span style={{ fontSize: 10.5, color: 'var(--mal-mid)' }}>
+                    {isAr ? 'رسم مال' : 'Mal fee'} <strong>{(pa.fee * 100).toFixed(1)}%</strong> · AED {fee.toLocaleString()}
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 11, color: 'var(--mal-ink)' }}>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--mal-mid-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                      {isAr ? 'تأمين' : 'Insurance covers'}
+                    </div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: '#0a8056', fontFamily: 'var(--mal-font-mono)' }}>
+                      AED {insAmt.toLocaleString()} · {insPct}%
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9.5, color: 'var(--mal-mid-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                      {isAr ? 'حصّة المريض' : 'Patient co-pay'}
+                    </div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: ptAmt > 0 ? '#b06a14' : 'var(--mal-mid)', fontFamily: 'var(--mal-font-mono)' }}>
+                      AED {ptAmt.toLocaleString()} · {100 - insPct}%
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Money line */}
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
