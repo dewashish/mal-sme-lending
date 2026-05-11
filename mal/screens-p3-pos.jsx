@@ -78,7 +78,7 @@ const UW_FACTORS = [
 
 const UW_COMPOSITE = UW_FACTORS.reduce((s, f) => s + f.pts, 0); // 89
 
-const RATE_CARD = [
+const POS_RATE_CARD = [
   { tier: 'A', range: '80–100', advancePct: '100%', fee: '5.0%',  sweepPct: '12–18%', label: 'Top decile · Saffron Kitchen sits here' },
   { tier: 'B', range: '60–79',  advancePct: '80%',  fee: '5.5%',  sweepPct: '15–20%', label: 'Solid operator · standard pricing' },
   { tier: 'C', range: '40–59',  advancePct: '60%',  fee: '6.0%',  sweepPct: '12% cap',label: 'Conservative cap · coach to upgrade' },
@@ -163,7 +163,7 @@ const SALES_CURVE = (() => {
   return days;
 })();
 
-function buildDefaultScenario() {
+function buildPosDefaultScenario() {
   return {
     phase: 'intro',
     // onboarding steps · 0..4 (uaepass · pos · bank · accounting · done)
@@ -198,7 +198,7 @@ function buildDefaultScenario() {
 
 function PosFinanceDemo({ lang = 'en', isMobile }) {
   const isAr = lang === 'ar';
-  const [scenario, setScenario] = pS(buildDefaultScenario);
+  const [scenario, setScenario] = pS(buildPosDefaultScenario);
 
   const patch = (partial) => setScenario((s) =>
     typeof partial === 'function' ? { ...s, ...partial(s) } : { ...s, ...partial });
@@ -1153,7 +1153,7 @@ function CentralUnderwrite({ isAr, scenario }) {
         <div style={{ fontSize: 11, color: 'var(--mal-mid)', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
           {isAr ? 'بطاقة الأسعار' : 'Rate card · tier → advance % · fee · sweep band'}
         </div>
-        {RATE_CARD.map((r) => (
+        {POS_RATE_CARD.map((r) => (
           <div key={r.tier} style={{
             display: 'grid', gridTemplateColumns: '40px 80px 80px 80px 1fr',
             gap: 8, alignItems: 'center', padding: '6px 0',
@@ -1337,9 +1337,9 @@ function CentralLive({ isAr, scenario, setSimDay, liveTotals }) {
         </div>
         <SweepSparkline simDay={scenario.simDay} sweepPct={offer.sweepPct}/>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginTop: 12 }}>
-          <Stat label={isAr ? 'مبيعات اليوم' : 'Sales today'}  val={'AED ' + todaySales.toLocaleString()} tone="ink"/>
-          <Stat label={isAr ? 'خصم اليوم'   : 'Sweep today'} val={'AED ' + todaySweep.toLocaleString()} tone="primary"/>
-          <Stat label={isAr ? 'متبقّي'      : 'Outstanding'}  val={'AED ' + outstanding.toLocaleString()} tone="green"/>
+          <PosStat label={isAr ? 'مبيعات اليوم' : 'Sales today'}  val={'AED ' + todaySales.toLocaleString()} tone="ink"/>
+          <PosStat label={isAr ? 'خصم اليوم'   : 'Sweep today'} val={'AED ' + todaySweep.toLocaleString()} tone="primary"/>
+          <PosStat label={isAr ? 'متبقّي'      : 'Outstanding'}  val={'AED ' + outstanding.toLocaleString()} tone="green"/>
         </div>
       </div>
 
@@ -1373,7 +1373,7 @@ function CentralLive({ isAr, scenario, setSimDay, liveTotals }) {
   );
 }
 
-function Stat({ label, val, tone }) {
+function PosStat({ label, val, tone }) {
   const bg = tone === 'primary' ? 'var(--mal-primary-50)' : (tone === 'green' ? '#F5FAF6' : 'rgba(0,0,0,0.04)');
   return (
     <div style={{ padding: 10, borderRadius: 10, background: bg }}>
