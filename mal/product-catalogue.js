@@ -72,10 +72,9 @@ window.MAL_PRODUCT_CATALOGUE = [
         blurb: 'Same-day claim advance for clinics and hospitals against insurer receivables, with predictive adjudication. Multi-payer.',
         finKey: 'p2',
         protoEntries: [
-          { id: 'hcops',   label: 'Provider Ops console' },
-          { id: 'hccoder', label: 'Coding desk' },
+          { id: 'demo', label: 'Provider + Insurers (side-by-side)' },
         ],
-        defaultEntry: 'hcops',
+        defaultEntry: 'demo',
       },
       {
         id: 'a3-premium-financing',

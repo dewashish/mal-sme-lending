@@ -24,48 +24,42 @@ function SectionPrototype({ lang, setLang, isMobile }) {
     setEntryId(p?.defaultEntry || null);
   }, [productId]);
 
-  const isLive = product?.status === 'live';
-  const showDemo = isLive && entryId === 'demo';
-  const showPersona = isLive && entryId && entryId !== 'demo';
-
   const Tour = window.MalTour;
   const TourBtn = window.MalTourButton;
   const tourSteps = buildPrototypeTourSteps(isAr, entryId);
+
+  // Map product id → which prototype to mount. P1 = Smart Invoice (full).
+  // P2 = Healthcare Receivables (in-progress prototype, mounts but stays
+  // flagged 'in-progress' in the catalogue). Other products show ComingSoon.
+  const hasPrototype = productId === 'p1-smart-invoice' || productId === 'p2-healthcare-receivables';
+  const showProto = hasPrototype && entryId === 'demo';
 
   return (
     <div dir={isAr ? 'rtl' : 'ltr'} style={{
       position: 'relative', minHeight: 'calc(100vh - 56px)', background: 'var(--mal-surface)',
     }}>
-      <GroupedProductSelector
+      {/* Unified toolbar band at the top. All four controls live on one
+          row so phones never overlap with any of them. */}
+      <PrototypeToolbar
         catalogue={catalogue}
         productId={productId} entryId={entryId}
-        onPickProduct={setProductId} onPickEntry={setEntryId}
-        isAr={isAr} isMobile={isMobile} variant="floating"/>
+        setProductId={setProductId} setEntryId={setEntryId}
+        lang={lang} setLang={setLang}
+        showResetDemo={showProto}
+        showLangToggle={showProto}
+        onStartTour={TourBtn ? () => setTourOpen(true) : null}
+        isAr={isAr} isMobile={isMobile}
+      />
 
-      {TourBtn && (
-        <TourBtn lang={lang} onStart={() => setTourOpen(true)}
-                 style={{ position: 'fixed', top: 70, insetInlineStart: 18, zIndex: 65 }}/>
-      )}
-
-      {isLive && (
-        <ResetDemoButton lang={lang}
-                         style={{ position: 'fixed', top: 70, insetInlineStart: 140, zIndex: 65 }}/>
-      )}
-
-      {/* EN/AR toggle: only relevant while the phones are on screen.
-          Positioned below the Take-a-tour / Reset-demo row on the left
-          so it never overlaps with the product-catalogue dropdown on the right. */}
-      {isLive && setLang && (
-        <PrototypeLangToggle lang={lang} setLang={setLang}
-                             style={{ position: 'fixed', top: 112, insetInlineStart: 18, zIndex: 65 }}/>
-      )}
-
-      <div style={{ minHeight: 'calc(100vh - 56px)' }}>
-        {!isLive && <ComingSoon product={product} isAr={isAr}/>}
-        {showDemo && (
+      <div style={{ minHeight: 'calc(100vh - 56px)', paddingTop: 12 }}>
+        {!hasPrototype && <ComingSoon product={product} isAr={isAr}/>}
+        {showProto && productId === 'p1-smart-invoice' && (
           <DemoMode embedded lang={lang} setLang={() => {}} isMobile={isMobile} onExit={() => {}}/>
         )}
-        {showPersona && (
+        {showProto && productId === 'p2-healthcare-receivables' && window.HealthcareDemo && (
+          <window.HealthcareDemo lang={lang} isMobile={isMobile}/>
+        )}
+        {hasPrototype && entryId && entryId !== 'demo' && (
           <PersonaMount persona={entryId} lang={lang} isMobile={isMobile}/>
         )}
       </div>
@@ -73,6 +67,45 @@ function SectionPrototype({ lang, setLang, isMobile }) {
       {Tour && tourOpen && (
         <Tour steps={tourSteps} onClose={() => setTourOpen(false)} isOpen={tourOpen} lang={lang}/>
       )}
+    </div>
+  );
+}
+
+// ============================================================
+// PrototypeToolbar. A single horizontal band that holds every
+// prototype-level control on one row. Tour · Reset · EN/AR on the
+// left; product dropdown on the right.
+// ============================================================
+function PrototypeToolbar({
+  catalogue, productId, entryId, setProductId, setEntryId,
+  lang, setLang, showResetDemo, showLangToggle, onStartTour, isAr, isMobile,
+}) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      gap: 10, flexWrap: 'wrap',
+      padding: isMobile ? '10px 14px' : '14px 22px',
+      background: 'var(--mal-paper)',
+      borderBottom: '1px solid var(--mal-line)',
+      position: 'sticky', top: 0, zIndex: 60,
+    }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {onStartTour && (
+          <button onClick={onStartTour} className="mal-pill-btn">
+            <span>{isAr ? 'خذ جولة' : 'Take a tour'}</span>
+            <span style={{ transform: isAr ? 'scaleX(-1)' : 'none', display: 'inline-flex' }}>→</span>
+          </button>
+        )}
+        {showResetDemo && <ResetDemoButton lang={lang}/>}
+        {showLangToggle && setLang && <PrototypeLangToggle lang={lang} setLang={setLang}/>}
+      </div>
+      <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+        <GroupedProductSelector
+          catalogue={catalogue}
+          productId={productId} entryId={entryId}
+          onPickProduct={setProductId} onPickEntry={setEntryId}
+          isAr={isAr} isMobile={isMobile} variant="inline"/>
+      </div>
     </div>
   );
 }
