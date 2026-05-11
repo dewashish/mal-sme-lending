@@ -531,7 +531,6 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile, embedded = false }) 
       <DemoStage scenario={scenario} setScenario={setScenario} patch={patch}
                  phase={phase} setPhase={setPhase} setSimDay={setSimDay} stepDay={stepDay}
                  lang={lang} isMobile={isMobile}/>
-      <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan}/>
     </div>
   );
 }
@@ -662,11 +661,16 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
         </DemoPanel>
 
         {/* CENTRAL COLUMN: in live phase shows the CircularDayDial; otherwise
-            shows the iridescent sync-flow indicator we already had. */}
+            shows the iridescent sync-flow indicator we already had.
+            The footer hint sits below the central widget so users see the
+            usage tip between the two phone frames, not buried under them. */}
         {!stack && (
-          phase === 'live'
-            ? <DemoCenterColumnLive scenario={scenario} setSimDay={setSimDay} stepDay={stepDay} setPhase={setPhase} patch={patch} lang={lang}/>
-            : <SyncIndicatorNarrative phase={phase} lang={lang}/>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, alignItems: 'center' }}>
+            {phase === 'live'
+              ? <DemoCenterColumnLive scenario={scenario} setSimDay={setSimDay} stepDay={stepDay} setPhase={setPhase} patch={patch} lang={lang}/>
+              : <SyncIndicatorNarrative phase={phase} lang={lang}/>}
+            <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan}/>
+          </div>
         )}
 
         <DemoPanel side="supplier" title="Supplier SME" sub="Marwan · Atlas Packaging FZ" tone="sky"
@@ -3150,18 +3154,18 @@ function DemoFooterHint({ phase, lang, simDay, plan }) {
   const isAr = lang === 'ar';
   return (
     <div style={{
-      maxWidth: 880, marginInline: 'auto', textAlign: 'center',
-      padding: '0 22px', color: 'var(--mal-mid)', fontSize: 12, lineHeight: 1.6,
+      maxWidth: 280, marginInline: 'auto', textAlign: 'center',
+      padding: '6px 10px', color: 'var(--mal-mid)', fontSize: 11, lineHeight: 1.5,
     }}>
       {phase === 'live' && (
         isAr
-          ? '🎮 اسحب الزرّ على الدائرة في الوسط لتحريك التاريخ. اضغط «ادفع» على كل قسط على لوحة المشتري، إذا لم تدفع وانتقلت لتاريخ لاحق، يظهر التعثّر تلقائيّاً.'
-          : '🎮 Drag the handle on the central dial to move the date. Click "Pay" on each EMI in the buyer panel. Skip a Pay and scrub forward to see the overdue / collections stages emerge automatically.'
+          ? '🎮 اسحب الدائرة لتحريك التاريخ. اضغط «ادفع» على القسط، أو تخطَّ ليوم لاحق لرؤية التعثّر.'
+          : '🎮 Drag the dial to move the date. Click "Pay" on an EMI, or skip forward to see overdue stages emerge.'
       )}
       {phase !== 'live' && (
         isAr
-          ? '🎮 اضغط على المراحل في الجدول الزمني أعلاه للتنقّل بين الشاشات. عند الوصول لـ «حيّ · يوميّاً»، تظهر الدائرة في الوسط للتحكّم بالوقت.'
-          : '🎮 Click any phase pill above to navigate. When you reach "Live · Day-by-day", the central dial appears for time control.'
+          ? '🎮 اضغط على المراحل أعلاه للتنقّل. الدائرة تظهر عند «حيّ · يوميّاً».'
+          : '🎮 Click any phase pill above to navigate. The dial appears at "Live · Day-by-day".'
       )}
     </div>
   );
@@ -4035,6 +4039,9 @@ const ACTION_EXPLAINERS = {
 function ExplainerDock({ scenario, phase, lang, isMobile }) {
   const isAr = lang === 'ar';
   if (isMobile) return null;
+  // "What just happened" live narrator hidden per user request; keep code
+  // path intact so it can be re-enabled by flipping this flag.
+  const SHOW_LIVE_NARRATOR = false;
   const last = scenario.lastAction || { id: 'demo-loaded', day: scenario.simDay };
   const product = PRODUCT_EXPLAINER_P1;
   const builder = ACTION_EXPLAINERS[last.id] || ACTION_EXPLAINERS['demo-loaded'];
@@ -4042,8 +4049,11 @@ function ExplainerDock({ scenario, phase, lang, isMobile }) {
 
   return (
     <div style={{
-      maxWidth: 1080, margin: '0 auto', padding: '0 22px 30px',
-      display: 'grid', gridTemplateColumns: '0.4fr 0.6fr', gap: 14,
+      maxWidth: SHOW_LIVE_NARRATOR ? 1080 : 560,
+      margin: '0 auto', padding: '0 22px 30px',
+      display: SHOW_LIVE_NARRATOR ? 'grid' : 'block',
+      gridTemplateColumns: SHOW_LIVE_NARRATOR ? '0.4fr 0.6fr' : undefined,
+      gap: 14,
     }}>
       {/* LEFT. Product manifest */}
       <div style={{
@@ -4102,8 +4112,8 @@ function ExplainerDock({ scenario, phase, lang, isMobile }) {
         </div>
       </div>
 
-      {/* RIGHT. Live action narrator */}
-      <div key={last.id + '·' + last.day} style={{
+      {/* RIGHT. Live action narrator (hidden via SHOW_LIVE_NARRATOR flag) */}
+      {SHOW_LIVE_NARRATOR && <div key={last.id + '·' + last.day} style={{
         padding: 16, borderRadius: 16,
         background: 'var(--mal-paper)',
         border: '1px solid var(--mal-line)',
@@ -4154,7 +4164,7 @@ function ExplainerDock({ scenario, phase, lang, isMobile }) {
             </div>
           ))}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
