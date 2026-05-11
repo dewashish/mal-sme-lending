@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Section 4 — AI Initiatives
+// Section 4. AI Initiatives
 // Mal-specific AI architecture, surfaced from Strategy Appendix B
 // (the 20-agent swarm) + Appendix C (decision engine, early-warning
 // system, AI-driven collections). All diagrams are interactive
@@ -65,7 +65,7 @@ const ALL_AGENTS = AGENT_DOMAINS.flatMap((d) => d.agents.map((a) => ({ ...a, dom
 const AGENT_BY_ID = Object.fromEntries(ALL_AGENTS.map((a) => [a.id, a]));
 
 // ============================================================
-// Top-level — long-form scroll, mirrors Strategy section style
+// Top-level. Long-form scroll, mirrors Strategy section style
 // ============================================================
 const AI_TOC = [
   { id: 'aiHero',       label: 'Overview' },
@@ -99,12 +99,12 @@ const LIFECYCLE_STAGES_DATA = [
     stage: 'Acquisition',
     badge: '01',
     tone: '#1f54c8',
-    summary: 'Find SMEs likely to qualify and convert — before they raise their hand.',
+    summary: 'Find SMEs likely to qualify and convert. Before they raise their hand.',
     cases: [
       {
         useCase: 'Pre-qualification scoring',
         family: 'scoring',
-        approach: 'Score every operating-account holder weekly on revenue trend, balance, delinquency, days-since-last-overdraft and bureau (where available). Push an in-app "you may be eligible" notification — soft pull, no commitment.',
+        approach: 'Score every operating-account holder weekly on revenue trend, balance, delinquency, days-since-last-overdraft and bureau (where available). Push an in-app "you may be eligible" notification. Soft pull, no commitment.',
         kpis: ['Notification CTR', 'Soft-pull → application rate', 'Cost per qualified lead'],
         success: '≥ 12% CTR · ≥ 25% pre-qual → application · CAC < AED 350',
         method: 'LightGBM on transaction features · weekly batch · SHAP attribution',
@@ -132,7 +132,7 @@ const LIFECYCLE_STAGES_DATA = [
     stage: 'Onboarding',
     badge: '02',
     tone: '#5a3aa3',
-    summary: 'Onboard fast and clean — extract every signal, verify identity, build the cashflow picture.',
+    summary: 'Onboard fast and clean. Extract every signal, verify identity, build the cashflow picture.',
     cases: [
       {
         useCase: 'Document reader (OCR + extraction)',
@@ -181,7 +181,7 @@ const LIFECYCLE_STAGES_DATA = [
     stage: 'Underwriting',
     badge: '03',
     tone: '#b06a14',
-    summary: 'Decide quickly, fairly and explainably — with the right limit and the right price for each customer.',
+    summary: 'Decide quickly, fairly and explainably. With the right limit and the right price for each customer.',
     cases: [
       {
         useCase: 'Probability of default (PD)',
@@ -238,7 +238,7 @@ const LIFECYCLE_STAGES_DATA = [
     stage: 'Disbursement',
     badge: '04',
     tone: '#0a8056',
-    summary: 'Release cash safely — verify the beneficiary, screen the transaction, route the rails.',
+    summary: 'Release cash safely. Verify the beneficiary, screen the transaction, route the rails.',
     cases: [
       {
         useCase: 'Beneficiary verification',
@@ -271,12 +271,12 @@ const LIFECYCLE_STAGES_DATA = [
     stage: 'Servicing · in-life',
     badge: '05',
     tone: '#5a3aa3',
-    summary: 'Keep the customer healthy and informed — anticipate questions, spot anomalies, save time.',
+    summary: 'Keep the customer healthy and informed. Anticipate questions, spot anomalies, save time.',
     cases: [
       {
         useCase: 'Cashflow forecaster',
         family: 'scoring',
-        approach: 'Forecast inflows and outflows for the next 30 / 60 / 90 days at the customer level. Drives proactive nudges ("you have a tight week — top up the limit?").',
+        approach: 'Forecast inflows and outflows for the next 30 / 60 / 90 days at the customer level. Drives proactive nudges ("you have a tight week. Top up the limit?").',
         kpis: ['MAPE (mean absolute percentage error)', 'Customer engagement with nudges', 'Avoided-overdraft rate'],
         success: 'MAPE ≤ 12% · ≥ 35% nudge engagement',
         method: 'Temporal Fusion Transformer + customer-level baseline · daily refresh',
@@ -292,7 +292,7 @@ const LIFECYCLE_STAGES_DATA = [
       {
         useCase: 'Customer copilot (in-app)',
         family: 'conversational',
-        approach: 'Bilingual (Ar/En) LLM grounded on the customer\'s own contract, schedule, statement and FAQ. Answers status questions, explains charges, drafts requests — never invents policy.',
+        approach: 'Bilingual (Ar/En) LLM grounded on the customer\'s own contract, schedule, statement and FAQ. Answers status questions, explains charges, drafts requests. Never invents policy.',
         kpis: ['Containment rate', 'CSAT', 'Hallucination rate (audited)'],
         success: 'Containment ≥ 65% · CSAT ≥ 4.4 / 5 · hallucination ≤ 0.5% (sampled)',
         method: 'Retrieval-augmented LLM with policy grounding · response-quality eval set + ongoing red-teaming',
@@ -312,7 +312,7 @@ const LIFECYCLE_STAGES_DATA = [
     stage: 'Early warning',
     badge: '06',
     tone: '#b8364b',
-    summary: 'Catch trouble two weeks before it shows up in DPD — prevention is dramatically cheaper than collections.',
+    summary: 'Catch trouble two weeks before it shows up in DPD. Prevention is dramatically cheaper than collections.',
     cases: [
       {
         useCase: 'Stress / EWS scoring',
@@ -353,7 +353,7 @@ const LIFECYCLE_STAGES_DATA = [
     stage: 'Repayment & collections',
     badge: '07',
     tone: '#b8364b',
-    summary: 'Pre-empt default; when contact is needed, do it the way the customer prefers — empathetic, well-timed, well-toned.',
+    summary: 'Pre-empt default; when contact is needed, do it the way the customer prefers. Empathetic, well-timed, well-toned.',
     cases: [
       {
         useCase: 'Intent-to-pay scoring',
@@ -410,7 +410,7 @@ const LIFECYCLE_STAGES_DATA = [
     stage: 'Upsell · cross-sell',
     badge: '08',
     tone: '#7c5fb8',
-    summary: 'Grow the relationship — top up limits for the right customers, recommend the next product, defend against churn.',
+    summary: 'Grow the relationship. Top up limits for the right customers, recommend the next product, defend against churn.',
     cases: [
       {
         useCase: 'Limit-uplift propensity',
@@ -439,7 +439,7 @@ const LIFECYCLE_STAGES_DATA = [
       {
         useCase: 'Churn / attrition risk',
         family: 'propensity',
-        approach: 'Predict 90-day attrition risk (account-closure or sharp utilisation drop). Triggers retention plays — RM call, fee-waiver offer, alternative product.',
+        approach: 'Predict 90-day attrition risk (account-closure or sharp utilisation drop). Triggers retention plays. RM call, fee-waiver offer, alternative product.',
         kpis: ['Churn lift in top-decile', 'Save-rate on retention plays', 'Net retention'],
         success: 'Top-decile lift ≥ 5× · save-rate ≥ 25% · net retention ≥ 90%',
         method: 'Survival model + uplift on retention treatments · quarterly campaign back-test',
@@ -448,7 +448,7 @@ const LIFECYCLE_STAGES_DATA = [
   },
 ];
 
-// Working prototype of the in-house decision-engine — credentials below.
+// Working prototype of the in-house decision-engine. Credentials below.
 const DECISION_ENGINE_PROTOTYPE = {
   url: 'https://dec-e.vercel.app/home',
   username: 'abc@xyz.com',
@@ -595,7 +595,7 @@ function AiHero({ refFn, isAr, isMobile }) {
 }
 
 // ============================================================
-// INVENTORY — clickable agent grid grouped by domain
+// INVENTORY. Clickable agent grid grouped by domain
 // ============================================================
 function AiInventory({ refFn, isAr, isMobile }) {
   const [openId, setOpenId] = aiS(null);
@@ -706,7 +706,7 @@ function DetailCell({ label, value }) {
 }
 
 // ============================================================
-// LIFECYCLE USE CASES — stage tabs · use-case table · coverage matrix
+// LIFECYCLE USE CASES. Stage tabs · use-case table · coverage matrix
 // ============================================================
 function AiLifecycle({ refFn, isAr, isMobile }) {
   const [activeIdx, setActiveIdx] = aiS(0);
@@ -720,7 +720,7 @@ function AiLifecycle({ refFn, isAr, isMobile }) {
       <AiP>
         {isAr
           ? `${totalCases} حالة استخدام عبر ٨ مراحل: من الاكتساب إلى البيع المتقاطع. لكل حالة: ما المشكلة، كيف نحلها، أيّ مؤشرات نقيس، ما هو النجاح، وأيّ منهجية نستخدم.`
-          : `${totalCases} use cases mapped across 8 lifecycle stages — from acquisition to cross-sell. For every case: what we're solving, how we'd tackle it, what to measure, what success looks like, and the methodology behind it.`}
+          : `${totalCases} use cases mapped across 8 lifecycle stages. From acquisition to cross-sell. For every case: what we're solving, how we'd tackle it, what to measure, what success looks like, and the methodology behind it.`}
       </AiP>
 
       {/* Stage chip ribbon */}
@@ -765,10 +765,10 @@ function AiLifecycle({ refFn, isAr, isMobile }) {
         marginBottom: 14,
         fontSize: 13.5, color: 'var(--mal-ink-1)', lineHeight: 1.55,
       }}>
-        <strong style={{ color: stage.tone }}>{stage.stage}</strong> — {stage.summary}
+        <strong style={{ color: stage.tone }}>{stage.stage}</strong>. {stage.summary}
       </div>
 
-      {/* Use cases — table on desktop, stacked cards on mobile */}
+      {/* Use cases. Table on desktop, stacked cards on mobile */}
       {isMobile
         ? <UseCaseStack stage={stage}/>
         : <UseCaseTable stage={stage}/>}
@@ -1002,7 +1002,7 @@ function CoverageMatrix({ data, isMobile }) {
 }
 
 // ============================================================
-// ARCHITECTURE — five-layer SVG diagram
+// ARCHITECTURE. Five-layer SVG diagram
 // ============================================================
 function AiArchitecture({ refFn, isAr, isMobile }) {
   const layers = [
@@ -1056,7 +1056,7 @@ function AiArchitecture({ refFn, isAr, isMobile }) {
 }
 
 // ============================================================
-// DECISION ENGINE — animated 5-step flow
+// DECISION ENGINE. Animated 5-step flow
 // ============================================================
 function AiDecisionEngine({ refFn, isAr, isMobile }) {
   const steps = [
@@ -1081,7 +1081,7 @@ function AiDecisionEngine({ refFn, isAr, isMobile }) {
       <AiP>
         {isAr
           ? 'مدير المخاطر يرى كل خطوة. يستطيع التدخل، التراجع، أو تعديل الميزات وإعادة التشغيل.'
-          : 'A risk manager can pause at any step, replay the agent trace, override a feature, and re-run — every action is hashed into the audit ledger.'}
+          : 'A risk manager can pause at any step, replay the agent trace, override a feature, and re-run. Every action is hashed into the audit ledger.'}
       </AiP>
 
       <DecisionPrototypeCta isAr={isAr} isMobile={isMobile}/>
@@ -1189,7 +1189,7 @@ function AiDecisionEngine({ refFn, isAr, isMobile }) {
 }
 
 // ============================================================
-// EWS — interactive 32-feature score visualizer
+// EWS. Interactive 32-feature score visualizer
 // ============================================================
 function AiEws({ refFn, isAr, isMobile }) {
   // 6 leverage features the analyst can scrub
@@ -1226,8 +1226,8 @@ function AiEws({ refFn, isAr, isMobile }) {
       title={isAr ? 'يلتقط الضائقة قبل التعثر بأسبوعين.' : 'Catches distress two weeks before default.'}>
       <AiP>
         {isAr
-          ? 'يربط EWS خمس فئات من إشارات الضائقة — مالية، مصرفية، تشغيلية، سلوكية، وكلية — في درجة واحدة، ثم يفعّل سُلم تدخل واضح. الهدف هو الوقاية، لا العلاج.'
-          : 'EWS fuses five families of distress signals — Financial, Banking, Operational, Behavioural, and Macroeconomic — into a single score, then triggers a clear action ladder. Prevention beats cure: catching trouble two weeks before it shows up in DPD is dramatically cheaper than collecting on it.'}
+          ? 'يربط EWS خمس فئات من إشارات الضائقة، مالية، مصرفية، تشغيلية، سلوكية، وكلية، في درجة واحدة، ثم يفعّل سُلم تدخل واضح. الهدف هو الوقاية، لا العلاج.'
+          : 'EWS fuses five families of distress signals. Financial, Banking, Operational, Behavioural, and Macroeconomic. Into a single score, then triggers a clear action ladder. Prevention beats cure: catching trouble two weeks before it shows up in DPD is dramatically cheaper than collecting on it.'}
       </AiP>
 
       <EwsFlowDiagram isAr={isAr} isMobile={isMobile}/>
@@ -1235,7 +1235,7 @@ function AiEws({ refFn, isAr, isMobile }) {
       <AiSub>{isAr ? 'جرّب النموذج' : 'Feel the model'}</AiSub>
       <AiP>
         {isAr
-          ? 'حرّك أي إشارة لرؤية كيف تتغير الدرجة. يستهلك الإصدار الإنتاجي ٣٢ ميزة — هنا ست منها كعينة.'
+          ? 'حرّك أي إشارة لرؤية كيف تتغير الدرجة. يستهلك الإصدار الإنتاجي ٣٢ ميزة، هنا ست منها كعينة.'
           : 'Drag any of the levers below to see how the live score moves. Production EWS consumes 32 features; six representative ones are exposed here.'}
       </AiP>
 
@@ -1310,17 +1310,17 @@ function AiEws({ refFn, isAr, isMobile }) {
 function clampN(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 // ============================================================
-// COLLECTIONS — bilingual AI dialer + outcome funnel
+// COLLECTIONS. Bilingual AI dialer + outcome funnel
 // ============================================================
 function AiCollections({ refFn, isAr, isMobile }) {
   return (
     <AiSectionWrapper id="aiCollect" refFn={refFn}
       eyebrow={isAr ? 'التحصيل الذكي' : 'AI collections'}
-      title={isAr ? 'حوارات تتعاطف، لا تطارد.' : 'Conversations that empathise — not chase.'}>
+      title={isAr ? 'حوارات تتعاطف، لا تطارد.' : 'Conversations that empathise، not chase.'}>
       <AiP>
         {isAr
-          ? 'لا نتبع جدولة خطية ثابتة (يوم ٣، يوم ٧، يوم ١٤). المدخلات السلوكية، بيانات القرض، وملف العميل تغذّي نموذج التحصيل الذي يولّد توصية — أفضل قناة، أفضل وقت، أفضل نبرة — ثم تُنفّذ كحملة. حلقة التغذية الراجعة تدخل سجل الإجراءات لإعادة ضبط النموذج باستمرار.'
-          : 'No linear day-3 / day-7 / day-14 cadence. Behavioural, loan-info, and profile signals feed a collection model that emits a personalised recommendation — best channel, best time-slot, best message tone — which is executed as a campaign. Whether the action worked or not is logged and feeds back to retune the model.'}
+          ? 'لا نتبع جدولة خطية ثابتة (يوم ٣، يوم ٧، يوم ١٤). المدخلات السلوكية، بيانات القرض، وملف العميل تغذّي نموذج التحصيل الذي يولّد توصية، أفضل قناة، أفضل وقت، أفضل نبرة، ثم تُنفّذ كحملة. حلقة التغذية الراجعة تدخل سجل الإجراءات لإعادة ضبط النموذج باستمرار.'
+          : 'No linear day-3 / day-7 / day-14 cadence. Behavioural, loan-info, and profile signals feed a collection model that emits a personalised recommendation. Best channel, best time-slot, best message tone. Which is executed as a campaign. Whether the action worked or not is logged and feeds back to retune the model.'}
       </AiP>
 
       <CollectionsFlowDiagram isAr={isAr} isMobile={isMobile}/>
@@ -1364,12 +1364,12 @@ function AiCollections({ refFn, isAr, isMobile }) {
           <Bubble who="ai">
             {isAr
               ? 'مساء الخير، أتصل من مال بشأن قسط فاتورة #١٢٩٤. هل لديك دقيقة؟'
-              : 'Hi, this is Mal calling about the EMI on invoice #1294 — got 60 seconds?'}
+              : 'Hi, this is Mal calling about the EMI on invoice #1294. Got 60 seconds?'}
           </Bubble>
           <Bubble who="customer">
             {isAr
               ? 'نعم، الفاتورة عند العميل، تأخر التحويل أربعة أيام.'
-              : 'Yes — buyer just delayed the wire by four days, money should land Friday.'}
+              : 'Yes، buyer just delayed the wire by four days, money should land Friday.'}
           </Bubble>
           <Bubble who="ai">
             {isAr
@@ -1433,7 +1433,7 @@ function Bubble({ who, children }) {
 }
 
 // ============================================================
-// DECISION ENGINE — live prototype CTA
+// DECISION ENGINE. Live prototype CTA
 // ============================================================
 function DecisionPrototypeCta({ isAr, isMobile }) {
   const cfg = DECISION_ENGINE_PROTOTYPE;
@@ -1498,7 +1498,7 @@ function DecisionPrototypeCta({ isAr, isMobile }) {
           }}>
             {isAr
               ? 'بنينا واجهة منخفضة الكود حيث يضيف فريق المخاطر القواعد، يضبط البوابات، ويعدل السياسة دون الاعتماد على الهندسة. طبقة قواعد حتمية + طبقة تسجيل ذكي + محرك العروض.'
-              : 'We built the in-house low-code / drag-and-drop interface where the risk team adds rules, tunes policy gates, and ships scoring criteria without an engineering hand-off. Deterministic rule layer + AI scoring layer + offer engine — manageable day-to-day by risk.'}
+              : 'We built the in-house low-code / drag-and-drop interface where the risk team adds rules, tunes policy gates, and ships scoring criteria without an engineering hand-off. Deterministic rule layer + AI scoring layer + offer engine. Manageable day-to-day by risk.'}
           </p>
           <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <a href={cfg.url} target="_blank" rel="noopener noreferrer"
@@ -1592,7 +1592,7 @@ function CredentialRow({ label, value, onCopy, copied, isAr, mono }) {
 }
 
 // ============================================================
-// DYNAMIC PRICING — diagram + linear equation
+// DYNAMIC PRICING. Diagram + linear equation
 // ============================================================
 function AiPricing({ refFn, isAr, isMobile }) {
   const dataLake = [
@@ -1626,11 +1626,11 @@ function AiPricing({ refFn, isAr, isMobile }) {
   return (
     <AiSectionWrapper id="aiPricing" refFn={refFn}
       eyebrow={isAr ? 'التسعير الديناميكي' : 'Dynamic pricing'}
-      title={isAr ? 'لكل عميل سعر يستحقه — لا تسعير ثابت.' : 'Risk-based pricing — never a flat APR.'}>
+      title={isAr ? 'لكل عميل سعر يستحقه، لا تسعير ثابت.' : 'Risk-based pricing، never a flat APR.'}>
       <AiP>
         {isAr
-          ? 'الهدف ليس انتزاع أعلى هامش — بل العرض الصحيح للعميل الصحيح. مدخلات الجهاز والملف الشخصي و LMS، إلى جانب البيانات الحية من KYC و LOS والمكتب الائتماني، تغذي ثلاث وحدات تسعير: الوفرة، المخاطر، الحساسية. الناتج يمر بسقف وحدّ أدنى محكومين بسياسة المحفظة.'
-          : 'The goal is not to extract maximum margin — it is to give the right offer to the right customer. Device, profile, and LMS context, alongside live KYC, LOS, and Bureau data, feed three pricing modules — Affluence, Risk, Sensitivity. The output passes through portfolio-level governance (floor and cap) before it reaches the customer.'}
+          ? 'الهدف ليس انتزاع أعلى هامش، بل العرض الصحيح للعميل الصحيح. مدخلات الجهاز والملف الشخصي و LMS، إلى جانب البيانات الحية من KYC و LOS والمكتب الائتماني، تغذي ثلاث وحدات تسعير: الوفرة، المخاطر، الحساسية. الناتج يمر بسقف وحدّ أدنى محكومين بسياسة المحفظة.'
+          : 'The goal is not to extract maximum margin. It is to give the right offer to the right customer. Device, profile, and LMS context, alongside live KYC, LOS, and Bureau data, feed three pricing modules. Affluence, Risk, Sensitivity. The output passes through portfolio-level governance (floor and cap) before it reaches the customer.'}
       </AiP>
 
       {/* Diagram */}
@@ -1822,7 +1822,7 @@ function AiPricing({ refFn, isAr, isMobile }) {
         </div>
       </div>
 
-      {/* Tier band table — mirrors the PDF */}
+      {/* Tier band table. Mirrors the PDF */}
       <AiSub>{isAr ? 'نطاقات السعر حسب الفئة' : 'Risk-tier pricing bands'}</AiSub>
       <div style={{
         background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
@@ -1895,7 +1895,7 @@ function DataPanel({ title, chips, tone }) {
 }
 
 // ============================================================
-// EWS event-flow diagram — 5 categories → score → action ladder
+// EWS event-flow diagram. 5 categories → score → action ladder
 // ============================================================
 function EwsFlowDiagram({ isAr, isMobile }) {
   const cats = [
@@ -2058,7 +2058,7 @@ function EwsFlowDiagram({ isAr, isMobile }) {
 }
 
 // ============================================================
-// COLLECTIONS — AI flow diagram
+// COLLECTIONS. AI flow diagram
 // ============================================================
 function CollectionsFlowDiagram({ isAr, isMobile }) {
   const inputs = [
@@ -2245,8 +2245,8 @@ function AiRoadmap({ refFn, isAr }) {
         </div>
         <div style={{ fontSize: 13, marginTop: 8, lineHeight: 1.6, maxWidth: 600 }}>
           {isAr
-            ? 'كل وكيل قابل للقياس، الإلغاء، والمراجعة. لا توجد صناديق سوداء — فقط قرارات قابلة للتفسير، تحت إشراف بشري متى لزم.'
-            : 'Every agent is measurable, overridable, and replayable. No black boxes — just explainable decisions, with humans in the loop wherever the risk merits it.'}
+            ? 'كل وكيل قابل للقياس، الإلغاء، والمراجعة. لا توجد صناديق سوداء، فقط قرارات قابلة للتفسير، تحت إشراف بشري متى لزم.'
+            : 'Every agent is measurable, overridable, and replayable. No black boxes. Just explainable decisions, with humans in the loop wherever the risk merits it.'}
         </div>
       </div>
     </AiSectionWrapper>

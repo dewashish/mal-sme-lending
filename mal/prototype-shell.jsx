@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Mal SME Lending — Prototype shell.
+// Mal SME Lending. Prototype shell.
 // Persona switcher + lifecycle router. Renders selected persona's flow inside
 // a chrome that matches the active viewport (mobile / desktop) and lang/theme.
 const { useState, useEffect, useMemo, useRef, useCallback: useCB } = React;
@@ -147,7 +147,7 @@ function PersonaApp({ persona, route, setRoute, lang, viewport }) {
 }
 
 // ============================================================
-// Shared chrome — mobile / desktop nav
+// Shared chrome. Mobile / desktop nav
 // ============================================================
 function MobileTopBar({ title, subtitle, onBack, right, transparent }) {
   return (

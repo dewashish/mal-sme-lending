@@ -1,13 +1,13 @@
-# Mal — UAE SME Lending Prototype
+# Mal. UAE SME Lending Prototype
 
 A clickable, browser-based prototype of **Mal**, a UAE SME lending platform. Three products (Smart Invoice + Term Extension, Healthcare Receivables, Anchor SCF) across **six personas**:
 
-- **Buyer SME** — limit reveal, 5-plan repayment picker, term extension flow
-- **Supplier SME** — instant invoice financing inbox
-- **Healthcare Provider — Ops** — claims advance + reconciliation
-- **Healthcare Provider — Coder** — predictive rejection scoring + fix queue
-- **Anchor — AP** — daily dynamic-discount auction admin
-- **Anchor — Supplier** — live auction bidding with countdown clock
+- **Buyer SME**. Limit reveal, 5-plan repayment picker, term extension flow
+- **Supplier SME**. Instant invoice financing inbox
+- **Healthcare Provider. Ops**. Claims advance + reconciliation
+- **Healthcare Provider. Coder**. Predictive rejection scoring + fix queue
+- **Anchor. AP**. Daily dynamic-discount auction admin
+- **Anchor. Supplier**. Live auction bidding with countdown clock
 
 EN + AR (RTL), light + dark, mobile + desktop.
 
@@ -24,7 +24,7 @@ npx serve . -l 3000
 python3 -m http.server 3000
 ```
 
-Open `http://localhost:3000`. The app loads React + Babel + Supabase from CDN — no build step.
+Open `http://localhost:3000`. The app loads React + Babel + Supabase from CDN. No build step.
 
 ## Persistence (Supabase, optional)
 
@@ -35,18 +35,18 @@ To wire up a fresh Supabase project, run [`supabase-schema.sql`](./supabase-sche
 If the network is unreachable, persistence falls back to in-memory; the app still works.
 
 State slices persisted:
-- `__persona`, `__lang` — last picked persona + language
-- `buyerOnboarding` — onboarding form fields
-- `buyerLimit`, `buyerPlans`, `termExtensions` — buyer commitments
-- `supplierAccepts` — accepted invoice offers
-- `anchorBids` — auction bids
-- `hcCoderFixes` — claim coding fixes
+- `__persona`, `__lang`. Last picked persona + language
+- `buyerOnboarding`. Onboarding form fields
+- `buyerLimit`, `buyerPlans`, `termExtensions`. Buyer commitments
+- `supplierAccepts`. Accepted invoice offers
+- `anchorBids`. Auction bids
+- `hcCoderFixes`. Claim coding fixes
 
 ## Project layout
 
 ```
 mal-sme-lending/
-├── index.html              # Entry — landing → picker → app
+├── index.html              # Entry. Landing → picker → app
 ├── mal/
 │   ├── tokens.css          # Design tokens (colors, type, motion)
 │   ├── i18n.js             # EN/AR strings
@@ -69,8 +69,8 @@ mal-sme-lending/
 
 ## Deployment
 
-Pushed to `https://github.com/dewashish/mal-sme-lending`. Connect the repo on [vercel.com/new](https://vercel.com/new) — it auto-detects a static site (no build command). Each push to `main` deploys.
+Pushed to `https://github.com/dewashish/mal-sme-lending`. Connect the repo on [vercel.com/new](https://vercel.com/new). It auto-detects a static site (no build command). Each push to `main` deploys.
 
 ## Provenance
 
-Built from the Claude-Design handoff bundle for *Mal — SME Lending* (May 2026). The strategy doc that informed the screens is `SME_Lending_Head_of_Product_Strategy.docx`. The prototype runs the design files **verbatim** under a custom entry shell — see `index.html`.
+Built from the Claude-Design handoff bundle for *Mal. SME Lending* (May 2026). The strategy doc that informed the screens is `SME_Lending_Head_of_Product_Strategy.docx`. The prototype runs the design files **verbatim** under a custom entry shell. See `index.html`.

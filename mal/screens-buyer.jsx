@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Mal — All persona screens. Compact, hi-fi, bilingual-aware.
+// Mal. All persona screens. Compact, hi-fi, bilingual-aware.
 // Each persona exports an *App that takes (route, setRoute, lang, viewport).
 const { useState: uS, useEffect: uE, useMemo: uM } = React;
 
@@ -178,7 +178,7 @@ function BuyerOnboarding({ lang, onDone, desktop }) {
           ))}
         </div>
         <div style={{ fontSize: 12, color: 'var(--mal-mid)' }}>
-          {lang === 'ar' ? 'بيانات ١٢ شهراً للمراجعة فقط — لن نستطيع التحويل.' : '12-mo statements, read-only. We can\'t move money without your sign-off.'}
+          {lang === 'ar' ? 'بيانات ١٢ شهراً للمراجعة فقط، لن نستطيع التحويل.' : '12-mo statements, read-only. We can\'t move money without your sign-off.'}
         </div>
       </Card>}
       {step === 3 && <Card padded style={{ textAlign: 'center', padding: 36 }}>
@@ -351,7 +351,7 @@ const PLANS = (lang) => [
   { id: 'b30', label: 'BNPL 30', sub: lang === 'ar' ? 'سدّد بعد ٣٠ يوماً' : 'Settle in 30 days', fee: 1.2, total: 253000, schedule: lang === 'ar' ? 'دفعة ٣٠ يوم' : 'One payment, 30d', tag: '+1.2%', tone: 'lilac' },
   { id: 'b60', label: 'BNPL 60', sub: lang === 'ar' ? 'سدّد بعد ٦٠ يوماً' : 'Settle in 60 days', fee: 2.2, total: 255500, schedule: lang === 'ar' ? 'دفعة ٦٠ يوم' : 'One payment, 60d', tag: '+2.2%', tone: 'lilac' },
   { id: 'b90', label: 'BNPL 90', sub: lang === 'ar' ? 'سدّد بعد ٩٠ يوماً' : 'Settle in 90 days', fee: 3.0, total: 257500, schedule: lang === 'ar' ? 'دفعة ٩٠ يوم' : 'One payment, 90d', tag: '+3.0%', tone: 'lilac' },
-  { id: 'inst4', label: lang === 'ar' ? 'أقساط — ٤ شهور' : 'Installments — 4 months', sub: lang === 'ar' ? 'دفعة شهرية ٦٤٬٧٥٠ د.إ' : 'AED 64,750 / month × 4', fee: 4.4, total: 259000, schedule: '4 × monthly', tag: lang === 'ar' ? 'حصري' : 'Mal exclusive', tone: 'coral', highlight: true },
+  { id: 'inst4', label: lang === 'ar' ? 'أقساط، ٤ شهور' : 'Installments، 4 months', sub: lang === 'ar' ? 'دفعة شهرية ٦٤٬٧٥٠ د.إ' : 'AED 64,750 / month × 4', fee: 4.4, total: 259000, schedule: '4 × monthly', tag: lang === 'ar' ? 'حصري' : 'Mal exclusive', tone: 'coral', highlight: true },
 ];
 
 function BuyerPlanPicker({ lang, setRoute, viewport }) {
@@ -438,7 +438,7 @@ function BuyerConfirm({ lang, setRoute, viewport }) {
           {[
             [lang === 'ar' ? 'إلى' : 'To', 'Atlas Packaging FZ'],
             [lang === 'ar' ? 'فاتورة' : 'Invoice', 'INV-2026-0418'],
-            [lang === 'ar' ? 'الخطة' : 'Plan', lang === 'ar' ? 'أقساط — ٤ شهور' : 'Installments — 4 mo'],
+            [lang === 'ar' ? 'الخطة' : 'Plan', lang === 'ar' ? 'أقساط، ٤ شهور' : 'Installments، 4 mo'],
             [lang === 'ar' ? 'الإجمالي' : 'Total', 'AED 259,000'],
             [lang === 'ar' ? 'الخصم البنكي' : 'Direct debit', 'ENBD ****4291'],
           ].map((r, i) => (

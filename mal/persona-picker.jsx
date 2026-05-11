@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Mal — Persona picker.
+// Mal. Persona picker.
 // Shown after the user clicks "Get started" / "Open an account" on the landing.
 // Six cards in a 2x3 grid (single-column on mobile). Hover-lifts.
 // Uses existing primitives: Card, Avatar, Button, Pill, MalLogo, IconBtn.
@@ -13,32 +13,32 @@ const PERSONA_DETAILS = [
   },
   {
     id: 'supplier',
-    en: { title: 'Supplier SME', desc: 'Get paid in 4 hours. CC us on any invoice — wire lands in your bank.', cta: 'Enter as Supplier', sample: 'Sample: 12 offers · AED 339K available' },
+    en: { title: 'Supplier SME', desc: 'Get paid in 4 hours. CC us on any invoice. Wire lands in your bank.', cta: 'Enter as Supplier', sample: 'Sample: 12 offers · AED 339K available' },
     ar: { title: 'مورّد', desc: 'احصل على نقدك خلال 4 ساعات. أضفنا في نسخة أي فاتورة وسيصلك التحويل.', cta: 'الدخول كمورّد', sample: 'مثال: 12 عرضاً · 339 ألفاً' },
     tone: 'sky', icon: 'truck', product: 'Smart Invoice',
   },
   {
     id: 'hcops',
-    en: { title: 'Healthcare Provider — Ops', desc: 'Advance insurance claims same-day. DSO, batches, advance requests at a glance.', cta: 'Enter as HC Ops', sample: 'Sample: AED 2.3M eligible · 4 batches' },
-    ar: { title: 'مقدّم رعاية صحيّة — العمليات', desc: 'موّل مطالبات التأمين في يوم واحد. شاهد الدفعات والطلبات.', cta: 'الدخول كعمليات', sample: 'مثال: 2.3 مليون · 4 دفعات' },
+    en: { title: 'Healthcare Provider. Ops', desc: 'Advance insurance claims same-day. DSO, batches, advance requests at a glance.', cta: 'Enter as HC Ops', sample: 'Sample: AED 2.3M eligible · 4 batches' },
+    ar: { title: 'مقدّم رعاية صحيّة، العمليات', desc: 'موّل مطالبات التأمين في يوم واحد. شاهد الدفعات والطلبات.', cta: 'الدخول كعمليات', sample: 'مثال: 2.3 مليون · 4 دفعات' },
     tone: 'coral', icon: 'hospital', product: 'Claims Engine',
   },
   {
     id: 'hccoder',
-    en: { title: 'Healthcare Provider — Coder', desc: 'Pre-submission claim review with predictive rejection scores. Fix before you file.', cta: 'Enter as Coder', sample: 'Sample: 12 claims need review' },
-    ar: { title: 'مقدّم رعاية صحيّة — التكويد', desc: 'راجع المطالبات قبل التقديم مع نسب الرفض المتوقّعة.', cta: 'الدخول كمكوّد', sample: 'مثال: 12 مطالبة تحتاج مراجعة' },
+    en: { title: 'Healthcare Provider. Coder', desc: 'Pre-submission claim review with predictive rejection scores. Fix before you file.', cta: 'Enter as Coder', sample: 'Sample: 12 claims need review' },
+    ar: { title: 'مقدّم رعاية صحيّة، التكويد', desc: 'راجع المطالبات قبل التقديم مع نسب الرفض المتوقّعة.', cta: 'الدخول كمكوّد', sample: 'مثال: 12 مطالبة تحتاج مراجعة' },
     tone: 'peach', icon: 'shield', product: 'Claims Engine',
   },
   {
     id: 'anchorAP',
-    en: { title: 'Anchor — AP', desc: 'Run the daily dynamic-discount auction across your supplier panel.', cta: 'Enter as Anchor AP', sample: 'Sample: 487 suppliers · noon auction' },
-    ar: { title: 'الشركة الراسية — الحسابات الدائنة', desc: 'أَدِر مزاد الخصم اليومي عبر شبكة موردينك.', cta: 'الدخول كحسابات دائنة', sample: 'مثال: 487 مورّداً · مزاد ظهراً' },
+    en: { title: 'Anchor. AP', desc: 'Run the daily dynamic-discount auction across your supplier panel.', cta: 'Enter as Anchor AP', sample: 'Sample: 487 suppliers · noon auction' },
+    ar: { title: 'الشركة الراسية، الحسابات الدائنة', desc: 'أَدِر مزاد الخصم اليومي عبر شبكة موردينك.', cta: 'الدخول كحسابات دائنة', sample: 'مثال: 487 مورّداً · مزاد ظهراً' },
     tone: 'ink', icon: 'building', product: 'Anchor SCF',
   },
   {
     id: 'anchorSup',
-    en: { title: 'Anchor — Supplier', desc: 'Bid into the auction. Win the wire. Watch the rate clock.', cta: 'Enter as Anchor Supplier', sample: 'Sample: AED 1.28M payable · live bid' },
-    ar: { title: 'الشركة الراسية — مورّد', desc: 'قدّم عرضك في المزاد. اكسب التحويل. راقب الساعة.', cta: 'الدخول كمورّد راسٍ', sample: 'مثال: 1.28 مليون · عرض مباشر' },
+    en: { title: 'Anchor. Supplier', desc: 'Bid into the auction. Win the wire. Watch the rate clock.', cta: 'Enter as Anchor Supplier', sample: 'Sample: AED 1.28M payable · live bid' },
+    ar: { title: 'الشركة الراسية، مورّد', desc: 'قدّم عرضك في المزاد. اكسب التحويل. راقب الساعة.', cta: 'الدخول كمورّد راسٍ', sample: 'مثال: 1.28 مليون · عرض مباشر' },
     tone: 'lilac', icon: 'trade', product: 'Anchor SCF',
   },
 ];
@@ -101,11 +101,11 @@ function PersonaPicker({ lang = 'en', setLang, onPick, onBack, isMobile, onDemo 
           }}>
             {isAr
               ? 'اختر التجربة المناسبة لدورك. كل واحدة تطلق رحلة كاملة بأرقام واقعية، تنبيهات حيّة، ومحاكاة كاملة من البداية للنهاية.'
-              : 'Pick the experience that matches your role. Each one launches a full journey — realistic numbers, live signals, end-to-end simulation.'}
+              : 'Pick the experience that matches your role. Each one launches a full journey. Realistic numbers, live signals, end-to-end simulation.'}
           </p>
         </div>
 
-        {/* Demo Mode CTA — wide tile that spans the grid */}
+        {/* Demo Mode CTA. Wide tile that spans the grid */}
         <button onClick={onDemo} className="mal-persona-card mal-demo-tile" style={{
           marginTop: isMobile ? 32 : 48,
           width: '100%',
@@ -147,7 +147,7 @@ function PersonaPicker({ lang = 'en', setLang, onPick, onBack, isMobile, onDemo 
             </div>
             <div style={{ fontSize: 13, opacity: .85, marginTop: 6, maxWidth: 540 }}>
               {isAr
-                ? 'تشغيل تلقائي كامل: الإعداد، إصدار الفاتورة، اختيار الخطّة، وصول التحويل — كلّ ذلك بشاشتين متجاوبتين.'
+                ? 'تشغيل تلقائي كامل: الإعداد، إصدار الفاتورة، اختيار الخطّة، وصول التحويل، كلّ ذلك بشاشتين متجاوبتين.'
                 : 'Full autopilot: parallel onboarding → supplier issues an invoice → buyer picks a plan → wire lands. Two phones, one story.'}
             </div>
           </div>
@@ -275,7 +275,7 @@ function PersonaPicker({ lang = 'en', setLang, onPick, onBack, isMobile, onDemo 
         }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             {Ico.shield ? Ico.shield({ width: 14, height: 14 }) : null}
-            {isAr ? 'بيانات تجريبيّة فقط — لا توجد عمليّات حقيقيّة.' : 'Demo data only — no real money moves.'}
+            {isAr ? 'بيانات تجريبيّة فقط، لا توجد عمليّات حقيقيّة.' : 'Demo data only، no real money moves.'}
           </span>
           <span>·</span>
           <span>{isAr ? 'يمكنك تبديل الهويّة في أي وقت.' : 'Switch persona any time from the top bar.'}</span>

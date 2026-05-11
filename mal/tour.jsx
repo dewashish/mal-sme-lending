@@ -251,7 +251,7 @@ function MalTour({ steps, onClose, isOpen, lang = 'en' }) {
 }
 
 // ============================================================
-// TourButton — the "Take a tour" pill, top-right corner
+// TourButton. The "Take a tour" pill, top-right corner
 // ============================================================
 function TourButton({ onStart, lang = 'en', style }) {
   const isAr = lang === 'ar';

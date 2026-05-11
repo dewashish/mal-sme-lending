@@ -1,4 +1,4 @@
-// Mal — Demo-mode autopilot helpers.
+// Mal. Demo-mode autopilot helpers.
 // Tiny imperative helpers that return Promises, used by the scenario engine.
 // All speeds are in milliseconds at speed=1; the global speed multiplier
 // (set in DemoMode) is applied via wait().
@@ -12,7 +12,7 @@
     return new Promise((res) => setTimeout(res, ms / state.speed));
   }
 
-  // Typewrite into a setter — calls setter(partial) at each char.
+  // Typewrite into a setter. Calls setter(partial) at each char.
   // Returns a Promise that resolves when fully typed.
   function typewrite(setter, text, opts) {
     opts = opts || {};

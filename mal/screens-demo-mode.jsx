@@ -1,14 +1,14 @@
 /* eslint-disable */
-// Mal — Demo Mode (side-by-side dual panel + lifecycle simulator).
+// Mal. Demo Mode (side-by-side dual panel + lifecycle simulator).
 //
 // 100% manual. No autopilot, no scripted scenarios. Everything emerges from
 // what the user clicks: pay an EMI or don't, scrub time forward, and the
 // state derives from those actions.
 //
 // State model:
-//   simDay                — the simulated calendar day (0..200)
-//   paymentsByEmi         — { [emiNum]: { paidOnDay, withPenalty } }
-//   refinancedPaymentsByEmi — same shape, for EMIs of a refinanced plan
+//   simDay               . The simulated calendar day (0..200)
+//   paymentsByEmi        . { [emiNum]: { paidOnDay, withPenalty } }
+//   refinancedPaymentsByEmi. Same shape, for EMIs of a refinanced plan
 //
 // EMI status comes from these two facts: did the user pay this EMI before
 // scrubbing past its dueDay? If yes → paid. If no AND simDay > dueDay → overdue
@@ -96,7 +96,7 @@ const DEFAULT_SCENARIO = {
     amount: 250000,
     issuedAt: null,
     dueDate: '30 Oct 2026',
-    description: 'Industrial packaging — Q4 2026',
+    description: 'Industrial packaging. Q4 2026',
   },
 
   // Plan the buyer picked
@@ -155,11 +155,11 @@ const DEFAULT_SCENARIO = {
     },
   ],
 
-  // Most recent meaningful user action — drives the live ExplainerDock
+  // Most recent meaningful user action. Drives the live ExplainerDock
   // at the bottom of the stage. Shape: { id, day, extra }.
   lastAction: { id: 'demo-loaded', day: 0 },
 
-  // Consolidation / "Bundle into one EMI" — when set, replaces all active
+  // Consolidation / "Bundle into one EMI". When set, replaces all active
   // obligations (primary plan + extension + background loans) with a single
   // consolidated repayment schedule. Settled-by-bundle markers go on every
   // unpaid EMI of every original obligation.
@@ -179,10 +179,10 @@ const DEFAULT_SCENARIO = {
 };
 
 // ==================================================================
-// 2. Lifecycle helpers — pure, derive from (plan, simDay, paymentsByEmi)
+// 2. Lifecycle helpers. Pure, derive from (plan, simDay, paymentsByEmi)
 // ==================================================================
 
-// EMI status from paymentsByEmi + simDay — no scenario flag.
+// EMI status from paymentsByEmi + simDay. No scenario flag.
 function computeEmiStatuses(plan, simDay, paymentsByEmi) {
   if (!plan) return [];
   return plan.schedule.map((emi) => {
@@ -239,22 +239,22 @@ function relativeDayLabel(day, target, isAr) {
 function collectionsBanner(stage, dpd, isAr) {
   if (stage === 'soft') return {
     tone: 'warn',
-    title: isAr ? `Day ${dpd} متأخّر — ادفع الآن أو أعد الجدولة` : `Day ${dpd} overdue · pay now or reschedule`,
-    sub: isAr ? 'رسوم تأخير ٠٫٥٪ — لم تُبلَّغ AECB بعد' : '0.5% late fee · not yet reported to AECB',
+    title: isAr ? `Day ${dpd} متأخّر، ادفع الآن أو أعد الجدولة` : `Day ${dpd} overdue · pay now or reschedule`,
+    sub: isAr ? 'رسوم تأخير ٠٫٥٪، لم تُبلَّغ AECB بعد' : '0.5% late fee · not yet reported to AECB',
   };
   if (stage === 'tele-call') return {
     tone: 'danger',
-    title: isAr ? `Day ${dpd} — اتّصال من فريق التحصيل` : `Day ${dpd} · Tele-call from collections`,
+    title: isAr ? `Day ${dpd}، اتّصال من فريق التحصيل` : `Day ${dpd} · Tele-call from collections`,
     sub: isAr ? 'إعادة هيكلة متاحة · رسوم ٢٪' : 'Restructure available · 2% penalty',
   };
   if (stage === 'field') return {
     tone: 'danger',
-    title: isAr ? `Day ${dpd} — إخطار رسمي` : `Day ${dpd} · Field/notice stage`,
+    title: isAr ? `Day ${dpd}، إخطار رسمي` : `Day ${dpd} · Field/notice stage`,
     sub: isAr ? 'سيُبلّغ AECB خلال ٣ أيام' : 'AECB will be notified in 3 days',
   };
   return {
     tone: 'danger',
-    title: isAr ? `Day ${dpd} — إجراءات قانونية` : `Day ${dpd} · Legal stage`,
+    title: isAr ? `Day ${dpd}، إجراءات قانونية` : `Day ${dpd} · Legal stage`,
     sub: isAr ? 'تمّ إيداع شيك السدّاد · شركة استرداد مُعيَّنة' : 'Cheque deposited · recovery partner engaged',
   };
 }
@@ -311,7 +311,7 @@ function buildEvents(simDay, plan, paymentsByEmi, notifPrefs) {
 }
 
 // ------------------------------------------------------------------
-// Mid-loan refinance — "Convert remaining balance to a longer EMI"
+// Mid-loan refinance. "Convert remaining balance to a longer EMI"
 // ------------------------------------------------------------------
 
 function computeRemainingPrincipal(plan, simDay, paymentsByEmi) {
@@ -327,7 +327,7 @@ function canRefinanceNow(plan, simDay, paymentsByEmi, alreadyRefinanced) {
   const paid = statuses.filter((e) => e.status === 'paid').length;
   const remaining = statuses.length - paid;
   if (remaining < 1) return false;             // nothing left to refinance
-  // Distress windows — eligible regardless of plan size
+  // Distress windows. Eligible regardless of plan size
   const overdue = findOverdue(statuses);
   if (overdue && overdue.daysOverdue <= 4) return true;
   const next = findNextUpcoming(statuses);
@@ -444,7 +444,7 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile, embedded = false }) 
     const prev = lastSimDay.current;
     const curr = scenario.simDay;
     if (curr > prev) {
-      // Helper — fires the "now due" toast and DPD-stage toasts for any
+      // Helper. Fires the "now due" toast and DPD-stage toasts for any
       // schedule (plan, refinanced, extension). Whichever crosses first
       // wins the toast slot; we run plan first then extension so a single
       // forward scrub picks the most-relevant alert.
@@ -458,15 +458,15 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile, embedded = false }) 
           patch({
             buyerToast: {
               title: isAr
-                ? `${label} ${justBecameOverdue.num} مستحقّ — ادفع لتجنّب الرسوم`
-                : `${label} ${justBecameOverdue.num} now due — pay to avoid late fee`,
+                ? `${label} ${justBecameOverdue.num} مستحقّ، ادفع لتجنّب الرسوم`
+                : `${label} ${justBecameOverdue.num} now due. Pay to avoid late fee`,
               sub: `AED ${justBecameOverdue.amount.toLocaleString()} · ${formatSimDay(justBecameOverdue.dueDay)}`,
               icon: 'bolt', tone: 'iri',
             },
-            // Extension EMIs are buyer↔Mal — supplier already settled, so no toast there
+            // Extension EMIs are buyer↔Mal. Supplier already settled, so no toast there
             supplierToast: isExtension ? null : {
               title: isAr ? `مال يجمع من المشتري · إعلامي` : `Mal collecting · informational`,
-              sub: isAr ? `قسط ${justBecameOverdue.num} مستحقّ — تحويلك آمن` : `EMI ${justBecameOverdue.num} due · your wire is safe`,
+              sub: isAr ? `قسط ${justBecameOverdue.num} مستحقّ، تحويلك آمن` : `EMI ${justBecameOverdue.num} due · your wire is safe`,
               icon: 'info', tone: 'iri',
             },
           });
@@ -525,7 +525,7 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile, embedded = false }) 
                     reset={reset} phase={phase} isMobile={isMobile}/>
       )}
       {/* Mobile uses the top horizontal scroller; desktop uses the floating
-          left dotnav (position: fixed — does not consume layout space). */}
+          left dotnav (position: fixed. Does not consume layout space). */}
       {isMobile && <DemoTimelineHorizontal phase={phase} setPhase={setPhase} lang={lang}/>}
       {!isMobile && <DemoTimelineSidebar phase={phase} setPhase={setPhase} lang={lang}/>}
       <DemoStage scenario={scenario} setScenario={setScenario} patch={patch}
@@ -537,7 +537,7 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile, embedded = false }) 
 }
 
 // ==================================================================
-// 4. Top bar (simplified — no autopilot controls)
+// 4. Top bar (simplified. No autopilot controls)
 // ==================================================================
 
 function DemoTopBar({ lang, setLang, onExit, reset, phase, isMobile }) {
@@ -642,7 +642,7 @@ function DemoTimelineHorizontal({ phase, setPhase, lang }) {
 }
 
 // ==================================================================
-// 6. Stage — two phones + central column with the dialer
+// 6. Stage. Two phones + central column with the dialer
 // ==================================================================
 
 function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, stepDay, lang, isMobile }) {
@@ -675,7 +675,7 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
         </DemoPanel>
       </div>
 
-      {/* Live explainer dock — product overview + last-action narrator */}
+      {/* Live explainer dock. Product overview + last-action narrator */}
       <ExplainerDock scenario={scenario} phase={phase} lang={lang} isMobile={isMobile}/>
     </div>
   );
@@ -722,7 +722,7 @@ function SyncIndicatorNarrative({ phase, lang }) {
 }
 
 // ==================================================================
-// 7. CircularDayDial — drag/scrub time
+// 7. CircularDayDial. Drag/scrub time
 // ==================================================================
 
 function CircularDayDial({ simDay, setSimDay, plan, paymentsByEmi, lang, maxDay = 200 }) {
@@ -736,7 +736,7 @@ function CircularDayDial({ simDay, setSimDay, plan, paymentsByEmi, lang, maxDay 
   const handleX = cx + r * Math.cos(angleRad);
   const handleY = cy + r * Math.sin(angleRad);
 
-  // Stable mousedown handler — captures pointer movement until mouseup
+  // Stable mousedown handler. Captures pointer movement until mouseup
   const onPointerDown = dmCB((e) => {
     e.preventDefault();
     const rect = dialRef.current.getBoundingClientRect();
@@ -833,7 +833,7 @@ function CircularDayDial({ simDay, setSimDay, plan, paymentsByEmi, lang, maxDay 
         </g>
       </svg>
 
-      {/* Center day number — re-keyed so CSS animation snaps on each change */}
+      {/* Center day number. Re-keyed so CSS animation snaps on each change */}
       <div style={{
         position: 'absolute', top: 0, left: 0, width: size, height: size,
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -858,7 +858,7 @@ function CircularDayDial({ simDay, setSimDay, plan, paymentsByEmi, lang, maxDay 
 }
 
 // ==================================================================
-// 8. Center column for live phase — dial + step buttons + mini event log
+// 8. Center column for live phase. Dial + step buttons + mini event log
 // ==================================================================
 
 function DemoCenterColumnLive({ scenario, setSimDay, stepDay, setPhase, patch, lang }) {
@@ -1108,7 +1108,7 @@ function DemoOnboardingReady({ lang, side, partnerDone }) {
           {partnerDone ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--mal-success)' }}>
               {dmIco.check ? dmIco.check({ width: 16, height: 16, stroke: 'var(--mal-success)' }) : '✓'}
-              {isAr ? 'الطرف الآخر جاهز أيضاً — جارٍ المتابعة…' : 'Other side ready too — proceeding…'}
+              {isAr ? 'الطرف الآخر جاهز أيضاً، جارٍ المتابعة…' : 'Other side ready too، proceeding…'}
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--mal-mid)' }}>
@@ -1138,7 +1138,7 @@ function DemoIntroBuyer({ lang, onProceed }) {
           {isAr ? <>رأس مال<br/><span className="mal-iri-text">يتحرّك معك.</span></> : <>Capital that<br/><span className="mal-iri-text">moves with you.</span></>}
         </h1>
         <p style={{ fontSize: 13, color: 'var(--mal-mid)', maxWidth: 280, lineHeight: 1.5, marginBottom: 24 }}>
-          {isAr ? 'افتح حسابك في ١٠ دقائق. اشترِ الآن، ادفع خلال ٣٠ إلى ١٢٠ يوم — مال يسدّد موردك اليوم.' : 'Open your account in 10 minutes. Buy now, pay in 30 to 120 days — Mal settles your supplier today.'}
+          {isAr ? 'افتح حسابك في ١٠ دقائق. اشترِ الآن، ادفع خلال ٣٠ إلى ١٢٠ يوم، مال يسدّد موردك اليوم.' : 'Open your account in 10 minutes. Buy now, pay in 30 to 120 days. Mal settles your supplier today.'}
         </p>
         <Button kind="primary" size="lg" full iconRight="arrow" onClick={onProceed}>
           {isAr ? 'افتح حساباً' : 'Get started'}
@@ -1365,7 +1365,7 @@ function DemoBuyerPlanPicker({ lang, scenario, patch, onSign, onSigned }) {
                 icon={signing ? 'check' : 'lock'}>
           {signing ? (isAr ? 'جارٍ التوقيع…' : 'Signing…')
             : variant === 'sharia'
-              ? (isAr ? 'تابع — اعرض هيكل التورّق' : 'Continue — show Tawarruq structure')
+              ? (isAr ? 'تابع، اعرض هيكل التورّق' : 'Continue، show Tawarruq structure')
               : (isAr ? 'وقّع بهوية رقمية' : 'Sign with UAE Pass')}
         </Button>
       )}
@@ -1410,7 +1410,7 @@ function DemoBuyerJustSigned({ lang, scenario, onProceed }) {
 }
 
 // ==================================================================
-// 12. BUYER LIVE PHASE — day-driven home + Pay buttons + extends
+// 12. BUYER LIVE PHASE. Day-driven home + Pay buttons + extends
 // ==================================================================
 
 function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
@@ -1500,7 +1500,7 @@ function DemoBuyerLive({ route, setBuyerRoute, scenario, patch, lang }) {
   return <DemoBuyerLiveHome lang={lang} scenario={scenario} setBuyerRoute={setBuyerRoute} patch={patch}/>;
 }
 
-// Buyer's main day-aware home — renders limit, EMI ladder with Pay buttons,
+// Buyer's main day-aware home. Renders limit, EMI ladder with Pay buttons,
 // overdue banners and refinance/extension CTAs derived from current state.
 function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
   const isAr = lang === 'ar';
@@ -1557,7 +1557,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
   });
   const bgUsedTotal = bgLoanSummaries.reduce((s, b) => s + b.bgRemainingForLimit, 0);
 
-  // Bundled (consolidated) plan outstanding — replaces the per-obligation
+  // Bundled (consolidated) plan outstanding. Replaces the per-obligation
   // utilisation once the bundle is signed.
   const bundledPlan = scenario.bundledPlan;
   const bundledPaymentsByEmi = scenario.bundledPaymentsByEmi || {};
@@ -1593,7 +1593,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
   const showExtendCta = !termExtension && shouldShowExtendCta(plan, simDay, activePayments, !!termExtension);
   const showRefinanceCta = !isRefinanced && !termExtension && canRefinanceNow(plan, simDay, paymentsByEmi, isRefinanced);
 
-  // Pay an EMI handler — works for plan, refinanced plan, and extension.
+  // Pay an EMI handler. Works for plan, refinanced plan, and extension.
   const payEmi = (emiNum, dueDay, amount, source) => {
     const dpd = Math.max(0, simDay - dueDay);
     const penalty = computeLatePenalty(amount, dpd);
@@ -1624,7 +1624,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
     });
   };
 
-  // Compatibility shim — the existing plan-card overdue banner uses payEmi
+  // Compatibility shim. The existing plan-card overdue banner uses payEmi
   // without a `source` arg, so default to plan.
   const payEmiPlan = (n, d, a) => payEmi(n, d, a, 'plan');
 
@@ -1704,7 +1704,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         );
       })()}
 
-      {/* Limit hero — combined utilization across plan + extension */}
+      {/* Limit hero. Combined utilization across plan + extension */}
       <Card padded style={{
         background: allClosed
           ? 'linear-gradient(135deg, #1F7A4F 0%, #2A1F6F 100%)'
@@ -1714,7 +1714,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         <div className="mal-orb" style={{ position: 'absolute', width: 220, height: 220, top: -90, insetInlineEnd: -90, opacity: .35 }}/>
         <div style={{ position: 'relative' }}>
           <div style={{ fontSize: 11, opacity: .7, textTransform: 'uppercase', letterSpacing: '.06em' }}>
-            {allClosed ? (isAr ? 'الحدّ — أُعيد إطلاقه' : 'Limit released') : (isAr ? 'الحد المتاح' : 'Available limit')}
+            {allClosed ? (isAr ? 'الحدّ، أُعيد إطلاقه' : 'Limit released') : (isAr ? 'الحد المتاح' : 'Available limit')}
           </div>
           <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 36, fontStyle: 'italic', marginTop: 6 }}>
             AED {availableLimit.toLocaleString()}
@@ -1726,7 +1726,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
             <span>{isAr ? 'مستخدم' : 'In use'} AED {Math.max(0, usedAmount).toLocaleString()}</span>
             <span>{utilisationPct}%</span>
           </div>
-          {/* Breakdown — shows source of utilization when both are active */}
+          {/* Breakdown. Shows source of utilization when both are active */}
           {planRemainingForLimit > 0 && extRemainingForLimit > 0 && (
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, opacity: .65 }}>
               <span>{isAr ? 'خطة' : 'Plan'} AED {planRemainingForLimit.toLocaleString()}</span>
@@ -1755,8 +1755,8 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
               </div>
               <div style={{ fontSize: 11, color: 'var(--mal-ink)', marginTop: 2 }}>
                 {isAr
-                  ? 'ليس تعثّراً — مجرّد تنبيه أنّ القرض أعيدت هيكلته. لا يُؤثّر على وصولك للائتمان.'
-                  : 'Not a default — just a notation that the loan was restructured. Doesn\'t hurt your access to credit.'}
+                  ? 'ليس تعثّراً، مجرّد تنبيه أنّ القرض أعيدت هيكلته. لا يُؤثّر على وصولك للائتمان.'
+                  : 'Not a default، just a notation that the loan was restructured. Doesn\'t hurt your access to credit.'}
               </div>
             </div>
           </div>
@@ -1897,7 +1897,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
                   <span className="mal-num" style={{ fontSize: 13, fontWeight: 500 }}>
                     AED {e.amount.toLocaleString()}
                   </span>
-                  {/* Pay button — visible only when actionable */}
+                  {/* Pay button. Visible only when actionable */}
                   {canPay && isSoonOrLate && (
                     <button onClick={() => payEmiPlan(e.num, e.dueDay, e.amount)} style={{
                       all: 'unset', cursor: 'pointer',
@@ -1922,7 +1922,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         </div>
       </Card>
 
-      {/* Loan-action CTAs — sit right under the active-plan card so the buyer
+      {/* Loan-action CTAs. Sit right under the active-plan card so the buyer
           sees Extend / Reschedule options near the loan, not buried at bottom. */}
       {(showExtendCta || showRefinanceCta) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1981,7 +1981,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         </div>
       )}
 
-      {/* Extension card — full EMI ladder with Pay buttons */}
+      {/* Extension card. Full EMI ladder with Pay buttons */}
       {termExtension && (() => {
         const banner = extOverdue ? collectionsBanner(extOverdue.stage, extOverdue.daysOverdue, isAr) : null;
         return (
@@ -2119,10 +2119,10 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         );
       })()}
 
-      {/* Trust dashboard — regulator + bureau + ISO badges */}
+      {/* Trust dashboard. Regulator + bureau + ISO badges */}
       {!allClosed && <TrustBadgesRow isAr={isAr}/>}
 
-      {/* Notification preference centre — channel + language picker, with timeline preview */}
+      {/* Notification preference centre. Channel + language picker, with timeline preview */}
       {!allClosed && (
         <NotifPrefsCard
           isAr={isAr}
@@ -2131,7 +2131,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         />
       )}
 
-      {/* Bundle / Consolidate CTA — show when ≥ 2 active obligations and not bundled. */}
+      {/* Bundle / Consolidate CTA. Show when ≥ 2 active obligations and not bundled. */}
       {!scenario.bundledPlan && activeLoanCount >= 2 && (
         <BundleConsolidateCard
           isAr={isAr}
@@ -2195,7 +2195,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         />
       )}
 
-      {/* Bundled plan card — replaces individual plans when consolidation is signed. */}
+      {/* Bundled plan card. Replaces individual plans when consolidation is signed. */}
       {scenario.bundledPlan && (
         <BundledPlanCard
           isAr={isAr}
@@ -2220,7 +2220,7 @@ function DemoBuyerLiveHome({ lang, scenario, setBuyerRoute, patch }) {
         />
       )}
 
-      {/* Background loans — concurrent loans for invoices from other suppliers */}
+      {/* Background loans. Concurrent loans for invoices from other suppliers */}
       {!scenario.bundledPlan && bgLoanSummaries.map(({ idx, loan, bgStatuses, bgPaidCount, bgTotalCount, bgIsClosed, bgPaidAmount, bgRemainingForLimit }) => {
         const bgOverdue = findOverdue(bgStatuses);
         const bgNext = findNextUpcoming(bgStatuses);
@@ -2457,8 +2457,8 @@ function DemoRefinanceHero({ lang, scenario, setBuyerRoute }) {
             </div>
             <div style={{ fontSize: 12, opacity: .85, marginTop: 8, lineHeight: 1.5 }}>
               {isAr
-                ? 'الرصيد الحالي: AED ' + remaining.toLocaleString() + ' — وزّعه على ٣ إلى ١٢ شهر بقسط أصغر.'
-                : `Outstanding: AED ${remaining.toLocaleString()} — spread it over 3 to 12 months with a smaller EMI.`}
+                ? 'الرصيد الحالي: AED ' + remaining.toLocaleString() + '، وزّعه على ٣ إلى ١٢ شهر بقسط أصغر.'
+                : `Outstanding: AED ${remaining.toLocaleString()}. Spread it over 3 to 12 months with a smaller EMI.`}
             </div>
           </div>
         </Card>
@@ -2603,7 +2603,7 @@ function DemoRefinanceConfirm({ lang, scenario, patch, setBuyerRoute }) {
             [isAr ? 'إجمالي التكلفة' : 'Total cost',    `AED ${newPlan.totalCost.toLocaleString()}`],
             [isAr ? 'القسط الأوّل'   : 'First EMI',     formatSimDay(newPlan.startDay)],
             [isAr ? 'القسط الأخير'   : 'Final EMI',     formatSimDay(newPlan.startDay + (newPlan.tenorMonths - 1) * 30)],
-            [isAr ? 'تأثير AECB'     : 'AECB notation', isAr ? 'علم ناعم — ليس تعثّراً' : 'Soft flag — not a default'],
+            [isAr ? 'تأثير AECB'     : 'AECB notation', isAr ? 'علم ناعم، ليس تعثّراً' : 'Soft flag، not a default'],
           ].map(([k, v], i) => (
             <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: i ? '1px solid var(--mal-line-2)' : 'none', fontSize: 13 }}>
               <span style={{ color: 'var(--mal-mid)' }}>{k}</span>
@@ -2710,7 +2710,7 @@ function DemoSupplierHome({ lang, onIssue }) {
         </div>
       </Card>
 
-      {/* Anchor pre-approved limits — buyers Mal already cleared for this supplier */}
+      {/* Anchor pre-approved limits. Buyers Mal already cleared for this supplier */}
       <AnchorPreapprovedCard isAr={isAr}/>
 
       <Button kind="primary" size="lg" full icon="bolt" onClick={onIssue}>
@@ -2720,13 +2720,13 @@ function DemoSupplierHome({ lang, onIssue }) {
   );
 }
 
-// Manual issue invoice — pre-filled draft, click to issue + advance phase
+// Manual issue invoice. Pre-filled draft, click to issue + advance phase
 function DemoSupplierIssueInvoice({ lang, scenario, patch, onIssued }) {
   const isAr = lang === 'ar';
   const issued = !!scenario.invoice.issuedAt;
   const draftBuyer = scenario.draftBuyer || 'Crescent Trading FZE';
   const draftAmount = scenario.draftAmount || '250,000';
-  const draftDescription = scenario.draftDescription || 'Industrial packaging — Q4 2026';
+  const draftDescription = scenario.draftDescription || 'Industrial packaging. Q4 2026';
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 26, fontStyle: 'italic' }}>
@@ -2828,12 +2828,12 @@ function DemoSupplierFunded({ lang, scenario }) {
   );
 }
 
-// Live supplier panel — FACTORING view, not EMI tracker.
+// Live supplier panel. FACTORING view, not EMI tracker.
 //
 // Mental model: Atlas sold the AED 250K invoice to Mal at Day 0 in a
 // non-recourse factoring deal. Atlas already received 93% (AED 232,500) on
 // Day 0. The 7% (AED 17,500) holdback releases the moment buyer "settles"
-// with Mal — which here means buyer enrolled in any plan, since Mal then
+// with Mal. Which here means buyer enrolled in any plan, since Mal then
 // commits to absorb the buyer-side timing risk. If buyer never settles
 // (no plan signed by the original due date + grace), the holdback is
 // retained by Mal as the loss buffer; supplier keeps the 93%.
@@ -2846,7 +2846,7 @@ function DemoSupplierLive({ lang, scenario }) {
   const DUE_DAY = 30;              // original invoice due date
   const GRACE_DAYS = 30;           // hold the holdback for 30d past due before forfeit
 
-  // Settlement event: buyer entered ANY plan with Mal — original plan, or
+  // Settlement event: buyer entered ANY plan with Mal. Original plan, or
   // a term extension, or a bundled-consolidation plan. Any of these means
   // Mal has stepped into the receivable and the supplier-side risk is gone.
   const settled = !!((plan && signed) || termExtension || bundledPlan);
@@ -2860,10 +2860,10 @@ function DemoSupplierLive({ lang, scenario }) {
   const earlyReleaseSource = termExtension ? 'extension' : (bundledPlan ? 'bundle' : null);
 
   // Holdback status:
-  //   pending     — before due/release date, awaiting buyer settlement
-  //   released    — settled, holdback wired to supplier (released day depends on source)
-  //   held        — past due, buyer hasn't settled, within grace
-  //   forfeit     — past due + grace, supplier keeps the 93% only
+  //   pending    . Before due/release date, awaiting buyer settlement
+  //   released   . Settled, holdback wired to supplier (released day depends on source)
+  //   held       . Past due, buyer hasn't settled, within grace
+  //   forfeit    . Past due + grace, supplier keeps the 93% only
   let holdbackStatus = 'pending';
   const releaseDay = earlyReleaseSourceDay != null
     ? Math.max(0, earlyReleaseSourceDay)        // released the day buyer signed extension/bundle
@@ -2892,7 +2892,7 @@ function DemoSupplierLive({ lang, scenario }) {
         </div>
       </div>
 
-      {/* Big total received card — animates 232,500 → 250,000 on holdback release */}
+      {/* Big total received card. Animates 232,500 → 250,000 on holdback release */}
       <Card padded style={{
         background: holdbackStatus === 'released'
           ? 'linear-gradient(135deg, #1F7A4F 0%, #2A1F6F 100%)'
@@ -2917,11 +2917,11 @@ function DemoSupplierLive({ lang, scenario }) {
         </div>
       </Card>
 
-      {/* Settlement breakdown — Day 0 advance + Day 30 holdback */}
+      {/* Settlement breakdown. Day 0 advance + Day 30 holdback */}
       <Card padded>
         <div className="mal-caption" style={{ marginBottom: 12 }}>{isAr ? 'تفاصيل التسوية' : 'Settlement breakdown'}</div>
 
-        {/* Day 0 — advance */}
+        {/* Day 0. Advance */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--mal-line-2)' }}>
           <div style={{
             width: 30, height: 30, borderRadius: 999,
@@ -2943,7 +2943,7 @@ function DemoSupplierLive({ lang, scenario }) {
           </span>
         </div>
 
-        {/* Day 30 — holdback */}
+        {/* Day 30. Holdback */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0' }}>
           <div style={{
             width: 30, height: 30, borderRadius: 999, flexShrink: 0,
@@ -3011,11 +3011,11 @@ function DemoSupplierLive({ lang, scenario }) {
               <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
                 {earlyReleaseSource
                   ? (isAr
-                      ? `وقّع المشتري ${earlyReleaseSource === 'extension' ? 'تمديد القرض' : 'باقة موحّدة'} مع مال يوم ${releaseDay}. مال يأخذ على عاتقه الفاتورة بالكامل ويحرّر الـ ٧٪ المتبقّية لك مبكراً — قبل تاريخ الاستحقاق الأصلي.`
-                      : `Buyer signed a ${earlyReleaseSource === 'extension' ? 'term extension' : 'consolidation bundle'} with Mal on Day ${releaseDay}. Mal has stepped fully into the receivable and released your remaining 7% early — before the original due date. You received AED ${TOTAL.toLocaleString()} in total.`)
+                      ? `وقّع المشتري ${earlyReleaseSource === 'extension' ? 'تمديد القرض' : 'باقة موحّدة'} مع مال يوم ${releaseDay}. مال يأخذ على عاتقه الفاتورة بالكامل ويحرّر الـ ٧٪ المتبقّية لك مبكراً، قبل تاريخ الاستحقاق الأصلي.`
+                      : `Buyer signed a ${earlyReleaseSource === 'extension' ? 'term extension' : 'consolidation bundle'} with Mal on Day ${releaseDay}. Mal has stepped fully into the receivable and released your remaining 7% early. Before the original due date. You received AED ${TOTAL.toLocaleString()} in total.`)
                   : (isAr
-                      ? `استلمتَ AED ${TOTAL.toLocaleString()} كاملاً. التزام المشتري للسداد يقع الآن مع مال — أيّ تأخّر هو مشكلة مال، ليس مشكلتك.`
-                      : `You received AED ${TOTAL.toLocaleString()} in full. The buyer's payment commitment now sits with Mal — any delay is Mal's problem, not yours.`)}
+                      ? `استلمتَ AED ${TOTAL.toLocaleString()} كاملاً. التزام المشتري للسداد يقع الآن مع مال، أيّ تأخّر هو مشكلة مال، ليس مشكلتك.`
+                      : `You received AED ${TOTAL.toLocaleString()} in full. The buyer's payment commitment now sits with Mal. Any delay is Mal's problem, not yours.`)}
               </div>
             </div>
           </div>
@@ -3034,8 +3034,8 @@ function DemoSupplierLive({ lang, scenario }) {
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
                 {isAr
-                  ? `لم يُسوِّ المشتري الفاتورة في موعدها (يوم ${DUE_DAY}). مال يحتفظ بالـ ٧٪ كمصدّ. سُلفة ٩٣٪ التي حصلت عليها مضمونة — لا شيء عليك.`
-                  : `Buyer hasn't settled by Day ${DUE_DAY}. Mal is holding the 7% as a buffer. The 93% advance you already received is yours — no claw-back, no action required.`}
+                  ? `لم يُسوِّ المشتري الفاتورة في موعدها (يوم ${DUE_DAY}). مال يحتفظ بالـ ٧٪ كمصدّ. سُلفة ٩٣٪ التي حصلت عليها مضمونة، لا شيء عليك.`
+                  : `Buyer hasn't settled by Day ${DUE_DAY}. Mal is holding the 7% as a buffer. The 93% advance you already received is yours. No claw-back, no action required.`}
               </div>
             </div>
           </div>
@@ -3054,15 +3054,15 @@ function DemoSupplierLive({ lang, scenario }) {
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--mal-ink)', marginTop: 4, lineHeight: 1.5 }}>
                 {isAr
-                  ? `انتهت مهلة الإحتجاز (٣٠ يوم بعد موعد الاستحقاق). مال يحتفظ بالـ AED ${HOLDBACK.toLocaleString()} كمصدّ خسارة. أنت احتفظت بـ AED ${ADVANCE.toLocaleString()} كاملةً — هذا هو نموذج عدم الرجوع.`
-                  : `Grace window passed (${GRACE_DAYS}d after due date). Mal absorbs the AED ${HOLDBACK.toLocaleString()} as the loss buffer. You keep your AED ${ADVANCE.toLocaleString()} in full — this is what non-recourse means.`}
+                  ? `انتهت مهلة الإحتجاز (٣٠ يوم بعد موعد الاستحقاق). مال يحتفظ بالـ AED ${HOLDBACK.toLocaleString()} كمصدّ خسارة. أنت احتفظت بـ AED ${ADVANCE.toLocaleString()} كاملةً، هذا هو نموذج عدم الرجوع.`
+                  : `Grace window passed (${GRACE_DAYS}d after due date). Mal absorbs the AED ${HOLDBACK.toLocaleString()} as the loss buffer. You keep your AED ${ADVANCE.toLocaleString()} in full. This is what non-recourse means.`}
               </div>
             </div>
           </div>
         </Card>
       )}
 
-      {/* Activity feed — supplier-relevant only */}
+      {/* Activity feed. Supplier-relevant only */}
       <Card padded>
         <div className="mal-caption" style={{ marginBottom: 8 }}>{isAr ? 'النشاط' : 'Activity'}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -3155,8 +3155,8 @@ function DemoFooterHint({ phase, lang, simDay, plan }) {
     }}>
       {phase === 'live' && (
         isAr
-          ? '🎮 اسحب الزرّ على الدائرة في الوسط لتحريك التاريخ. اضغط «ادفع» على كل قسط على لوحة المشتري — إذا لم تدفع وانتقلت لتاريخ لاحق، يظهر التعثّر تلقائيّاً.'
-          : '🎮 Drag the handle on the central dial to move the date. Click "Pay" on each EMI in the buyer panel — skip a Pay and scrub forward to see the overdue / collections stages emerge automatically.'
+          ? '🎮 اسحب الزرّ على الدائرة في الوسط لتحريك التاريخ. اضغط «ادفع» على كل قسط على لوحة المشتري، إذا لم تدفع وانتقلت لتاريخ لاحق، يظهر التعثّر تلقائيّاً.'
+          : '🎮 Drag the handle on the central dial to move the date. Click "Pay" on each EMI in the buyer panel. Skip a Pay and scrub forward to see the overdue / collections stages emerge automatically.'
       )}
       {phase !== 'live' && (
         isAr
@@ -3168,7 +3168,7 @@ function DemoFooterHint({ phase, lang, simDay, plan }) {
 }
 
 // ============================================================
-// BundleConsolidateCard — appears when buyer has 2+ active obligations.
+// BundleConsolidateCard. Appears when buyer has 2+ active obligations.
 // Lets them merge all outstanding into a single 6-month EMI plan.
 // ============================================================
 function BundleConsolidateCard({ isAr, activeLoanCount, totalOutstanding, onBundle, onOpen }) {
@@ -3283,7 +3283,7 @@ function BundleConsolidateCard({ isAr, activeLoanCount, totalOutstanding, onBund
           }}>
             {isAr
               ? 'يدفع Mal جميع الموردين اليوم. أنت تدفع لـMal فقط، قسطاً واحداً، تاريخ استحقاق واحد. الخطط الأصلية تُغلق ويتم تسويتها بواسطة Mal.'
-              : 'Mal settles every supplier today. You repay Mal only — one EMI, one due date. Original plans close and are marked settled by Mal.'}
+              : 'Mal settles every supplier today. You repay Mal only. One EMI, one due date. Original plans close and are marked settled by Mal.'}
           </div>
         </div>
       )}
@@ -3292,7 +3292,7 @@ function BundleConsolidateCard({ isAr, activeLoanCount, totalOutstanding, onBund
 }
 
 // ============================================================
-// BundledPlanCard — replaces individual loan cards once the bundle
+// BundledPlanCard. Replaces individual loan cards once the bundle
 // is signed. Single schedule, single Pay button per EMI.
 // ============================================================
 function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
@@ -3395,7 +3395,7 @@ function BundledPlanCard({ isAr, bundled, simDay, payments, onPay }) {
 }
 
 // ============================================================
-// AnchorPreapprovedCard — surfaces buyers Mal has already pre-cleared
+// AnchorPreapprovedCard. Surfaces buyers Mal has already pre-cleared
 // for this supplier so the supplier can issue an invoice with zero
 // underwriting friction. Shows up above "Issue invoice" CTA.
 // ============================================================
@@ -3469,7 +3469,7 @@ function AnchorPreapprovedCard({ isAr }) {
 }
 
 // ============================================================
-// TrustBadgesRow — compact regulator / bureau / Sharia / ISO row.
+// TrustBadgesRow. Compact regulator / bureau / Sharia / ISO row.
 // Surfaces who oversees Mal so SME owners can verify in one glance.
 // ============================================================
 function TrustBadgesRow({ isAr }) {
@@ -3477,7 +3477,7 @@ function TrustBadgesRow({ isAr }) {
   const badges = [
     {
       key: 'reg', label: isAr ? 'ADGM FSRA' : 'ADGM FSRA',
-      sub: isAr ? 'فئة ٢ — تقديم الائتمان' : 'Cat 2 · Providing Credit',
+      sub: isAr ? 'فئة ٢، تقديم الائتمان' : 'Cat 2 · Providing Credit',
       tone: '#5a3aa3',
     },
     {
@@ -3549,7 +3549,7 @@ function TrustBadgesRow({ isAr }) {
 }
 
 // ============================================================
-// EInvoiceBadge — small "submitted to FTA / Peppol ID" badge that
+// EInvoiceBadge. Small "submitted to FTA / Peppol ID" badge that
 // surfaces e-invoicing compliance on every invoice card. Reflects
 // the UAE FTA mandate (pilot Jul 2026, full SME by Jul 2027).
 // ============================================================
@@ -3574,11 +3574,11 @@ function EInvoiceBadge({ isAr, compact, peppolId = '0142.0042.0418' }) {
 }
 
 // ============================================================
-// SwitchTermPill — small dropdown on the active-plan card. Lets the
+// SwitchTermPill. Small dropdown on the active-plan card. Lets the
 // buyer convert Pay-30 → BNPL-90 / Inst-3 / Inst-4 in one tap, before
 // going through the full Restructure flow. Mondu-style post-purchase
 // term flexibility. Only shown when the plan hasn't started accruing
-// payments — see callsite gating.
+// payments. See callsite gating.
 // ============================================================
 function SwitchTermPill({ isAr, currentType, onPick }) {
   const [open, setOpen] = dmS(false);
@@ -3635,7 +3635,7 @@ function SwitchTermPill({ isAr, currentType, onPick }) {
 }
 
 // ============================================================
-// NotifPrefsCard — collapsible card showing the buyer's reminder
+// NotifPrefsCard. Collapsible card showing the buyer's reminder
 // channel + language prefs + a timeline preview of when they fire.
 // ============================================================
 function NotifPrefsCard({ isAr, prefs, onChange }) {
@@ -3760,7 +3760,7 @@ function NotifPrefsCard({ isAr, prefs, onChange }) {
 }
 
 // ============================================================
-// TawarruqVisualiser — animated 4-leg commodity-murabaha trade flow.
+// TawarruqVisualiser. Animated 4-leg commodity-murabaha trade flow.
 // Shows AAOIFI-aligned structure before the buyer signs a Sharia contract.
 // Modal-style overlay; can be closed or signed-through.
 // ============================================================
@@ -3905,7 +3905,7 @@ function TawarruqVisualiser({ isAr, principal, totalCost, tenorMonths, onClose, 
 }
 
 // ============================================================
-// ExplainerDock — bottom-of-stage live narrator.
+// ExplainerDock. Bottom-of-stage live narrator.
 // Left pane: product manifest (what it is · who it serves · why · differentiators).
 // Right pane: live action narrator driven by scenario.lastAction.
 // ============================================================
@@ -3932,13 +3932,13 @@ const ACTION_EXPLAINERS = {
   'demo-loaded': () => ({
     title: 'Live prototype loaded',
     what: 'Both buyer and supplier apps are mounted side-by-side with synced state. Drag the central dial, click any phase, or open one of the journey screens to drive a flow.',
-    why: 'Two-pane view lets you see the buyer-side decision land on the supplier side in real time — the same way the platform would behave in production.',
+    why: 'Two-pane view lets you see the buyer-side decision land on the supplier side in real time. The same way the platform would behave in production.',
     business: 'No real money moves. Pure simulator for journey, policy, and economics.',
     who: 'You · the demo operator.',
   }),
   'plan-selected': ({ planLabel, fee }) => ({
     title: `Plan selected · ${planLabel || 'plan'}`,
-    what: `The buyer chose ${planLabel || 'a plan'} for this invoice. Total cost to buyer: ${fee || '0%'}. Nothing has been signed yet — the buyer can switch plans freely until UAE Pass signature.`,
+    what: `The buyer chose ${planLabel || 'a plan'} for this invoice. Total cost to buyer: ${fee || '0%'}. Nothing has been signed yet. The buyer can switch plans freely until UAE Pass signature.`,
     why: 'Each plan trades buyer convenience against fee. Pay-in-30 is free; longer tenors carry a small spread that funds Mal\'s book.',
     business: 'No commitment yet · zero impact on supplier · zero impact on credit bureau.',
     who: 'Buyer-side only. Supplier still in awaiting state.',
@@ -3969,7 +3969,7 @@ const ACTION_EXPLAINERS = {
       ? `The buyer cleared EMI ${emiNum} (AED ${(amount || 0).toLocaleString()}) plus a AED ${withPenalty.toLocaleString()} late fee (0.5%/day capped at 10%).`
       : `The buyer cleared EMI ${emiNum} (AED ${(amount || 0).toLocaleString()}) on schedule. Activity log updates on both sides.`,
     why: withPenalty
-      ? 'Late fees compound until paid — capped to protect the buyer. AECB is notified only at field/legal stages.'
+      ? 'Late fees compound until paid. Capped to protect the buyer. AECB is notified only at field/legal stages.'
       : 'On-time payment feeds positive AECB tradelines that grow the buyer\'s limit over time.',
     business: 'Mal\'s NIM accrues on the paid principal. Supplier holdback releases automatically on Day 30 if all conditions are met.',
     who: 'Buyer · Mal · AECB (positive tradeline build).',
@@ -3997,7 +3997,7 @@ const ACTION_EXPLAINERS = {
   }),
   'extend-opened': () => ({
     title: 'Tenure extension flow opened',
-    what: 'The buyer is exploring converting the invoice obligation into a longer unsecured term loan with Mal — 3 / 6 / 9 / 12 months at 9.9–14.5% APR.',
+    what: 'The buyer is exploring converting the invoice obligation into a longer unsecured term loan with Mal. 3 / 6 / 9 / 12 months at 9.9–14.5% APR.',
     why: 'When the buyer can\'t pay on the original due date, an extension lets Mal step fully into the receivable: supplier paid in full today, buyer pays Mal monthly.',
     business: 'Mal effectively pays the supplier\'s 7% holdback early and books a fresh term loan. Supplier sees holdback released the same day.',
     who: 'Buyer-initiated. Supplier benefits via early holdback release.',
@@ -4027,7 +4027,7 @@ const ACTION_EXPLAINERS = {
     title: `Term switched · ${from || 'old'} → ${to || 'new'}`,
     what: 'The buyer one-tap-switched the active plan to a different tenor before any EMI accrued. Schedule + total cost update instantly; no new signature required.',
     why: 'Mondu-style post-purchase flexibility. SMEs change their minds about cashflow needs in the first week; letting them switch keeps them in-flow.',
-    business: 'Mal\'s margin shifts with the new fee. Supplier sees the same advance — they\'re already paid.',
+    business: 'Mal\'s margin shifts with the new fee. Supplier sees the same advance. They\'re already paid.',
     who: 'Buyer-only. Supplier unaffected.',
   }),
 };
@@ -4045,7 +4045,7 @@ function ExplainerDock({ scenario, phase, lang, isMobile }) {
       maxWidth: 1080, margin: '0 auto', padding: '0 22px 30px',
       display: 'grid', gridTemplateColumns: '0.4fr 0.6fr', gap: 14,
     }}>
-      {/* LEFT — product manifest */}
+      {/* LEFT. Product manifest */}
       <div style={{
         padding: 16, borderRadius: 16,
         background: 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)',
@@ -4102,7 +4102,7 @@ function ExplainerDock({ scenario, phase, lang, isMobile }) {
         </div>
       </div>
 
-      {/* RIGHT — live action narrator */}
+      {/* RIGHT. Live action narrator */}
       <div key={last.id + '·' + last.day} style={{
         padding: 16, borderRadius: 16,
         background: 'var(--mal-paper)',

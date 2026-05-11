@@ -1,5 +1,5 @@
 /* eslint-disable */
-// AUTO-GENERATED from models/Mal_P1_SmartInvoice.xlsx — do not edit by hand.
+// AUTO-GENERATED from models/Mal_P1_SmartInvoice.xlsx. Do not edit by hand.
 // Sync command:  .venv-models/bin/python models/sync_p1_to_jsx.py
 // Last sync: 2026-05-10 18:49
 window.MAL_P1_DATA = {

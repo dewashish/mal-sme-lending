@@ -21,15 +21,15 @@ const CHAPTER_ABSTRACTS = {
   '1-executive-overview':
     'The middle of the UAE SME credit market is empty. Banks are slow and collateral-heavy; fintechs are fast but expensive. Mal sits in between with bank-cost capital, digital-first speed, and Sharia by default.',
   '2-platform-context-and-foundations':
-    'Foundational capabilities and the operating model the three products share — built once on a tight, AI-leveraged team running at 3x benchmark productivity.',
+    'Foundational capabilities and the operating model the three products share. Built once on a tight, AI-leveraged team running at 3x benchmark productivity.',
   '3-product-1-smart-invoice-with-flexible-installmen':
-    'Smart Invoice — Mal\'s flagship. B2B Pay & Get Paid: supplier gets 90% advance on day one; buyer chooses Pay-30, BNPL 60-180d, or a 6-month term extension.',
+    'Smart Invoice. Mal\'s flagship. B2B Pay & Get Paid: supplier gets 90% advance on day one; buyer chooses Pay-30, BNPL 60-180d, or a 6-month term extension.',
   'product-1-path-2-buyer-led-invoice-extension-loan':
     'Path 2: when the buyer can\'t pay, they sign into a 6-month restructure. Mal takes over the invoice from the supplier.',
   '4-product-2-healthcare-insurance-receivables-engin':
-    'Healthcare Receivables Engine — same-day claim advance for clinics, hospitals, and pharmacies against multi-payer insurance receivables.',
+    'Healthcare Receivables Engine. Same-day claim advance for clinics, hospitals, and pharmacies against multi-payer insurance receivables.',
   '5-product-3-anchor-led-supply-chain-finance-with-d':
-    'Anchor SCF — reverse factoring with daily dynamic-discount auctions, tied to large UAE anchors: Aldar, Majid Al Futtaim, AD Ports, IHC, e&, Lulu Group.',
+    'Anchor SCF. Reverse factoring with daily dynamic-discount auctions, tied to large UAE anchors: Aldar, Majid Al Futtaim, AD Ports, IHC, e&, Lulu Group.',
   '6-cross-product-engineering-and-operations':
     'Capital stack, partner banks, tech architecture, and the unified operating model across the three products.',
   '7-key-risks-and-mitigants':
@@ -37,7 +37,7 @@ const CHAPTER_ABSTRACTS = {
   '8-closing':
     'Why the timing is right and how the three products together hit AED 17.5B disbursement by Year 3.',
   'appendix-a-wider-product-catalogue':
-    '17 additional product cards Mal could launch beyond the core three — DMCC gold, government receivables, payroll bridges, EWA, marketplace seller financing, and more.',
+    '17 additional product cards Mal could launch beyond the core three. DMCC gold, government receivables, payroll bridges, EWA, marketplace seller financing, and more.',
   'appendix-b-ai-leverage-and-agent-architecture':
     'Where AI agents fit in the stack: the 20-agent inventory, decision engine, OCR pipeline, and early-warning system.',
   'appendix-c-product-operating-best-practices':
@@ -89,7 +89,7 @@ const READ_TIMES = {
 };
 
 // ============================================================
-// PHASE 1 — Chapter cards grid (replaces empty top of strategy section)
+// PHASE 1. Chapter cards grid (replaces empty top of strategy section)
 // ============================================================
 function ChapterCardsGrid({ chapters, onJump, isAr, isMobile }) {
   return (
@@ -177,7 +177,7 @@ function ChapterCardsGrid({ chapters, onJump, isAr, isMobile }) {
 }
 
 // ============================================================
-// PHASE 1 — Per-chapter hero (rendered ABOVE each H1)
+// PHASE 1. Per-chapter hero (rendered ABOVE each H1)
 // ============================================================
 function ChapterHero({ chapter, isAr }) {
   const tone = CHAPTER_TONE[chapter.id] || { color: 'lilac', badge: '··' };
@@ -220,7 +220,7 @@ function ChapterHero({ chapter, isAr }) {
 }
 
 // ============================================================
-// PHASE 1 — Reading-progress sticky bar
+// PHASE 1. Reading-progress sticky bar
 // ============================================================
 function ReadingProgress({ activeChapterIdx, totalChapters, currentTitle, isAr }) {
   const [pct, setPct] = sV_S(0);
@@ -267,7 +267,7 @@ function ReadingProgress({ activeChapterIdx, totalChapters, currentTitle, isAr }
 }
 
 // ============================================================
-// PHASE 1 — Chapter divider rule (between H1 chapters)
+// PHASE 1. Chapter divider rule (between H1 chapters)
 // ============================================================
 function ChapterDivider({ nextLabel, nextNum }) {
   return (
@@ -289,7 +289,7 @@ function ChapterDivider({ nextLabel, nextNum }) {
 }
 
 // ============================================================
-// PHASE 1 — Drop cap (first letter of first paragraph after H1)
+// PHASE 1. Drop cap (first letter of first paragraph after H1)
 // ============================================================
 function applyDropCap(text) {
   if (!text || text.length < 4) return null;
@@ -299,7 +299,7 @@ function applyDropCap(text) {
 }
 
 // ============================================================
-// PHASE 2 — Three-product comparison strip
+// PHASE 2. Three-product comparison strip
 // ============================================================
 function ThreeProductComparison({ isAr }) {
   const liveData = (typeof window !== 'undefined') ? window.MAL_P1_DATA : null;
@@ -381,7 +381,7 @@ function ThreeProductComparison({ isAr }) {
 }
 
 // ============================================================
-// PHASE 2 — Capital stack horizontal stacked bar
+// PHASE 2. Capital stack horizontal stacked bar
 // ============================================================
 function CapitalStackDiagram({ isAr }) {
   const data = (typeof window !== 'undefined') ? window.MAL_P1_DATA : null;
@@ -435,7 +435,7 @@ function CapitalStackDiagram({ isAr }) {
 }
 
 // ============================================================
-// PHASE 2 — Regulatory timeline
+// PHASE 2. Regulatory timeline
 // ============================================================
 function RegulatoryTimeline({ isAr }) {
   const events = [
@@ -476,7 +476,7 @@ function RegulatoryTimeline({ isAr }) {
 }
 
 // ============================================================
-// PHASE 2 — Anchor cards (Section 5.2 Target Anchors)
+// PHASE 2. Anchor cards (Section 5.2 Target Anchors)
 // ============================================================
 function AnchorCards({ isAr }) {
   const anchors = [
@@ -526,7 +526,7 @@ function AnchorCards({ isAr }) {
 }
 
 // ============================================================
-// PHASE 2 — Buyer / supplier journey (6-step horizontal flow)
+// PHASE 2. Buyer / supplier journey (6-step horizontal flow)
 // ============================================================
 function JourneyDiagram({ persona, isAr }) {
   const steps = persona === 'supplier'
@@ -582,7 +582,7 @@ function JourneyDiagram({ persona, isAr }) {
 }
 
 // ============================================================
-// PHASE 2 — FLDG waterfall (loss cascade)
+// PHASE 2. FLDG waterfall (loss cascade)
 // ============================================================
 function FldgWaterfall({ isAr }) {
   const layers = [
@@ -626,28 +626,28 @@ function FldgWaterfall({ isAr }) {
 }
 
 // ============================================================
-// PHASE 3 — Glossary terms (auto-tooltip)
+// PHASE 3. Glossary terms (auto-tooltip)
 // ============================================================
 const GLOSSARY = {
-  'CBUAE': 'Central Bank of the United Arab Emirates — primary financial-services regulator',
-  'EDB': 'Emirates Development Bank — federal bank running the SME credit guarantee scheme',
-  'FLDG': 'First Loss Default Guarantee — risk-sharing structure where Mal absorbs the first slice of losses',
-  'BNPL': 'Buy Now Pay Later — instalment-based deferred payment',
-  'EIBOR': 'Emirates Interbank Offered Rate — UAE benchmark interest rate',
+  'CBUAE': 'Central Bank of the United Arab Emirates. Primary financial-services regulator',
+  'EDB': 'Emirates Development Bank. Federal bank running the SME credit guarantee scheme',
+  'FLDG': 'First Loss Default Guarantee. Risk-sharing structure where Mal absorbs the first slice of losses',
+  'BNPL': 'Buy Now Pay Later. Instalment-based deferred payment',
+  'EIBOR': 'Emirates Interbank Offered Rate. UAE benchmark interest rate',
   'FAB': 'First Abu Dhabi Bank',
-  'IHC': 'International Holding Company — Abu Dhabi-listed conglomerate',
-  'OCR': 'Optical Character Recognition — extracts data from invoice images',
-  'KYC': 'Know Your Customer — identity verification for individuals',
-  'KYB': 'Know Your Business — identity verification for entities',
-  'NPL': 'Non-Performing Loan — loan in default or at risk of default',
-  'RWA': 'Risk-Weighted Assets — Basel-defined capital base',
-  'IRB': 'Internal Ratings Based — Basel III risk modelling approach',
-  'SCF': 'Supply Chain Finance — financing across the buyer-supplier-anchor chain',
-  'WPS': 'Wage Protection System — UAE central payroll registry',
-  'FSRA': 'Financial Services Regulatory Authority — ADGM\'s financial regulator',
-  'DMCC': 'Dubai Multi Commodities Centre — Dubai free zone for commodity trading',
+  'IHC': 'International Holding Company. Abu Dhabi-listed conglomerate',
+  'OCR': 'Optical Character Recognition. Extracts data from invoice images',
+  'KYC': 'Know Your Customer. Identity verification for individuals',
+  'KYB': 'Know Your Business. Identity verification for entities',
+  'NPL': 'Non-Performing Loan. Loan in default or at risk of default',
+  'RWA': 'Risk-Weighted Assets. Basel-defined capital base',
+  'IRB': 'Internal Ratings Based. Basel III risk modelling approach',
+  'SCF': 'Supply Chain Finance. Financing across the buyer-supplier-anchor chain',
+  'WPS': 'Wage Protection System. UAE central payroll registry',
+  'FSRA': 'Financial Services Regulatory Authority. ADGM\'s financial regulator',
+  'DMCC': 'Dubai Multi Commodities Centre. Dubai free zone for commodity trading',
   'NBFC': 'Non-Banking Financial Company',
-  'NIM':  'Net Interest Margin — gross yield minus cost of funds',
+  'NIM':  'Net Interest Margin. Gross yield minus cost of funds',
   'RAROC':'Risk-Adjusted Return on Capital',
   'PD':   'Probability of Default',
   'LGD':  'Loss Given Default',
@@ -664,7 +664,7 @@ function GlossaryTerm({ term, children }) {
 }
 
 // ============================================================
-// PHASE 3 — Cross-references inside spans
+// PHASE 3. Cross-references inside spans
 // "Product 1" / "Section 4.12" / "Path 2" → click jumps
 // ============================================================
 function CrossRef({ to, children, jumpTo }) {
@@ -682,7 +682,7 @@ function CrossRef({ to, children, jumpTo }) {
 }
 
 // ============================================================
-// PHASE 3 — Cmd+K search palette
+// PHASE 3. Cmd+K search palette
 // ============================================================
 function SearchPalette({ open, onClose, toc, onJump, isAr }) {
   const [q, setQ] = sV_S('');
@@ -763,7 +763,7 @@ function SearchPalette({ open, onClose, toc, onJump, isAr }) {
 }
 
 // ============================================================
-// PHASE 4 — Chapter ambient orb (background tint)
+// PHASE 4. Chapter ambient orb (background tint)
 // ============================================================
 function ChapterAmbient({ chapterId }) {
   const tone = CHAPTER_TONE[chapterId];
@@ -785,7 +785,7 @@ function ChapterAmbient({ chapterId }) {
 }
 
 // ============================================================
-// PHASE 4 — Pull-quote (oversized italic display)
+// PHASE 4. Pull-quote (oversized italic display)
 // ============================================================
 function PullQuote({ children }) {
   return (
@@ -801,7 +801,7 @@ function PullQuote({ children }) {
 }
 
 // ============================================================
-// ApiEndpoint — Stripe/Postman-style compact API container
+// ApiEndpoint. Stripe/Postman-style compact API container
 // ============================================================
 const METHOD_COLOR = {
   GET:    { fg: '#0a8056', bg: 'rgba(10,128,86,0.12)',  border: 'rgba(10,128,86,0.28)' },
@@ -1040,7 +1040,7 @@ function ApiEndpoint({ method, path, num, description, sections, isAr }) {
         </div>
       )}
 
-      {/* Response panel — slides in on Run */}
+      {/* Response panel. Slides in on Run */}
       {responseSecs.length > 0 && (
         <div style={{
           maxHeight: shown ? 1200 : 0,

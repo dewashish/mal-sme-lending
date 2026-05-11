@@ -1,4 +1,4 @@
-// Supabase client — shared across the prototype.
+// Supabase client. Shared across the prototype.
 // Loaded after the @supabase/supabase-js UMD bundle (window.supabase).
 // Anon key is safe to expose; RLS / RPC handle authorization.
 (function () {
@@ -15,7 +15,7 @@
       window.malSb = null;
     }
   } else {
-    console.warn('[mal] supabase UMD not loaded — persistence disabled.');
+    console.warn('[mal] supabase UMD not loaded. Persistence disabled.');
     window.malSb = null;
   }
 })();

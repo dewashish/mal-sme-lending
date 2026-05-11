@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Mal — Buyer Term-Extension product. The innovation: a true unsecured term loan
+// Mal. Buyer Term-Extension product. The innovation: a true unsecured term loan
 // stacked on top of a supplier's net-30/60/90 invoice. Buyer can extend the
 // effective payment date by 3 / 6 / 9 / 12 months by taking a Mal-funded loan
 // that pays the supplier on the original due date.
@@ -21,7 +21,7 @@ const EXT_TENORS = [
 ];
 
 // ============================================================
-// Entry CTA card — sits inside InvoiceDetail near the "Choose plan" button
+// Entry CTA card. Sits inside InvoiceDetail near the "Choose plan" button
 // ============================================================
 function ExtendBanner({ lang, onClick, daysToDue = 12, principal = 250000 }) {
   const isAr = lang === 'ar';
@@ -44,7 +44,7 @@ function ExtendBanner({ lang, onClick, daysToDue = 12, principal = 250000 }) {
           {isAr ? `تحتاج وقتاً أكثر؟ مدّد لـ ١٢ شهر` : `Need more time? Extend up to 12 months`}
         </div>
         <div style={{ fontSize: 12, opacity: .8, marginTop: 2 }}>
-          {isAr ? `بدلاً من ${daysToDue} يوم — قسّط على راحتك` : `Instead of ${daysToDue} days — pay monthly`}
+          {isAr ? `بدلاً من ${daysToDue} يوم، قسّط على راحتك` : `Instead of ${daysToDue} days، pay monthly`}
         </div>
       </div>
       {Ico.arrow({ color: '#fff' })}
@@ -53,7 +53,7 @@ function ExtendBanner({ lang, onClick, daysToDue = 12, principal = 250000 }) {
 }
 
 // ============================================================
-// 01 · Hero — explains the concept
+// 01 · Hero. Explains the concept
 // ============================================================
 function BuyerExtendHero({ lang, setRoute, viewport }) {
   const isAr = lang === 'ar';
@@ -76,7 +76,7 @@ function BuyerExtendHero({ lang, setRoute, viewport }) {
                 {isAr ? 'مدّد فاتورتك،\nادفع شهرياً.' : 'Extend the term.\nPay monthly.'}
               </div>
               <div style={{ fontSize: 12, opacity: .85, marginTop: 8, maxWidth: 280 }}>
-                {isAr ? 'يحصل المورّد على المبلغ في موعده. أنت تختار مدة سداد تصل إلى ١٢ شهراً.' : 'Your supplier gets paid on time. You choose a tenor up to 12 months — unsecured, fully digital.'}
+                {isAr ? 'يحصل المورّد على المبلغ في موعده. أنت تختار مدة سداد تصل إلى ١٢ شهراً.' : 'Your supplier gets paid on time. You choose a tenor up to 12 months. Unsecured, fully digital.'}
               </div>
             </div>
           </div>
@@ -135,7 +135,7 @@ function BuyerExtendHero({ lang, setRoute, viewport }) {
 }
 
 // ============================================================
-// 02 · Tenor picker — the heart of the flow
+// 02 · Tenor picker. The heart of the flow
 // ============================================================
 function BuyerExtendPicker({ lang, setRoute, viewport, principal = 250000 }) {
   const isAr = lang === 'ar';
@@ -249,7 +249,7 @@ function BuyerExtendPicker({ lang, setRoute, viewport, principal = 250000 }) {
 }
 
 // ============================================================
-// 03 · Agreement / disclosure — full T&Cs surfaced clearly
+// 03 · Agreement / disclosure. Full T&Cs surfaced clearly
 // ============================================================
 function BuyerExtendAgreement({ lang, setRoute, viewport }) {
   const isAr = lang === 'ar';
@@ -320,7 +320,7 @@ function BuyerExtendAgreement({ lang, setRoute, viewport }) {
 }
 
 // ============================================================
-// 04 · Confirm — UAE Pass signing
+// 04 · Confirm. UAE Pass signing
 // ============================================================
 function BuyerExtendConfirm({ lang, setRoute, viewport }) {
   const isAr = lang === 'ar';

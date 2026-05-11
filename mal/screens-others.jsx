@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Mal — Supplier, Healthcare, Anchor persona screens (compact).
+// Mal. Supplier, Healthcare, Anchor persona screens (compact).
 const { useState: usS, useEffect: usE } = React;
 
 // ============================================================
@@ -215,10 +215,10 @@ function SupplierCash({ lang, viewport }) {
       <Card padded>
         <div className="mal-caption" style={{ marginBottom: 8 }}>{lang === 'ar' ? 'الكشف' : 'Statement'}</div>
         {[
-          ['12 Oct', 'Wire — Mal Capital', '+222,250'],
-          ['11 Oct', 'Wire — Mal Capital', '+78,200'],
+          ['12 Oct', 'Wire. Mal Capital', '+222,250'],
+          ['11 Oct', 'Wire. Mal Capital', '+78,200'],
           ['10 Oct', 'Buyer payment routed', '17,750'],
-          ['07 Oct', 'Wire — Mal Capital', '+392,400'],
+          ['07 Oct', 'Wire. Mal Capital', '+392,400'],
         ].map((r, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderTop: i ? '1px solid var(--mal-line-2)' : 'none' }}>
             <div><div style={{ fontSize: 13, fontWeight: 500 }}>{r[1]}</div><div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{r[0]}</div></div>
@@ -540,7 +540,7 @@ function HCCoderFix({ lang, setRoute, viewport }) {
           </div>
         </div>
       </Card>
-      <Field label={lang === 'ar' ? 'تشخيص ثانوي' : 'Secondary Dx'}><Input defaultValue="E11.9 — Type 2 diabetes mellitus"/></Field>
+      <Field label={lang === 'ar' ? 'تشخيص ثانوي' : 'Secondary Dx'}><Input defaultValue="E11.9. Type 2 diabetes mellitus"/></Field>
       <Field label={lang === 'ar' ? 'مرجع التصريح' : 'Prior-auth ref'}><Input defaultValue="PA-2026-1183"/></Field>
       <Button kind="primary" size="lg" full icon="check" onClick={() => {
         if (window.MalSession) window.MalSession.saveSlice('hcCoderFixes', {
@@ -658,7 +658,7 @@ function AnchorAuctionAdmin({ lang, viewport }) {
       <Card padded>
         <div className="mal-caption" style={{ marginBottom: 12 }}>{lang === 'ar' ? 'المزاد اليومي' : 'Daily auction'}</div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
-          <span>{lang === 'ar' ? 'وقت الإغلاق' : 'Window'}</span><span className="mal-mono">12:00 — 12:30 GST</span>
+          <span>{lang === 'ar' ? 'وقت الإغلاق' : 'Window'}</span><span className="mal-mono">12:00. 12:30 GST</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
           <span>{lang === 'ar' ? 'سعر أساسي' : 'Base rate'}</span><span className="mal-mono">1.50%/30d</span>
@@ -675,7 +675,7 @@ function AnchorAuctionAdmin({ lang, viewport }) {
 }
 
 // ============================================================
-// ANCHOR SUPPLIER (Product 3) — Hero auction screen
+// ANCHOR SUPPLIER (Product 3). Hero auction screen
 // ============================================================
 function AnchorSupplierApp({ route, setRoute, lang, viewport }) {
   const navItems = [

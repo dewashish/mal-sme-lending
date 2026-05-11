@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Mal · product catalogue — shared by Prototype and Financial Modeling sections.
+// Mal · product catalogue. Shared by Prototype and Financial Modeling sections.
 //
 // Sourced from the strategy doc: 3 core products (P1, P2, P3), Path-2 buyer
 // extension, FLDG distribution model, plus Appendix A.2 wider catalogue (A1–A17).
@@ -11,7 +11,7 @@ window.MAL_PRODUCT_CATALOGUE = [
   {
     id: 'invoice-finance',
     name: 'Invoice Finance',
-    blurb: 'Cash against invoices — supplier advance, buyer flexibility.',
+    blurb: 'Cash against invoices. Supplier advance, buyer flexibility.',
     color: 'lilac',
     products: [
       {
@@ -145,7 +145,7 @@ window.MAL_PRODUCT_CATALOGUE = [
   {
     id: 'working-capital',
     name: 'Working Capital & Compliance',
-    blurb: 'Payroll, licensing, and tax — short-tenor cash bridges.',
+    blurb: 'Payroll, licensing, and tax. Short-tenor cash bridges.',
     color: 'peach',
     products: [
       {
@@ -202,7 +202,7 @@ window.MAL_PRODUCT_CATALOGUE = [
         title: 'Embedded Accounting-Platform Lending',
         short: 'Embedded Accounting',
         status: 'in-progress',
-        blurb: 'Credit decisioning and disbursement embedded inside Zoho / QuickBooks / Xero — SMEs apply without leaving their books.',
+        blurb: 'Credit decisioning and disbursement embedded inside Zoho / QuickBooks / Xero. SMEs apply without leaving their books.',
       },
       {
         id: 'a11-pos-mca',
@@ -218,7 +218,7 @@ window.MAL_PRODUCT_CATALOGUE = [
         title: 'Marketplace Seller Financing',
         short: 'Marketplace Sellers',
         status: 'in-progress',
-        blurb: 'Working-capital lines for noon, Amazon.ae, talabat, and Careem sellers — repayment swept from marketplace payout cycle.',
+        blurb: 'Working-capital lines for noon, Amazon.ae, talabat, and Careem sellers. Repayment swept from marketplace payout cycle.',
       },
     ],
   },

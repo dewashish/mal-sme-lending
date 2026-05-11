@@ -5,7 +5,7 @@ window.MAL_I18N = {
     appName: "Mal",
     tagline: "Capital that moves at the speed of trade.",
     products: {
-      p1: { short: "Smart Invoice", full: "Smart Invoice — B2B Pay & Get Paid" },
+      p1: { short: "Smart Invoice", full: "Smart Invoice. B2B Pay & Get Paid" },
       p2: { short: "Claims Engine", full: "Healthcare Receivables Engine" },
       p3: { short: "Anchor SCF", full: "Anchor-Led Supply Chain Finance" },
     },
@@ -40,7 +40,7 @@ window.MAL_I18N = {
     appName: "مال",
     tagline: "رأس مال يتحرّك بسرعة التجارة.",
     products: {
-      p1: { short: "الفاتورة الذكية", full: "الفاتورة الذكية — ادفع واستلم" },
+      p1: { short: "الفاتورة الذكية", full: "الفاتورة الذكية، ادفع واستلم" },
       p2: { short: "محرّك المطالبات", full: "محرّك مطالبات التأمين الصحي" },
       p3: { short: "تمويل الموردين", full: "تمويل سلسلة التوريد بقيادة الشركات الكبرى" },
     },
@@ -78,7 +78,7 @@ window.MAL_T = function (lang, path) {
   return path.split('.').reduce((o, k) => (o ? o[k] : undefined), dict);
 };
 
-// Currency formatter — uses AR/EN-Arabic formatting based on lang
+// Currency formatter. Uses AR/EN-Arabic formatting based on lang
 window.MAL_FMT = function (n, lang, opts) {
   opts = opts || {};
   const locale = lang === 'ar' ? 'ar-AE' : 'en-AE';

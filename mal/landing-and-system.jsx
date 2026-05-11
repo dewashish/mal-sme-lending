@@ -1,8 +1,8 @@
 /* eslint-disable */
-// Mal — Landing (4-section hero) + Design system page.
+// Mal. Landing (4-section hero) + Design system page.
 
 // ============================================================
-// LANDING PAGE — single-screen hero, 4 interactive section cards
+// LANDING PAGE. Single-screen hero, 4 interactive section cards
 // ============================================================
 function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
   const isAr = lang === 'ar';
@@ -44,7 +44,7 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
         pointerEvents: 'none',
       }}/>
 
-      {/* Top bar — just wordmark */}
+      {/* Top bar. Just wordmark */}
       <header style={{
         height: 64, paddingInline: isMobile ? 18 : 56,
         display: 'flex', alignItems: 'center',
@@ -61,7 +61,7 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
         paddingBlock: isMobile ? 28 : 60,
         display: 'flex', flexDirection: 'column', justifyContent: 'center',
       }}>
-        {/* Hero — video alongside the wordmark */}
+        {/* Hero. Video alongside the wordmark */}
         <div className="mal-fade-up" style={{
           display: 'flex', alignItems: 'center',
           gap: isMobile ? 18 : 36, flexWrap: 'wrap',
@@ -145,7 +145,7 @@ function MalLanding({ lang = 'en', viewport = 'desktop', onLaunch }) {
   );
 }
 
-// Single section card — number + name + arrow. No marketing copy.
+// Single section card. Number + name + arrow. No marketing copy.
 function SectionCard({ section, index, isAr, isMobile, onClick }) {
   return (
     <button
@@ -245,7 +245,7 @@ function MalSystemPage() {
           <MalLogo size={32}/>
           <h1 className="mal-display" style={{ fontSize: 96, marginTop: 18, fontStyle: 'italic' }}>The Mal system.</h1>
           <p style={{ color: 'var(--mal-mid)', fontSize: 16, maxWidth: 540, marginTop: 12 }}>
-            Warm pearl, iridescent indigo, Instrument Serif numerals. A fintech aesthetic that whispers — for SMEs across the UAE.
+            Warm pearl, iridescent indigo, Instrument Serif numerals. A fintech aesthetic that whispers. For SMEs across the UAE.
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -269,7 +269,7 @@ function MalSystemPage() {
           ].map(([c, l]) => <Swatch key={l} color={c} label={l}/>)}
         </div>
         <div style={{ marginTop: 20, height: 96, borderRadius: 14, background: 'linear-gradient(120deg, #B6CFE8 0%, #C9B7E8 35%, #F0B7C2 70%, #FBD9B5 100%)', display: 'flex', alignItems: 'center', paddingInline: 24 }}>
-          <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 24, fontStyle: 'italic', color: '#1A1A28' }}>Iridescent — sky · lilac · coral · peach</span>
+          <span style={{ fontFamily: 'var(--mal-font-display)', fontSize: 24, fontStyle: 'italic', color: '#1A1A28' }}>Iridescent. Sky · lilac · coral · peach</span>
         </div>
       </Section>
 
@@ -286,7 +286,7 @@ function MalSystemPage() {
             <div><div className="mal-h1">Heading 1 · 28/30</div><div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>Geist 500</div></div>
             <div><div className="mal-h2">Heading 2 · 22/26</div></div>
             <div><div className="mal-h3">Heading 3 · 17/22</div></div>
-            <div><div className="mal-body">Body · 15/24 — The quick brown fox jumps over the lazy dog.</div></div>
+            <div><div className="mal-body">Body · 15/24. The quick brown fox jumps over the lazy dog.</div></div>
             <div><div className="mal-body-sm">Body small · 13/19</div></div>
             <div><div className="mal-caption">Caption · 11 uppercase</div></div>
             <div className="mal-num" style={{ fontFamily: 'var(--mal-font-mono)', fontSize: 14 }}>AED 1,247,395.00</div>
@@ -390,7 +390,7 @@ function MalSystemPage() {
         <Card padded style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: 36, textAlign: 'center' }}>
           <MalOrb size={56}/>
           <div className="mal-h3">Nothing to finance yet</div>
-          <div style={{ fontSize: 13, color: 'var(--mal-mid)', maxWidth: 360 }}>Upload your first invoice or sync Peppol — Mal will price the offer in seconds.</div>
+          <div style={{ fontSize: 13, color: 'var(--mal-mid)', maxWidth: 360 }}>Upload your first invoice or sync Peppol. Mal will price the offer in seconds.</div>
           <Button kind="primary" size="sm" icon="upload">Upload invoice</Button>
         </Card>
 

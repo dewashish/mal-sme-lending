@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Section 2 — Prototype
+// Section 2. Prototype
 // Full-bleed prototype stage. Floating top-right dropdown that groups the
 // 20-product catalogue into 6 categories. Only the Smart Invoice flagship
 // is interactive; everything else routes to a "Coming soon" stage.
@@ -78,8 +78,8 @@ function buildPrototypeTourSteps(isAr, entryId) {
     { title: isAr ? 'مرحباً بك في النموذج الحي' : 'Welcome to the live prototype',
       body: [
         isAr
-          ? 'هذه هي الواجهة التشغيلية لـMal — كيف ستبدو التطبيقات على الهاتف للمشتري والمورد.'
-          : 'This is the live prototype — what the buyer and supplier mobile apps will actually look and behave like.',
+          ? 'هذه هي الواجهة التشغيلية لـMal، كيف ستبدو التطبيقات على الهاتف للمشتري والمورد.'
+          : 'This is the live prototype. What the buyer and supplier mobile apps will actually look and behave like.',
         isAr
           ? 'الفاتورة الذكية فقط مفعلة كاملة. المنتجات الـ٢٠ الأخرى في الكتالوج تظهر بطاقة "قيد الإعداد".'
           : 'Only Smart Invoice is fully wired. The other 20 products in the catalogue route to an "in progress" card.',
@@ -88,7 +88,7 @@ function buildPrototypeTourSteps(isAr, entryId) {
 
     { title: isAr ? 'كتالوج المنتجات' : 'Product catalogue',
       body: isAr
-        ? 'منسدلة في الزاوية اليمنى — ٢١ منتجاً في ٦ فئات: تمويل الفواتير، الرعاية الصحية، سلسلة التوريد، رأس المال العامل، المضمن، والمتخصص.'
+        ? 'منسدلة في الزاوية اليمنى، ٢١ منتجاً في ٦ فئات: تمويل الفواتير، الرعاية الصحية، سلسلة التوريد، رأس المال العامل، المضمن، والمتخصص.'
         : '21 products grouped into 6 categories. Click a category header to expand it, then hover any product for a one-line description.',
       selector: '.mal-section-page button[aria-haspopup="menu"], div[style*="position: fixed"] button[aria-haspopup="menu"]' },
 
@@ -112,7 +112,7 @@ function buildPrototypeTourSteps(isAr, entryId) {
       title: isAr ? 'مؤشر التحكم بالوقت' : 'Time control / day dial',
       body: isAr
         ? 'في الأسفل ستجد مفتاح التنقل بين أيام السيناريو. اسحب أو انقر اليوم لرؤية كيف تتطور الحالة.'
-        : 'At the bottom of the stage there\'s a day dial — drag or click any day to see how the buyer and supplier flows evolve through the 30/60/90/180-day cycle.',
+        : 'At the bottom of the stage there\'s a day dial. Drag or click any day to see how the buyer and supplier flows evolve through the 30/60/90/180-day cycle.',
       position: 'center', selector: null,
     } : null,
 
@@ -131,8 +131,8 @@ function buildPrototypeTourSteps(isAr, entryId) {
     { title: isAr ? 'انتهت الجولة' : 'End of tour',
       body: [
         isAr
-          ? 'هذا كل شيء — جربها. الجولة محفوظة في زر "خذ جولة" أعلى اليمين.'
-          : 'That\'s it — go play. The tour stays one click away via the "Take a tour" button.',
+          ? 'هذا كل شيء، جربها. الجولة محفوظة في زر "خذ جولة" أعلى اليمين.'
+          : 'That\'s it، go play. The tour stays one click away via the "Take a tour" button.',
         isAr
           ? 'إذا أردت رؤية النموذج المالي، انتقل لقسم الاقتصاد.'
           : 'For the financial model behind these flows, head to the Economics section.',
@@ -142,8 +142,8 @@ function buildPrototypeTourSteps(isAr, entryId) {
 }
 
 // ============================================================
-// ResetDemoButton — clears the persisted demo state (Supabase session
-// UUID + in-memory cache) and forces a fresh mount. Pure simulator —
+// ResetDemoButton. Clears the persisted demo state (Supabase session
+// UUID + in-memory cache) and forces a fresh mount. Pure simulator,
 // no real data is touched. Confirms before nuking.
 // ============================================================
 function ResetDemoButton({ lang, style }) {
@@ -189,7 +189,7 @@ function ResetDemoButton({ lang, style }) {
 }
 
 // ============================================================
-// GroupedProductSelector — shared dropdown for prototype + financial.
+// GroupedProductSelector. Shared dropdown for prototype + financial.
 // variant: 'floating' (top-right corner pill) | 'inline' (block-level)
 // ============================================================
 function GroupedProductSelector({ catalogue, productId, entryId, onPickProduct, onPickEntry, isAr, isMobile, variant = 'floating' }) {
@@ -444,7 +444,7 @@ function GroupedProductSelector({ catalogue, productId, entryId, onPickProduct, 
 }
 
 // ============================================================
-// Persona mount — single-persona embed
+// Persona mount. Single-persona embed
 // ============================================================
 function PersonaMount({ persona, lang, isMobile }) {
   const personaPrefersMobile = persona === 'buyer' || persona === 'supplier' || persona === 'anchorSup';
@@ -465,7 +465,7 @@ function PersonaMount({ persona, lang, isMobile }) {
 }
 
 // ============================================================
-// Coming-soon — shown for any in-progress product
+// Coming-soon. Shown for any in-progress product
 // ============================================================
 function ComingSoon({ product, isAr }) {
   if (!product) return null;

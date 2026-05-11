@@ -1,4 +1,4 @@
-// Mal — minimal icon set. All 20px line icons.
+// Mal. Minimal icon set. All 20px line icons.
 const malIco = (path, opts = {}) =>
   React.createElement('svg', {
     width: 20, height: 20, viewBox: '0 0 20 20', fill: 'none',

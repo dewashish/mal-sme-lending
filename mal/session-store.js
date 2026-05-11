@@ -1,7 +1,7 @@
-// Mal SME Lending — session state persistence.
+// Mal SME Lending. Session state persistence.
 // Anonymous demo sessions: a UUID is generated on first load and stored in
 // localStorage. All commit-style actions (sign, accept, submit) call
-// MalSession.saveSlice('sliceName', data) — debounced upsert via the
+// MalSession.saveSlice('sliceName', data). Debounced upsert via the
 // `mal_state_save` RPC. On app mount, MalSession.loadState() rehydrates the
 // JSONB state. If Supabase is unreachable, everything still works via the
 // in-memory cache; nothing throws.

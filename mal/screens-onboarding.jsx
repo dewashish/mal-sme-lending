@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Mal — Full multi-screen onboarding journeys.
+// Mal. Full multi-screen onboarding journeys.
 // Buyer SME and Supplier SME each get a 10+ step journey, each step a discrete
 // screen. Driven by an `initialStep` prop so the design canvas can lay every
 // step out side by side as its own artboard.
@@ -7,7 +7,7 @@
 const { useState: oS, useEffect: oE } = React;
 
 // ============================================================
-// Buyer Onboarding — 11 screens
+// Buyer Onboarding. 11 screens
 // ============================================================
 const BUYER_STEPS = [
   'welcome', 'phone', 'otp', 'license', 'uaepass',
@@ -28,7 +28,7 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
   const back = () => setStepIdx(stepIdx - 1);
   const isAr = lang === 'ar';
 
-  // Persist progress on each "Continue" click — only commit-style, not keystrokes.
+  // Persist progress on each "Continue" click. Only commit-style, not keystrokes.
   React.useEffect(() => {
     if (window.MalSession) {
       window.MalSession.saveSlice('buyerOnboarding', {
@@ -83,7 +83,7 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
           {isAr ? <>رأس مال<br/><span className="mal-iri-text">يتحرّك معك.</span></> : <>Capital that<br/><span className="mal-iri-text">moves with you.</span></>}
         </h1>
         <p style={{ fontSize: 15, color: 'var(--mal-mid)', maxWidth: 320, lineHeight: 1.5 }}>
-          {isAr ? 'افتح حسابك في ١٠ دقائق. اشترِ الآن، ادفع خلال ٣٠ إلى ١٢٠ يوم — مال يسدّد موردك اليوم.' : 'Open your account in 10 minutes. Buy now, pay in 30 to 120 days — Mal settles your supplier today.'}
+          {isAr ? 'افتح حسابك في ١٠ دقائق. اشترِ الآن، ادفع خلال ٣٠ إلى ١٢٠ يوم، مال يسدّد موردك اليوم.' : 'Open your account in 10 minutes. Buy now, pay in 30 to 120 days. Mal settles your supplier today.'}
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 36 }}>
           <Button kind="primary" size="lg" full iconRight="arrow" onClick={next}>{isAr ? 'افتح حساباً' : 'Open an account'}</Button>
@@ -341,7 +341,7 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
   return null;
 }
 
-// Decision step — CSS-only staggered animation. Each row reveals at its
+// Decision step. CSS-only staggered animation. Each row reveals at its
 // own delay; no React state, so re-mounts don't break it. After ~4.5s
 // total the Continue button fades in and is clickable.
 function DecisionStep({ isAr, onDone }) {
@@ -374,7 +374,7 @@ function DecisionStep({ isAr, onDone }) {
             // overlay layers each animated with its own delay.
           }}>
             <div style={{ width: 16, height: 16, position: 'relative', flexShrink: 0 }}>
-              {/* Wait/load circle — visible by default, fades out after row's delay */}
+              {/* Wait/load circle. Visible by default, fades out after row's delay */}
               <div style={{
                 position: 'absolute', inset: 0,
                 width: 14, height: 14,
@@ -384,7 +384,7 @@ function DecisionStep({ isAr, onDone }) {
                 animation: 'mal-spin 1s linear infinite, mal-decision-fade-out .3s ease forwards',
                 animationDelay: `0s, ${0.3 + i * 0.85}s`,
               }}/>
-              {/* Done check — invisible by default, fades in at row's delay */}
+              {/* Done check. Invisible by default, fades in at row's delay */}
               <div style={{
                 position: 'absolute', inset: 0,
                 width: 16, height: 16,
@@ -415,7 +415,7 @@ function DecisionStep({ isAr, onDone }) {
         ))}
       </Card>
       <div style={{ marginTop: 'auto', position: 'relative' }}>
-        {/* Continue button — appears after all rows complete (~5s) */}
+        {/* Continue button. Appears after all rows complete (~5s) */}
         <div style={{
           opacity: 0,
           animation: 'mal-decision-fade-in .4s ease forwards',
@@ -431,7 +431,7 @@ function DecisionStep({ isAr, onDone }) {
 }
 
 // ============================================================
-// Supplier Onboarding — 8 screens
+// Supplier Onboarding. 8 screens
 // ============================================================
 const SUPPLIER_STEPS = ['welcome', 'phone', 'license', 'invoice', 'bank', 'buyers', 'review', 'ready'];
 
@@ -643,7 +643,7 @@ function SupplierOnboardingFlow({ lang, initialStep = 0, onDone, controlledStep,
       <div className="mal-orb" style={{ width: 140, height: 140, animation: 'mal-orb-spin 12s linear infinite' }}/>
       <div className="mal-display-md mal-iri-text" style={{ fontStyle: 'italic' }}>{isAr ? 'كل شيء جاهز.' : 'You\'re all set.'}</div>
       <div style={{ fontSize: 14, color: 'var(--mal-mid)', maxWidth: 280 }}>
-        {isAr ? 'أرسل أول فاتورة وستظهر هنا خلال دقيقة. نحوّل خلال ٤ ساعات.' : 'Send your first invoice — it\'ll appear here within a minute. We wire in 4 hours.'}
+        {isAr ? 'أرسل أول فاتورة وستظهر هنا خلال دقيقة. نحوّل خلال ٤ ساعات.' : 'Send your first invoice، it\'ll appear here within a minute. We wire in 4 hours.'}
       </div>
       <Card padded style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 320 }}>
         <Avatar tone="ink" name="📨" size={36}/>

@@ -1,6 +1,6 @@
 # Mal Prototype Audit · Scenario Tests + Competitive Benchmark
 
-**Scope:** P1 Smart Invoice (Side-by-side demo) — buyer + supplier flows, refinance, term extension, overdue ladder, bilingual EN/AR.
+**Scope:** P1 Smart Invoice (Side-by-side demo). Buyer + supplier flows, refinance, term extension, overdue ladder, bilingual EN/AR.
 **Method:** Playwright at 1500×1000 against `http://localhost:3001/#prototype`, supplemented by source review (`mal/screens-demo-mode.jsx`, `mal/screens-buyer.jsx`, `mal/screens-buyer-extend.jsx`, `mal/screens-onboarding.jsx`).
 **Date:** May 2026
 **Auditor:** Claude (Opus 4.7) · driven by the user
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-The P1 prototype is **production-quality on the canonical journeys** it claims. All five plan types resolve correctly; refinance and term extension flows are intact; the supplier-side holdback mechanic, AECB messaging, and DPD-tier escalation read as if a regulator reviewed them. The buyer's home dashboard already shows **multiple active loans simultaneously** (background loans from other suppliers like Marina IT Services), so the user's worry that the prototype is single-invoice-only was partially unfounded — what's missing is the *interactivity* on those secondary loans, not the visual representation.
+The P1 prototype is **production-quality on the canonical journeys** it claims. All five plan types resolve correctly; refinance and term extension flows are intact; the supplier-side holdback mechanic, AECB messaging, and DPD-tier escalation read as if a regulator reviewed them. The buyer's home dashboard already shows **multiple active loans simultaneously** (background loans from other suppliers like Marina IT Services), so the user's worry that the prototype is single-invoice-only was partially unfounded. What's missing is the *interactivity* on those secondary loans, not the visual representation.
 
 **What's solid:**
 - 5 plan types (Pay-30, BNPL-60/90, Inst-3, Inst-4) priced and scheduled correctly
@@ -21,14 +21,14 @@ The P1 prototype is **production-quality on the canonical journeys** it claims. 
 
 **What's broken or thin:**
 - `localStorage` state persists across reloads with no Reset CTA in the demo; users have to manually clear storage
-- Background loans are visual-only — buyer cannot pay them, dispute them, or restructure them
+- Background loans are visual-only. Buyer cannot pay them, dispute them, or restructure them
 - Day-dial scrubbing past EMI pills requires drag/wheel; no direct day input or `?day=N` deep-link
 
 **Top 3 must-have additions** (ranked by user-visible impact ÷ effort):
 
-1. **Multi-invoice consolidation** — make the second-supplier loans interactive: tap to view, pay, restructure; add a "merge into one EMI bundle" CTA. The data shape already supports it.
-2. **Payment-method picker** wired into every Pay button — Apple Pay / AANI / IPP / auto-debit / manual transfer / card. Today every pay is a one-click ghost transaction; this is the single biggest realism gap.
-3. **Notification preference centre + timeline** — channel × language × event-type, with reminders firing on the day-dial timeline (3-day pre-due, day-of, +1, +7, +15, +30). Sells the "we'll meet you where you are" story.
+1. **Multi-invoice consolidation**. Make the second-supplier loans interactive: tap to view, pay, restructure; add a "merge into one EMI bundle" CTA. The data shape already supports it.
+2. **Payment-method picker** wired into every Pay button. Apple Pay / AANI / IPP / auto-debit / manual transfer / card. Today every pay is a one-click ghost transaction; this is the single biggest realism gap.
+3. **Notification preference centre + timeline**. Channel × language × event-type, with reminders firing on the day-dial timeline (3-day pre-due, day-of, +1, +7, +15, +30). Sells the "we'll meet you where you are" story.
 
 Full ranked list in §4 below; gap matrix in §3.
 
@@ -54,12 +54,12 @@ Full ranked list in §4 below; gap matrix in §3.
 | B12 | Background-loan limit math (`limit − Σ utilised`) | ✅ PASS | [02](audit-screenshots/02-live-day0.png) | "Available limit AED 516,000, in use AED 334,000 = 39%" matches primary + Marina IT Services background loan |
 | B13 | Reset returns to `DEFAULT_SCENARIO` | ❌ FAIL | (no reset CTA) | **No reset button visible in the demo header**; users must `localStorage.clear()` to reset. Source review confirms reset only happens on cold reload of `screens-demo-mode.jsx` if no persisted state exists. |
 | **C. Edge cases & expected gaps** | | | | |
-| C14 | Multi-supplier active simultaneously | 🟡 GAP — partial | [02](audit-screenshots/02-live-day0.png) | Background loans from "Marina IT Services" render in the buyer's loan list, but they're **read-only**. No pay / restructure / dispute flow on them. |
+| C14 | Multi-supplier active simultaneously | 🟡 GAP. Partial | [02](audit-screenshots/02-live-day0.png) | Background loans from "Marina IT Services" render in the buyer's loan list, but they're **read-only**. No pay / restructure / dispute flow on them. |
 | C15 | Partial payment (pay less than full EMI) | 🟡 GAP | source review | `payEmi` in demo state only accepts full-EMI clicks; no slider or input for partial amount |
 | C16 | Early full payoff (clear all remaining EMIs) | 🟡 GAP | source review | No "pay it all off now" shortcut; user must scrub day-by-day and click Pay per EMI |
 | C17 | Failed payment / NSF simulation | 🟡 GAP | source review | Click-to-pay is instant; no failed-payment path, no retry, no error toast |
 | C18 | Payment-method picker (Apple Pay / AANI / etc.) | 🟡 GAP | source review | Single-tap Pay button; no method modal, no auto-debit toggle, no rail selection |
-| C19 | Notification cadence (pre-due / +1 / +7 / +15 / +30) | 🟡 GAP — partial | source review | Activity log shows day-of and DPD-tier escalation events; no pre-due nudges, no preference centre |
+| C19 | Notification cadence (pre-due / +1 / +7 / +15 / +30) | 🟡 GAP. Partial | source review | Activity log shows day-of and DPD-tier escalation events; no pre-due nudges, no preference centre |
 | C20 | Dispute / chargeback (goods-received mismatch) | 🟡 GAP | source review | No dispute CTA; no buyer-supplier claim flow |
 | C21 | Multi-currency (USD / EUR invoice) | 🟡 GAP | source review | All amounts in AED hardcoded throughout |
 | C22 | Sharia / Tawarruq variant on P1 | 🟡 GAP | source review | Catalogue lists P1 as Sharia-eligible; no in-app Tawarruq commodity-trade visualiser, no separate Murabaha contract screen |
@@ -67,13 +67,13 @@ Full ranked list in §4 below; gap matrix in §3.
 | C24 | Hardship self-declaration | 🟡 GAP | source review | Refinance / extension are the only distress paths; no proactive system-suggested hardship offer |
 | C25 | Statement export (PDF / Excel) | 🟡 GAP | source review | No download CTAs anywhere; activity log is in-app only |
 
-**Summary:** 12 PASS / 2 PASS-WITH-NOTE / 1 FAIL / 12 GAP (expected — these are the recommendation-targets).
+**Summary:** 12 PASS / 2 PASS-WITH-NOTE / 1 FAIL / 12 GAP (expected. These are the recommendation-targets).
 
 ---
 
 ## 2. Console Error Audit
 
-Driven across the happy + overdue + refinance paths: **zero React errors, zero unhandled promise rejections.** Only Chrome warnings from passive-listener `preventDefault()` on the day-dial wheel handler — that's a known React-DOM behaviour and not a real bug, but worth tightening (use `{passive:false}` on the dial container so wheel scrolling on the dial doesn't surface noisy warnings in DevTools).
+Driven across the happy + overdue + refinance paths: **zero React errors, zero unhandled promise rejections.** Only Chrome warnings from passive-listener `preventDefault()` on the day-dial wheel handler. That's a known React-DOM behaviour and not a real bug, but worth tightening (use `{passive:false}` on the dial container so wheel scrolling on the dial doesn't surface noisy warnings in DevTools).
 
 ---
 
@@ -90,7 +90,7 @@ For each gap, what the prototype shows today, which competitor exemplifies the p
 | UAE PASS + Emirates ID NFC | Onboarding step is generic "Get started" | Wio · YAP · Mashreq NeoBiz | Replace generic onboarding step with UAE PASS QR + Emirates ID NFC scan UI; auto-populate trade licence + UBO. | M | Must |
 | Open Finance one-click bank verify | Bank statement step is implicit | Lean · Tarabut · CredibleX | Add a "Connect your bank in 30 seconds" CTA wired through Lean's branded consent screen. | M | Must |
 | One-tap term-switch post-purchase | Customer must enter Restructure flow | Mondu | In-place dropdown on the active-plan card: "Switch to BNPL-60 / 90 / 6-mo EMI"; one signature, no full re-flow. | M | Must |
-| Anchor-buyer pre-approved limit | Supplier sees only their own profile | Zelo · Hokodo | Supplier dashboard: "Anchor X is pre-cleared up to AED Y for you" — surfaced before invoice upload. | S | Must |
+| Anchor-buyer pre-approved limit | Supplier sees only their own profile | Zelo · Hokodo | Supplier dashboard: "Anchor X is pre-cleared up to AED Y for you". Surfaced before invoice upload. | S | Must |
 | Statement export with VAT | No download | Ramp · Brex | Buyer + supplier home: "Download statement (PDF / Excel)" with a VAT-input column for FTA filing. | S | Must |
 | Cashflow forecast widget | Not present | Wio · Ramp | Buyer home top card: 30 / 60 / 90-day forecast overlay with EMI dots, expected receivables, runway warning. | M | Nice |
 | Pre-emptive hardship offer | User must self-navigate to Need-more-time | Slope · Capchase | At Day -3 with low cash signal, system surfaces "Want to extend this EMI by 30 days?" before missed payment. | M | Nice |
@@ -110,30 +110,30 @@ For each gap, what the prototype shows today, which competitor exemplifies the p
 Within each tier, ordered by impact ÷ effort.
 
 ### Must-have (regional parity)
-1. **Multi-invoice interactivity & consolidation** — unlocks the biggest narrative gap; data shape already supports it
-2. **Payment-method picker** — single biggest realism step-up; one component, reused on every Pay button
-3. **Reset / state-control panel for the demo** — fixes the only outright FAIL in scenario coverage; small CSS + one button
-4. **Statement export (PDF + Excel) with VAT-input column** — small lift, regulatory-relevant
-5. **Notification preference centre + timeline-fired reminders** — cheap to mock, huge UX trust signal
-6. **Anchor-buyer pre-approved limit pull on supplier side** — small surface change, big competitive differentiator
-7. **One-tap term-switch on the active-plan card** — Mondu signature feature; minor UI addition over existing refinance flow
-8. **UAE PASS + Emirates ID NFC onboarding visualisation** — replaces generic "Get started" with regulator-matching scan UI
-9. **Open Finance one-click bank verification** — Lean-style consent screen + 32-feature cashflow extraction visualisation
-10. **Sharia / Tawarruq commodity-trade visualiser** — Mal positions as digital-Sharia-first; this is table stakes for that claim
+1. **Multi-invoice interactivity & consolidation**. Unlocks the biggest narrative gap; data shape already supports it
+2. **Payment-method picker**. Single biggest realism step-up; one component, reused on every Pay button
+3. **Reset / state-control panel for the demo**. Fixes the only outright FAIL in scenario coverage; small CSS + one button
+4. **Statement export (PDF + Excel) with VAT-input column**. Small lift, regulatory-relevant
+5. **Notification preference centre + timeline-fired reminders**. Cheap to mock, huge UX trust signal
+6. **Anchor-buyer pre-approved limit pull on supplier side**. Small surface change, big competitive differentiator
+7. **One-tap term-switch on the active-plan card**. Mondu signature feature; minor UI addition over existing refinance flow
+8. **UAE PASS + Emirates ID NFC onboarding visualisation**. Replaces generic "Get started" with regulator-matching scan UI
+9. **Open Finance one-click bank verification**. Lean-style consent screen + 32-feature cashflow extraction visualisation
+10. **Sharia / Tawarruq commodity-trade visualiser**. Mal positions as digital-Sharia-first; this is table stakes for that claim
 
 ### Nice-to-have (parity-plus)
 11. **Cashflow forecast widget** on buyer home (30/60/90 days)
-12. **Pre-emptive hardship offer** — system suggests extension before missed payment
+12. **Pre-emptive hardship offer**. System suggests extension before missed payment
 13. **One-tap dispute / hold-payment toggle**
 14. **E-invoicing trail badge** (Peppol / EmaraTax submitted)
 15. **Multi-currency invoices** (AED / USD / EUR / SAR)
 16. **Trust dashboard** (Sharia · CBUAE/SCA · AECB · ISO)
 
 ### Aspirational (10× differentiators)
-17. **Programmable repayment splits** — split one EMI across two methods
-18. **Credit-builder for declined SMEs** — Resolve-style re-engagement
-19. **Supplier dynamic-discount auction** — Pipe-for-invoices
-20. **AI collections co-pilot in WhatsApp** — Slope-grade UX, localised
+17. **Programmable repayment splits**. Split one EMI across two methods
+18. **Credit-builder for declined SMEs**. Resolve-style re-engagement
+19. **Supplier dynamic-discount auction**. Pipe-for-invoices
+20. **AI collections co-pilot in WhatsApp**. Slope-grade UX, localised
 
 ---
 
@@ -143,10 +143,10 @@ Today the prototype has **no `data-testid` attributes** anywhere; Playwright dri
 
 Recommended additions:
 - **`data-testid` on ~30 key interactive nodes**: phase-nav buttons, day-dial pills, Pay buttons, plan-picker rows, sidebar phase indicators, persona switcher, language toggle, refinance hero, extension hero, EMI rows, supplier-holdback card.
-- **Scenario runner in `autopilot.js`**: implement `runScenario(name)` for canned flows (`'happy-inst4'`, `'overdue-day60'`, `'refinance-day23'`, `'extend-pay30'`). The primitives (`typewrite`, `flashStatus`, `wait`) already exist in `mal/autopilot.js` — they just aren't invoked.
+- **Scenario runner in `autopilot.js`**: implement `runScenario(name)` for canned flows (`'happy-inst4'`, `'overdue-day60'`, `'refinance-day23'`, `'extend-pay30'`). The primitives (`typewrite`, `flashStatus`, `wait`) already exist in `mal/autopilot.js`. They just aren't invoked.
 - **URL-parameter deep-links**: `?scenario=overdue-day60` and `?day=32` so QA, demos, and stakeholder reviews can land directly on the right state.
 - **Reset CTA**: visible button in the demo header that calls `localStorage.removeItem('mal-session')` and re-renders to `DEFAULT_SCENARIO`. (B13 fail above.)
-- **Mobile (390×844) test pass** as a follow-up — this audit was desktop-only.
+- **Mobile (390×844) test pass** as a follow-up. This audit was desktop-only.
 
 ---
 

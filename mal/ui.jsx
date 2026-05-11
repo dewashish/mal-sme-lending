@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Mal — UI primitives shared across all screens.
+// Mal. UI primitives shared across all screens.
 // Provides: Button, IconBtn, Card, Pill, Field, Toggle, Tabs, Stat, Avatar,
 // MalLogo, MalOrb, useLang, useT, BiDi helpers.
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
@@ -240,7 +240,7 @@ const mockNames = {
 // AED format
 const AED = (n, lang = 'en', opts = {}) => window.MAL_FMT(n, lang, opts);
 
-// Persist tweak rotation utility — tiny helper
+// Persist tweak rotation utility. Tiny helper
 function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
 
 Object.assign(window, {

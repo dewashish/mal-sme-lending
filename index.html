@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <meta name="theme-color" content="#FAF7EE" />
-<title>Mal — UAE SME Lending</title>
+<title>Mal. UAE SME Lending</title>
 <meta name="description" content="One credit platform for UAE SMEs. Pay suppliers now, get paid earlier, advance healthcare claims, run an anchor SCF auction." />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -80,7 +80,7 @@
     background: var(--mal-ink);
     font-weight: 600;
   }
-  /* Section page wrapper — used inside each section */
+  /* Section page wrapper. Used inside each section */
   .mal-section-page {
     min-height: calc(100vh - 56px);
     padding: 28px 24px 60px;
@@ -101,7 +101,7 @@
     0%   { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
-  /* Excel download CTA — single subtle shimmer on mount, then quiet */
+  /* Excel download CTA. Single subtle shimmer on mount, then quiet */
   @keyframes mal-excel-shimmer {
     0%   { transform: translateX(-150%); opacity: 0; }
     20%  { opacity: 1; }
@@ -165,7 +165,7 @@
     width: 30px;
     box-shadow: 0 0 0 4px var(--mal-primary-50);
   }
-  /* Tooltip via ::after — slides in from the right (or left in RTL) */
+  /* Tooltip via ::after. Slides in from the right (or left in RTL) */
   .mal-dotnav-btn[data-label]::after {
     content: attr(data-label);
     position: absolute;
@@ -201,7 +201,7 @@
   }
   /* Day stepper buttons: subtle hover scale */
   .mal-day-step:hover { transform: scale(1.08); background: var(--mal-surface-2); }
-  /* Mobile fluid container — no iPhone bezel under 720px */
+  /* Mobile fluid container. No iPhone bezel under 720px */
   @media (max-width: 720px) {
     .mal-app-fluid { padding: 0 !important; }
     .mal-app-fluid > div > div { /* hide PrototypeChrome row spacer on mobile */
@@ -246,15 +246,15 @@
 <script type="text/babel" src="mal/persona-picker.jsx"></script>
 <script type="text/babel" src="mal/screens-demo-mode.jsx"></script>
 <script type="text/babel" src="mal/charts.jsx"></script>
-<script type="text/babel" src="mal/tour.jsx?v=20260511-3"></script>
-<script type="text/babel" src="mal/strategy-visuals.jsx?v=20260511-3"></script>
-<script src="mal/strategy-doc.js?v=20260511-3"></script>
+<script type="text/babel" src="mal/tour.jsx?v=20260511-4"></script>
+<script type="text/babel" src="mal/strategy-visuals.jsx?v=20260511-4"></script>
+<script src="mal/strategy-doc.js?v=20260511-4"></script>
 <script src="mal/p1-model-data.js"></script>
 <script src="mal/product-catalogue.js"></script>
-<script type="text/babel" src="mal/section-prototype.jsx?v=20260511-3"></script>
-<script type="text/babel" src="mal/section-strategy.jsx?v=20260511-3"></script>
-<script type="text/babel" src="mal/section-financial.jsx?v=20260511-3"></script>
-<script type="text/babel" src="mal/section-ai.jsx?v=20260511-3"></script>
+<script type="text/babel" src="mal/section-prototype.jsx?v=20260511-4"></script>
+<script type="text/babel" src="mal/section-strategy.jsx?v=20260511-4"></script>
+<script type="text/babel" src="mal/section-financial.jsx?v=20260511-4"></script>
+<script type="text/babel" src="mal/section-ai.jsx?v=20260511-4"></script>
 
 <script type="text/babel" data-presets="env,react">
 const { useState, useEffect, useMemo, useCallback, useRef } = React;
@@ -296,7 +296,7 @@ function useSavedToast() {
 }
 
 // ----------------------------------------------------------------------------
-// AppShell — top bar + frame for the picked persona
+// AppShell. Top bar + frame for the picked persona
 // ----------------------------------------------------------------------------
 function AppShell({ persona, initialRoute = 'home', lang, setLang, onHome, onSwitchPersona, isMobile }) {
   // Buyer + Supplier are mobile-first apps; others are desktop-first
@@ -358,7 +358,7 @@ function AppShell({ persona, initialRoute = 'home', lang, setLang, onHome, onSwi
 
       {/* Body */}
       {isMobile ? (
-        // Full-bleed on mobile — drop the iPhone bezel; embed=true means the
+        // Full-bleed on mobile. Drop the iPhone bezel; embed=true means the
         // PrototypeChrome stays out and we render PersonaApp directly.
         <FullBleedMobileApp persona={persona} lang={lang} initialRoute={initialRoute} />
       ) : (
@@ -399,16 +399,16 @@ function FullBleedMobileApp({ persona, lang, initialRoute = 'home' }) {
 const PERSONA_DETAILS_LOCAL = {
   buyer: 'Buyer SME',
   supplier: 'Supplier SME',
-  hcops: 'Healthcare Provider — Ops',
-  hccoder: 'Healthcare Provider — Coder',
-  anchorAP: 'Anchor — AP',
-  anchorSup: 'Anchor — Supplier',
+  hcops: 'Healthcare Provider. Ops',
+  hccoder: 'Healthcare Provider. Coder',
+  anchorAP: 'Anchor. AP',
+  anchorSup: 'Anchor. Supplier',
 };
 
 // ----------------------------------------------------------------------------
-// Root — landing → picker → app
+// Root. Landing → picker → app
 // ----------------------------------------------------------------------------
-// Top-level app — Landing → 4-section app (Strategy / Prototype / Financial / AI)
+// Top-level app. Landing → 4-section app (Strategy / Prototype / Financial / AI)
 function Root() {
   const [view, setView] = useState('landing');           // 'landing' | 'app'
   const [section, setSection] = useState('prototype');   // 'strategy' | 'prototype' | 'financial' | 'ai'
@@ -468,7 +468,7 @@ function Root() {
   );
 }
 
-// AppFrame — top bar + section nav + body
+// AppFrame. Top bar + section nav + body
 const APP_SECTIONS = [
   { id: 'strategy',  label: 'Strategy',          shortLabel: 'Strategy' },
   { id: 'prototype', label: 'Prototype',          shortLabel: 'Prototype' },

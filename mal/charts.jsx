@@ -1,10 +1,10 @@
 /* eslint-disable */
-// Mal — lightweight SVG chart primitives used by Strategy and Financial
+// Mal. Lightweight SVG chart primitives used by Strategy and Financial
 // Modeling sections. Pure SVG, no dependencies. Animates on data change.
 const { useState: chS, useEffect: chE, useRef: chR } = React;
 
 // ============================================================
-// MalBarChart — vertical grouped bars (e.g., Year 1 / 2 / 3)
+// MalBarChart. Vertical grouped bars (e.g., Year 1 / 2 / 3)
 // ============================================================
 //   data: [{ label, value, tone? }]
 //   options: { height, barColor, formatValue }
@@ -61,7 +61,7 @@ function MalBarChart({ data = [], height = 220, barColor = 'var(--mal-primary-3)
 }
 
 // ============================================================
-// MalLineChart — multi-series line over years
+// MalLineChart. Multi-series line over years
 // ============================================================
 //   series: [{ name, values: [n,n,n], color? }]
 //   labels: ['Y1','Y2','Y3']
@@ -113,7 +113,7 @@ function MalLineChart({ series = [], labels = [], height = 220, formatValue, ari
 }
 
 // ============================================================
-// MalDonut — single-value progress / share donut
+// MalDonut. Single-value progress / share donut
 // ============================================================
 function MalDonut({ value, max = 100, label, sub, color = 'var(--mal-primary)', size = 140, stroke = 12, formatValue }) {
   const r = (size - stroke) / 2;
@@ -148,7 +148,7 @@ function MalDonut({ value, max = 100, label, sub, color = 'var(--mal-primary)', 
 }
 
 // ============================================================
-// MalStackedBar — horizontal stacked bar (capital stack etc.)
+// MalStackedBar. Horizontal stacked bar (capital stack etc.)
 // ============================================================
 function MalStackedBar({ segments = [], height = 24, formatLabel }) {
   const total = segments.reduce((s, x) => s + x.value, 0) || 1;
@@ -186,7 +186,7 @@ function MalStackedBar({ segments = [], height = 24, formatLabel }) {
 }
 
 // ============================================================
-// MalSlider — labelled input slider
+// MalSlider. Labelled input slider
 // ============================================================
 function MalSlider({ label, value, onChange, min, max, step = 1, suffix = '', formatValue, hint }) {
   return (
@@ -208,7 +208,7 @@ function MalSlider({ label, value, onChange, min, max, step = 1, suffix = '', fo
 }
 
 // ============================================================
-// MalKpi — compact metric block
+// MalKpi. Compact metric block
 // ============================================================
 function MalKpi({ label, value, delta, deltaTone = 'up', sub }) {
   return (

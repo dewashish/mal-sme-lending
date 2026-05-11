@@ -1,5 +1,5 @@
 /* eslint-disable */
-// Section 1 — Strategy
+// Section 1. Strategy
 // Renders the strategy doc with the visual upgrades from
 // mal/strategy-visuals.jsx wired in: chapter cards, per-chapter heroes,
 // reading-progress bar, ambient orb, embedded diagrams and live
@@ -63,7 +63,7 @@ function SectionStrategy({ lang, isMobile }) {
     let idx = 0;
     for (let i = 0; i < chapters.length; i++) {
       if (chapters[i].id === activeId) return i;
-      // The active id is an H2 — find which chapter it sits under
+      // The active id is an H2. Find which chapter it sits under
       const ch = chapters[i];
       const next = chapters[i + 1];
       const chPos = trimmedDoc.findIndex((p) => p.id === ch.id);
@@ -138,7 +138,7 @@ function SectionStrategy({ lang, isMobile }) {
 }
 
 // ============================================================
-// Sticky TOC (Phase 1 — same pattern as before, with search trigger)
+// Sticky TOC (Phase 1. Same pattern as before, with search trigger)
 // ============================================================
 function StrategyTOC({ toc, activeId, jumpTo, isAr, onOpenSearch }) {
   const idx = toc.findIndex((t) => t.id === activeId);
@@ -390,8 +390,8 @@ function UnitEconomicsPlaceholder({ productNum, isAr, isMobile }) {
         </p>
         <div style={{ fontSize: 12, color: 'var(--mal-mid)', lineHeight: 1.65 }}>
           {isAr
-            ? 'سيظهر نموذج الاقتصاد الوحدوي الكامل هنا بمجرد بناء ورقة إكسل واعتمادها — متطابقاً مع ما هو متاح حالياً للفاتورة الذكية.'
-            : 'The full unit-economics model will appear here once the Excel workbook for this product is built and validated — identical in structure to what\'s already live for Smart Invoice.'}
+            ? 'سيظهر نموذج الاقتصاد الوحدوي الكامل هنا بمجرد بناء ورقة إكسل واعتمادها، متطابقاً مع ما هو متاح حالياً للفاتورة الذكية.'
+            : 'The full unit-economics model will appear here once the Excel workbook for this product is built and validated. Identical in structure to what\'s already live for Smart Invoice.'}
         </div>
         <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <Pill tone="neutral">{isAr ? 'تقدير ٣ سنوات' : '3-year projection'}</Pill>
@@ -405,7 +405,7 @@ function UnitEconomicsPlaceholder({ productNum, isAr, isMobile }) {
 }
 
 // ============================================================
-// HERO — title block (with print + Cmd+K hint)
+// HERO. Title block (with print + Cmd+K hint)
 // ============================================================
 function DocHero({ isAr, isMobile, onOpenSearch }) {
   return (
@@ -435,7 +435,7 @@ function DocHero({ isAr, isMobile, onOpenSearch }) {
 }
 
 // ============================================================
-// BODY — render every paragraph; inject visuals at anchors
+// BODY. Render every paragraph; inject visuals at anchors
 // ============================================================
 function paraText(p) {
   if (!p) return '';
@@ -457,14 +457,14 @@ function detectProductNum(text) {
 
 // IDs / fragments where Phase-2 diagrams should be injected (matched on h1/h2 IDs)
 const DIAGRAM_INJECT = {
-  // Section 5.2 — anchor cards
+  // Section 5.2. Anchor cards
   '5-2-target-anchors':                      { type: 'anchors' },
-  // Sections 3.3 / 3.4 — buyer / supplier journeys
+  // Sections 3.3 / 3.4. Buyer / supplier journeys
   '3-3-the-buyer-journey-end-to-end':        { type: 'journey-buyer' },
   '3-4-the-supplier-journey-end-to-end':     { type: 'journey-supplier' },
-  // Section 6.2 — capital stack
+  // Section 6.2. Capital stack
   '6-2-capital-stack-and-funding':           { type: 'capital-stack' },
-  // Appendix D.3 — FLDG waterfall
+  // Appendix D.3. FLDG waterfall
   'd-3-risk-waterfall-and-fldg-mechanics':   { type: 'fldg-waterfall' },
 };
 
@@ -545,7 +545,7 @@ function DocBody({ doc, chapters, sectionRefs, isAr, isMobile }) {
           const q = doc[j];
           if (q.tag === 'h1' || q.tag === 'h2' || q.tag === 'h3') break;
           if (q.tag === 'p') bodyParas.push(q);
-          // li/table inside an API section is unexpected — skip
+          // li/table inside an API section is unexpected. Skip
           j++;
         }
         const api = buildApiEndpoint(p, bodyParas, i);
@@ -636,7 +636,7 @@ function DocBody({ doc, chapters, sectionRefs, isAr, isMobile }) {
           );
         }
 
-        // H2 — check for unit-econ injection or diagram injection
+        // H2. Check for unit-econ injection or diagram injection
         if (p.tag === 'h2' && p.id && DIAGRAM_INJECT[p.id]) {
           const diag = DIAGRAM_INJECT[p.id];
           return (
@@ -676,7 +676,7 @@ function DocBody({ doc, chapters, sectionRefs, isAr, isMobile }) {
 }
 
 // ============================================================
-// TableBlock — beautiful, scrollable, sticky-header data table
+// TableBlock. Beautiful, scrollable, sticky-header data table
 // ============================================================
 function TableBlock({ rows }) {
   if (!rows || rows.length === 0) return null;
@@ -742,7 +742,7 @@ function TableBlock({ rows }) {
 }
 
 // ============================================================
-// ParaBlock — H1/H2/H3/H4/p with refs for scroll-spy
+// ParaBlock. H1/H2/H3/H4/p with refs for scroll-spy
 // ============================================================
 function ParaBlock({ para, sectionRefs }) {
   const setRef = (el) => { if (para.id && el) sectionRefs.current[para.id] = el; };
@@ -801,7 +801,7 @@ function ParaBlock({ para, sectionRefs }) {
 }
 
 // ============================================================
-// DropCapPara — first paragraph of a chapter with a display-italic initial
+// DropCapPara. First paragraph of a chapter with a display-italic initial
 // ============================================================
 function DropCapPara({ para, dropCap }) {
   const restSpans = stM(() => {
@@ -843,7 +843,7 @@ function RenderSpans({ spans }) {
 }
 
 // ============================================================
-// OUTRO — soft close + back-to-top
+// OUTRO. Soft close + back-to-top
 // ============================================================
 function DocOutro({ isAr }) {
   return (
