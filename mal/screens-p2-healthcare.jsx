@@ -104,7 +104,12 @@ function buildDefaultScenario() {
     rejectionsByClaim: {},
     selectedClaimId: null,
     batchUploadProgress: 0,
-    denialProtection: false,  // opt-in rider: +0.4% covers any post-service denial
+    denialProtection: false,
+    // Tier-2 flags
+    showPreAuthOrchestrator: false,    // modal: 6 payer APIs in parallel
+    showCodingCopilot: false,          // modal: paste clinical note → CPT codes
+    showRevolvingDetails: false,       // inline expand of the credit line card
+    patientFinancing: {},              // claimId → true if patient opted into 3-mo instalments
   };
 }
 
@@ -190,10 +195,27 @@ function HealthcareDemo({ lang = 'en', isMobile }) {
 
       <HcAboutStrip isAr={isAr}/>
 
+      {scenario.showPreAuthOrchestrator && (
+        <HcPreAuthOrchestrator
+          isAr={isAr}
+          pendingClaims={claimStates.filter((c) => c.preAuth === 'pending')}
+          onClose={() => patch({ showPreAuthOrchestrator: false })}
+        />
+      )}
+
+      {scenario.showCodingCopilot && (
+        <HcCodingCopilot
+          isAr={isAr}
+          onClose={() => patch({ showCodingCopilot: false })}
+        />
+      )}
+
       {selectedClaim && (
         <HcClaimDrillIn
           isAr={isAr}
           claim={selectedClaim}
+          scenario={scenario}
+          patch={patch}
           simDay={scenario.simDay}
           onClose={() => patch({ selectedClaimId: null })}
           onResubmit={() => {
@@ -593,6 +615,19 @@ function HcProviderHome({ isAr, scenario, claimStates, totals, onSelectClaim, pa
         </div>
       </div>
 
+      {/* Revolving line — replaces per-batch advances for high-volume
+          providers. Tap to expand for utilisation breakdown. */}
+      <HcRevolvingLine
+        isAr={isAr}
+        open={!!scenario.showRevolvingDetails}
+        onToggle={() => patch({ showRevolvingDetails: !scenario.showRevolvingDetails })}
+        currentBatchAdvanced={totals.advanced}
+      />
+
+      {/* Provider scorecard — Mal aggregates the clinic's denial rate,
+          settlement speed, and coding accuracy vs network median. */}
+      <HcProviderScorecard isAr={isAr}/>
+
       <div style={{
         padding: '10px 12px', borderRadius: 12,
         background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
@@ -658,6 +693,14 @@ function HcProviderHome({ isAr, scenario, claimStates, totals, onSelectClaim, pa
                 {isAr ? 'سُلفة مال مُعلَّقة حتى تصل الموافقة' : 'Mal advance held until approval lands'}
               </div>
             </div>
+            <button onClick={() => patch({ showPreAuthOrchestrator: true })} style={{
+              all: 'unset', cursor: 'pointer',
+              padding: '5px 10px', borderRadius: 999,
+              background: '#b06a14', color: '#fff',
+              fontSize: 10.5, fontWeight: 600, letterSpacing: '.02em',
+            }}>
+              {isAr ? 'شغّل التحقّق' : 'Run orchestrator ▸'}
+            </button>
           </div>
         </div>
       )}
@@ -712,8 +755,21 @@ function HcProviderHome({ isAr, scenario, claimStates, totals, onSelectClaim, pa
         </div>
       </button>
 
-      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--mal-mid)', textTransform: 'uppercase', marginTop: 4 }}>
-        {isAr ? 'سُلم المطالبات · انقر لعرض التفاصيل' : 'Claim ladder · tap to drill in'}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.06em', color: 'var(--mal-mid)', textTransform: 'uppercase' }}>
+          {isAr ? 'سُلم المطالبات · انقر للتفاصيل' : 'Claim ladder · tap to drill in'}
+        </div>
+        <button onClick={() => patch({ showCodingCopilot: true })} style={{
+          all: 'unset', cursor: 'pointer',
+          padding: '4px 10px', borderRadius: 999,
+          background: 'var(--mal-primary-50)', color: 'var(--mal-primary)',
+          border: '1px solid var(--mal-primary-3)',
+          fontSize: 10.5, fontWeight: 600,
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+        }}>
+          <span>🧬</span>
+          <span>{isAr ? 'مساعد الترميز' : 'Coding co-pilot'}</span>
+        </button>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {claimStates.map((c) => (
@@ -824,7 +880,7 @@ function ClaimRow({ claim, simDay, isAr, onClick }) {
 // Claim drill-in modal: full claim detail + AI risk decomposition +
 // resubmit CTA when refer/rejected.
 // ============================================================
-function HcClaimDrillIn({ isAr, claim, simDay, onClose, onResubmit }) {
+function HcClaimDrillIn({ isAr, claim, scenario, patch, simDay, onClose, onResubmit }) {
   const payer = claim.payerObj;
   const isRefer = claim.computedStatus === 'refer' || claim.status === 'refer';
   const isRejected = claim.computedStatus === 'rejected';
@@ -1009,6 +1065,70 @@ function HcClaimDrillIn({ isAr, claim, simDay, onClose, onResubmit }) {
               </div>
             </div>
           )}
+
+          {/* Patient-financing widget: only when patient has co-pay > 0 */}
+          {(() => {
+            const ptAmt = Math.round(claim.amount * (1 - (claim.insurancePct ?? 1)));
+            if (ptAmt <= 0) return null;
+            const enrolled = !!(scenario && scenario.patientFinancing && scenario.patientFinancing[claim.id]);
+            const installments = 3;
+            const ptEmi = Math.round((ptAmt * 1.08) / installments);   // 8% flat for 3 months
+            const toggle = () => {
+              if (!patch) return;
+              const next = { ...(scenario.patientFinancing || {}) };
+              if (enrolled) delete next[claim.id];
+              else next[claim.id] = true;
+              patch({ patientFinancing: next });
+            };
+            return (
+              <div style={{
+                padding: 12, borderRadius: 12,
+                background: enrolled ? 'rgba(10,128,86,0.10)' : 'var(--mal-surface-2)',
+                border: '1px solid ' + (enrolled ? 'rgba(10,128,86,0.32)' : 'var(--mal-line)'),
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 14 }}>💳</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12.5, fontWeight: 700, color: enrolled ? '#0a8056' : 'var(--mal-ink)' }}>
+                      {isAr ? 'تمويل حصّة المريض' : 'Patient co-pay financing'}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 1 }}>
+                      {isAr
+                        ? `يقسّم المريض ${ptAmt.toLocaleString()} د.إ على ${installments} أشهر`
+                        : `Patient splits AED ${ptAmt.toLocaleString()} into ${installments} monthly instalments`}
+                    </div>
+                  </div>
+                  <button onClick={toggle} style={{
+                    all: 'unset', cursor: 'pointer',
+                    padding: '5px 12px', borderRadius: 999,
+                    background: enrolled ? '#0a8056' : 'var(--mal-ink)',
+                    color: '#fff', fontSize: 11, fontWeight: 700,
+                  }}>
+                    {enrolled ? (isAr ? '✓ مُفعَّل' : '✓ Enrolled') : (isAr ? 'فعِّل' : 'Offer')}
+                  </button>
+                </div>
+                <div style={{
+                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6,
+                  fontSize: 10.5, color: 'var(--mal-ink)',
+                }}>
+                  {[1, 2, 3].map((n) => (
+                    <div key={n} style={{
+                      padding: '6px 8px', borderRadius: 8,
+                      background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+                    }}>
+                      <div style={{ fontSize: 9, color: 'var(--mal-mid-2)' }}>EMI {n} · day {n * 30}</div>
+                      <div style={{ fontFamily: 'var(--mal-font-mono)', fontWeight: 600 }}>AED {ptEmi.toLocaleString()}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ marginTop: 6, fontSize: 10, color: 'var(--mal-mid)' }}>
+                  {isAr
+                    ? '٨٪ سعر فائدة ثابت · مال يدفع المركز يوم الخدمة · يستردّ من المريض شهرياً'
+                    : '8% flat · Mal pays the clinic on service day · collects from patient over 3 months'}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         {/* Footer actions */}
@@ -1405,6 +1525,372 @@ function HcAboutStrip({ isAr }) {
           paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.12)',
         }}>
           Benchmark: Klaim (UAE) advances on single-payer claims; Cedar / Olive (US) do RCM but no advance. Mal aggregates across all 6+ UAE payers, scores every claim with ML before advance, and offers a Sharia (Murabaha-on-receivables) variant.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// HcRevolvingLine: top-of-home credit-facility card. Collapsed shows
+// utilisation %; expanded shows tranche breakdown (standard + direct
+// + denial-protection rider). Replaces per-batch advance once the
+// provider crosses the volume threshold.
+// ============================================================
+function HcRevolvingLine({ isAr, open, onToggle, currentBatchAdvanced }) {
+  const limit = 2000000;
+  const baseUsed = 1140000;       // historic batches already advanced
+  const used = baseUsed + Math.round(currentBatchAdvanced || 0);
+  const utilPct = Math.round((used / limit) * 100);
+  return (
+    <div style={{
+      padding: 12, borderRadius: 12,
+      background: 'var(--mal-paper)',
+      border: '1px solid var(--mal-line)',
+    }}>
+      <div onClick={onToggle} style={{
+        display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer',
+      }}>
+        <span style={{ fontSize: 14 }}>🪙</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--mal-ink)' }}>
+            {isAr ? 'خط مال للسيولة العاملة' : 'Mal Working Capital Line'}
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginTop: 1 }}>
+            AED {Math.round(used / 1000)}K {isAr ? 'مستخدم' : 'used'} / AED {Math.round(limit / 1000)}K {isAr ? 'حدّ' : 'limit'}
+          </div>
+        </div>
+        <span style={{
+          fontSize: 11, fontFamily: 'var(--mal-font-mono)', color: utilPct > 80 ? '#b06a14' : '#0a8056',
+          fontWeight: 700,
+        }}>{utilPct}%</span>
+        <span style={{ color: 'var(--mal-mid-2)', fontSize: 10 }}>{open ? '▾' : '▸'}</span>
+      </div>
+      {/* Utilisation bar */}
+      <div style={{ height: 4, marginTop: 8, background: 'var(--mal-line)', borderRadius: 999, overflow: 'hidden' }}>
+        <div style={{ width: utilPct + '%', height: '100%', background: utilPct > 80 ? '#b06a14' : '#0a8056', transition: 'width .4s' }}/>
+      </div>
+      {open && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 10.5, color: 'var(--mal-ink)' }}>
+          {[
+            { lab: isAr ? 'دفعات سابقة (٧ دفعات)' : 'Historic batches (7)', val: 'AED 1.14M' },
+            { lab: isAr ? 'الدفعة الحالية' : 'Current batch', val: 'AED ' + Math.round((currentBatchAdvanced || 0) / 1000) + 'K' },
+            { lab: isAr ? 'متاح' : 'Available', val: 'AED ' + Math.round((limit - used) / 1000) + 'K' },
+          ].map((r, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--mal-mid)' }}>{r.lab}</span>
+              <span style={{ fontFamily: 'var(--mal-font-mono)', fontWeight: 500 }}>{r.val}</span>
+            </div>
+          ))}
+          <div style={{
+            marginTop: 6, padding: '6px 8px', borderRadius: 8,
+            background: 'rgba(10,128,86,0.10)', color: '#0a8056',
+            fontSize: 10, lineHeight: 1.5,
+          }}>
+            {isAr
+              ? 'الفائدة الصافية ١٢٪/سنة على الرصيد المسحوب · إعادة استخدام تلقائي عند التسوية'
+              : '12% p.a. on drawn balance · auto-replenishes as insurers settle · evergreen facility'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// HcProviderScorecard: small 4-KPI strip showing the clinic's own
+// performance vs Mal's network median. Drives provider-side stickiness
+// (Mal becomes their performance dashboard, not just their lender).
+// ============================================================
+function HcProviderScorecard({ isAr }) {
+  const kpis = [
+    { lab: isAr ? 'رفض' : 'Denial rate', val: '4.2%', sub: 'net 8.1%', good: true },
+    { lab: isAr ? 'دورة' : 'Avg cycle',  val: '39d',  sub: 'net 52d',  good: true },
+    { lab: isAr ? 'دقّة الترميز' : 'Coding',   val: '96%',  sub: '+12pp', good: true },
+    { lab: isAr ? 'الفئة' : 'Mal tier',    val: 'A',    sub: 'top 18%', good: true },
+  ];
+  return (
+    <div style={{
+      padding: '10px 12px', borderRadius: 12,
+      background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <span style={{ fontSize: 12 }}>📊</span>
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--mal-mid)', textTransform: 'uppercase', letterSpacing: '.06em' }}>
+          {isAr ? 'بطاقة أداء المركز' : 'Provider scorecard'}
+        </div>
+        <span style={{ marginInlineStart: 'auto', fontSize: 9.5, color: 'var(--mal-mid-2)' }}>
+          {isAr ? 'مقابل متوسط الشبكة' : 'vs network median'}
+        </span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+        {kpis.map((k) => (
+          <div key={k.lab} style={{
+            padding: '6px 8px', borderRadius: 8,
+            background: 'var(--mal-surface-2)',
+          }}>
+            <div style={{ fontSize: 9, color: 'var(--mal-mid-2)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{k.lab}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: k.good ? '#0a8056' : 'var(--mal-ink)', fontFamily: 'var(--mal-font-mono)' }}>{k.val}</div>
+            <div style={{ fontSize: 9.5, color: 'var(--mal-mid)' }}>{k.sub}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// HcPreAuthOrchestrator: full-screen modal showing 6 payer APIs
+// hit in parallel for pending claims. Each payer animates from
+// "Querying" → "Response received · approved/refer". Mal's wedge
+// vs Klaim and Cedar: aggregating all 6 UAE payers under one call.
+// ============================================================
+function HcPreAuthOrchestrator({ isAr, pendingClaims, onClose }) {
+  const [statuses, setStatuses] = hS(() => Object.fromEntries(PAYER_KEYS_ORDER.map((k) => [k, 'idle'])));
+  // Trigger sequential responses for each payer
+  hE(() => {
+    const order = PAYER_KEYS_ORDER;
+    let cancelled = false;
+    setStatuses(Object.fromEntries(order.map((k) => [k, 'querying'])));
+    order.forEach((k, i) => {
+      setTimeout(() => {
+        if (cancelled) return;
+        // ADNIC (matches our pending claim) returns approved; others "no pending"
+        const verdict = k === 'adnic' ? 'approved' : 'no-pending';
+        setStatuses((s) => ({ ...s, [k]: verdict }));
+      }, 600 + i * 350);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 80,
+      background: 'rgba(15,17,23,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        maxWidth: 520, width: '100%',
+        background: 'var(--mal-paper)', borderRadius: 18,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.32)',
+        overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        animation: 'mal-fade-up .25s ease',
+      }}>
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--mal-line)',
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          background: 'linear-gradient(135deg, rgba(176,106,20,0.10), transparent)',
+        }}>
+          <div style={{ flex: 1 }}>
+            <div className="mal-caption" style={{ color: '#b06a14' }}>
+              {isAr ? 'منسّق الموافقة المسبقة' : 'Pre-auth orchestrator'}
+            </div>
+            <div style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic', fontSize: 22, lineHeight: 1.2, marginTop: 4 }}>
+              {isAr ? 'استعلام موازٍ · ٦ شركات تأمين' : '6 payers · queried in parallel'}
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--mal-mid)', marginTop: 4 }}>
+              {pendingClaims.length} {isAr ? 'مطالبة بانتظار الموافقة' : pendingClaims.length === 1 ? 'claim awaiting approval' : 'claims awaiting approval'}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{
+            all: 'unset', cursor: 'pointer',
+            width: 28, height: 28, borderRadius: 999,
+            background: 'var(--mal-surface-2)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
+        </div>
+
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {PAYER_KEYS_ORDER.map((k) => {
+            const p = PAYERS[k];
+            const st = statuses[k] || 'idle';
+            const stTone = st === 'approved' ? '#0a8056'
+                         : st === 'no-pending' ? 'var(--mal-mid)'
+                         : '#b06a14';
+            const stLabel = st === 'idle' ? (isAr ? 'في الانتظار' : 'Idle')
+                         : st === 'querying' ? (isAr ? 'استعلام جارٍ…' : 'Querying API…')
+                         : st === 'approved' ? (isAr ? '✓ موافقة سُلِّمت' : '✓ Approval received')
+                         : (isAr ? 'لا توجد معلَّقة' : 'No pending claim');
+            return (
+              <div key={k} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px', borderRadius: 10,
+                background: st === 'approved' ? 'rgba(10,128,86,0.08)' : 'var(--mal-surface-2)',
+                border: '1px solid ' + (st === 'approved' ? 'rgba(10,128,86,0.32)' : 'var(--mal-line)'),
+              }}>
+                <span style={{
+                  width: 36, height: 28, borderRadius: 6,
+                  background: p.tone, color: '#fff',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontWeight: 700, fontSize: 10.5, fontFamily: 'var(--mal-font-mono)',
+                }}>{p.short}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 600 }}>{p.name}</div>
+                  <div style={{ fontSize: 10.5, color: stTone, marginTop: 1 }}>{stLabel}</div>
+                </div>
+                {st === 'querying' && (
+                  <div style={{
+                    width: 14, height: 14, borderRadius: 999,
+                    border: '2px solid var(--mal-line)',
+                    borderTopColor: '#b06a14',
+                    animation: 'mal-api-spin .8s linear infinite',
+                  }}/>
+                )}
+                {st === 'approved' && (
+                  <span style={{
+                    fontSize: 10, padding: '2px 7px', borderRadius: 999,
+                    background: '#0a8056', color: '#fff',
+                    fontWeight: 700, letterSpacing: '.04em',
+                  }}>PA-ADN-89215</span>
+                )}
+              </div>
+            );
+          })}
+
+          <div style={{
+            marginTop: 6, padding: '8px 12px', borderRadius: 10,
+            background: 'var(--mal-primary-50)',
+            border: '1px solid var(--mal-primary-3)',
+            fontSize: 11, color: 'var(--mal-ink)', lineHeight: 1.55,
+          }}>
+            {isAr
+              ? 'مال يُجمِّع ٦ شركات تأمين في استدعاء واحد. الموافقة في دقائق · من ساعات أو أيّام عبر بوّابات شركات التأمين الفرديّة.'
+              : 'Mal aggregates all 6 UAE payers under one call. Approval in minutes — vs. hours-to-days when hitting payer portals individually.'}
+          </div>
+        </div>
+
+        <div style={{
+          padding: 12, borderTop: '1px solid var(--mal-line)',
+          background: 'var(--mal-surface-2)',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <span style={{ fontSize: 10.5, color: 'var(--mal-mid)' }}>
+            {isAr ? 'وقت الاستجابة' : 'Total time'}: <strong>3.2s</strong> · {isAr ? 'كان' : 'was'} ~4h
+          </span>
+          <button onClick={onClose} style={{
+            all: 'unset', cursor: 'pointer',
+            padding: '8px 14px', borderRadius: 999,
+            background: 'var(--mal-ink)', color: '#FAF7EE',
+            fontSize: 12, fontWeight: 600,
+          }}>{isAr ? 'تم' : 'Done'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// HcCodingCopilot: LLM-style coding assistant. Paste clinical note,
+// get suggested ICD/CPT codes + reasoning. Cedar/Olive equivalent
+// but inside Mal so denial rates drop and Mal's exposure stays clean.
+// ============================================================
+function HcCodingCopilot({ isAr, onClose }) {
+  const [note, setNote] = hS('45-yo male, T2DM, presenting with epigastric pain x 2 weeks. Endoscopy revealed antral gastritis, biopsies taken. H. pylori test pending. Patient on metformin + losartan. Discussed PPI therapy.');
+  const [analysed, setAnalysed] = hS(false);
+  const suggestions = [
+    { code: '43239', sys: 'CPT', label: 'Upper GI endoscopy w/ biopsy', confidence: 96, reason: 'Endoscopy + biopsy explicit in note · highest match' },
+    { code: 'K29.70',sys: 'ICD-10', label: 'Gastritis, unspecified, without bleeding', confidence: 92, reason: 'Antral gastritis confirmed; bleeding not noted' },
+    { code: 'E11.9', sys: 'ICD-10', label: 'Type 2 diabetes mellitus without complications', confidence: 88, reason: 'Patient is T2DM, no complication code applicable from note' },
+    { code: '99214', sys: 'CPT',   label: 'Office visit · established · moderate complexity', confidence: 84, reason: 'Documentation supports moderate complexity decision-making' },
+  ];
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 80,
+      background: 'rgba(15,17,23,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        maxWidth: 620, width: '100%', maxHeight: '92vh',
+        background: 'var(--mal-paper)', borderRadius: 18,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.32)',
+        overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        animation: 'mal-fade-up .25s ease',
+      }}>
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--mal-line)',
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          background: 'linear-gradient(135deg, var(--mal-primary-50), transparent)',
+        }}>
+          <div style={{ flex: 1 }}>
+            <div className="mal-caption" style={{ color: 'var(--mal-primary)' }}>
+              🧬 {isAr ? 'مساعد الترميز AI' : 'Coding co-pilot'}
+            </div>
+            <div style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic', fontSize: 22, lineHeight: 1.2, marginTop: 4 }}>
+              {isAr ? 'الصق المُلاحظة · احصل على الأكواد' : 'Paste the clinical note. Get ICD + CPT.'}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{
+            all: 'unset', cursor: 'pointer',
+            width: 28, height: 28, borderRadius: 999,
+            background: 'var(--mal-surface-2)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
+        </div>
+
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
+          <div>
+            <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 4 }}>
+              {isAr ? 'ملاحظة سريرية' : 'Clinical note'}
+            </div>
+            <textarea value={note} onChange={(e) => { setNote(e.target.value); setAnalysed(false); }} rows={5} style={{
+              width: '100%', boxSizing: 'border-box',
+              padding: 10, borderRadius: 10,
+              border: '1px solid var(--mal-line)',
+              background: 'var(--mal-surface-2)',
+              fontFamily: 'var(--mal-font-ui)', fontSize: 12,
+              lineHeight: 1.55, resize: 'vertical',
+            }}/>
+          </div>
+
+          <button onClick={() => setAnalysed(true)} style={{
+            all: 'unset', cursor: 'pointer', textAlign: 'center',
+            padding: '10px 14px', borderRadius: 999,
+            background: 'var(--mal-primary)', color: '#fff',
+            fontSize: 12.5, fontWeight: 600,
+          }}>
+            {analysed ? (isAr ? 'أعد التحليل' : 'Re-analyse') : (isAr ? 'حلّل بالذكاء الاصطناعي →' : 'Analyse with AI →')}
+          </button>
+
+          {analysed && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div className="mal-caption" style={{ color: 'var(--mal-mid)' }}>
+                {isAr ? `${suggestions.length} كود مقترح · مُرتَّب بالثقة` : `${suggestions.length} codes suggested · sorted by confidence`}
+              </div>
+              {suggestions.map((s, i) => (
+                <div key={i} style={{
+                  padding: '10px 12px', borderRadius: 10,
+                  background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <span style={{
+                      fontFamily: 'var(--mal-font-mono)', fontSize: 11,
+                      padding: '2px 7px', borderRadius: 6,
+                      background: s.sys === 'CPT' ? 'rgba(31,84,200,0.14)' : 'rgba(90,58,163,0.14)',
+                      color: s.sys === 'CPT' ? '#1f54c8' : '#5a3aa3',
+                      fontWeight: 700,
+                    }}>{s.sys} {s.code}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1 }}>{s.label}</span>
+                    <span style={{
+                      fontSize: 10.5, fontFamily: 'var(--mal-font-mono)',
+                      color: s.confidence >= 90 ? '#0a8056' : s.confidence >= 80 ? '#b06a14' : '#b8364b',
+                      fontWeight: 700,
+                    }}>{s.confidence}%</span>
+                  </div>
+                  <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', lineHeight: 1.55 }}>{s.reason}</div>
+                </div>
+              ))}
+              <div style={{
+                marginTop: 4, padding: '8px 12px', borderRadius: 10,
+                background: 'rgba(10,128,86,0.10)', border: '1px solid rgba(10,128,86,0.32)',
+                fontSize: 11, color: 'var(--mal-ink)', lineHeight: 1.55,
+              }}>
+                {isAr
+                  ? '✓ مرّر هذه الأكواد للنظام بنقرة واحدة · يقلّ معدّل الرفض ٣٥-٤٠٪ تجريبيّاً'
+                  : '✓ One-tap apply to your PMS · drops denial rate 35-40% in piloting clinics'}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
