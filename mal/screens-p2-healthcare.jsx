@@ -78,6 +78,63 @@ const DEFAULT_BATCH = {
 };
 DEFAULT_BATCH.totalFace = DEFAULT_BATCH.claims.reduce((s, c) => s + c.amount, 0);
 
+// ============================================================
+// Risk-policy data model.
+// Three layers: insurer concentration (top-down book caps),
+// clinic revolving limit (the actual credit decision), and
+// per-batch admission rules (per-payer mix, fraud flags).
+// ============================================================
+const CLINIC_UW = {
+  facility: 'Crescent Medical Center',
+  licence: { number: 'DHA-F-0042871', regulator: 'DHA', status: 'active', vintage: '14 mo' },
+  scoreInputs: [
+    { lab: 'Denial rate (12m)',      val: '4.2%',    weight: 25, sub: 'below 8% threshold · pass' },
+    { lab: 'Collection cycle (12m)', val: '39 d',    weight: 20, sub: 'below 65d threshold · pass' },
+    { lab: 'Coding accuracy',        val: '96%',     weight: 15, sub: 'top decile in DHA network' },
+    { lab: 'Owner KYC + UBO',        val: '✓ clean', weight: 15, sub: '100% beneficial-owner trace' },
+    { lab: 'Premises type',          val: 'Owned',   weight: 10, sub: 'physical premises since 2024' },
+    { lab: 'Bank-account stability', val: '14 mo',   weight: 10, sub: 'no IBAN change in past year' },
+    { lab: 'Peer LGD precedent',     val: '0.6%',    weight:  5, sub: 'segment historic loss' },
+  ],
+  composite: 84,        // out of 100
+  tier: 'A',            // A · B · C
+  limit: 2000000,       // revolving line ceiling
+  advancePct: 0.92,     // headline advance rate
+  feeBase: 0.025,       // base fee
+  review: 'Quarterly · monthly soft-pull',
+};
+
+// Per-insurer concentration policy. Tier A = govt-backed (highest book cap).
+// Tier C = niche / longer cycle = tightest concentration cap.
+const INSURER_UW = [
+  { key: 'daman',   tier: 'A', bookShare: 0.18, bookCap: 0.30, advanceCap: 0.95, cycleCap: 90, rating: 'A-',   notes: 'Government anchor · highest pay-rate' },
+  { key: 'thiqa',   tier: 'A', bookShare: 0.14, bookCap: 0.30, advanceCap: 0.95, cycleCap: 90, rating: 'A',    notes: 'Abu Dhabi resident · government-backed' },
+  { key: 'adnic',   tier: 'B', bookShare: 0.12, bookCap: 0.15, advanceCap: 0.88, cycleCap: 60, rating: 'BBB+', notes: 'Listed insurer · stable, slower' },
+  { key: 'axa',     tier: 'B', bookShare: 0.10, bookCap: 0.15, advanceCap: 0.88, cycleCap: 60, rating: 'A',    notes: 'Global parent · UAE TPA arm' },
+  { key: 'bupa',    tier: 'B', bookShare: 0.06, bookCap: 0.15, advanceCap: 0.88, cycleCap: 60, rating: 'A',    notes: 'International rider mix' },
+  { key: 'metlife', tier: 'C', bookShare: 0.04, bookCap: 0.05, advanceCap: 0.80, cycleCap: 30, rating: 'BBB',  notes: 'Niche US plans · longer cycle' },
+];
+
+// Per-batch admission rules (Layer 3 — runs at batch entry).
+const BATCH_ADMISSION_RULES = [
+  { id: 'preauth',     label: 'Pre-auth or direct-pay carve-out (≤20%)' },
+  { id: 'payer-mix',   label: 'Per-payer concentration vs book cap' },
+  { id: 'procedure',   label: 'Single-procedure ≤40% of batch' },
+  { id: 'fraud',       label: 'Density · duplicate-patient · code-stuff' },
+  { id: 'limit',       label: 'Within clinic revolving headroom' },
+];
+
+// Rate-card matrix. Three pricing tiers driven by underwriting score
+// crossed with pre-auth status / insurer tier.
+const RATE_CARD = [
+  { row: 'Pre-auth approved · Tier-A clinic · Tier-A insurer', advance: '95%',  fee: '2.0%', cycle: '28–35 d' },
+  { row: 'Pre-auth approved · Tier-A clinic · Tier-B insurer', advance: '90%',  fee: '2.5%', cycle: '48–65 d' },
+  { row: 'Pre-auth approved · Tier-B clinic · Tier-B insurer', advance: '85%',  fee: '3.0%', cycle: '48–65 d' },
+  { row: 'Pre-auth approved · Tier-A clinic · Tier-C insurer', advance: '80%',  fee: '3.5%', cycle: '65–78 d' },
+  { row: 'Direct-pay (VIP / emergency) · any tier',            advance: '70–80%', fee: '5.0%', cycle: '30–90 d' },
+  { row: 'Denial-protection rider (add-on, any row)',           advance: '+0%',  fee: '+0.4%', cycle: 'same' },
+];
+
 // Onboarding micro-steps for the provider phone.
 const ONBOARD_STEPS = [
   { id: 'dha',     title: 'DHA licence',     sub: 'We pull your facility licence + provider IDs from the DHA registry.' },
@@ -95,7 +152,7 @@ function advancePctForClaim(score) {
 
 function buildDefaultScenario() {
   return {
-    phase: 'live',            // intro | onboard | batch | live
+    phase: 'live',            // intro | onboard | underwrite | batch | live
     onboardStep: 0,
     payerPanel: ['daman', 'thiqa', 'adnic', 'axa', 'bupa', 'metlife'],
     simDay: 0,
@@ -110,6 +167,11 @@ function buildDefaultScenario() {
     showCodingCopilot: false,          // modal: paste clinical note → CPT codes
     showRevolvingDetails: false,       // inline expand of the credit line card
     patientFinancing: {},              // claimId → true if patient opted into 3-mo instalments
+    // Risk-policy state
+    underwriteApproved: true,          // demo lands with limit already issued
+    batchAdmitted: true,               // demo lands with current batch admitted
+    showRiskHub: false,                // Mal-side Risk Hub modal toggle
+    riskHubTab: 'portfolio',           // portfolio | policy | ratecard
   };
 }
 
@@ -172,10 +234,11 @@ function HealthcareDemo({ lang = 'en', isMobile }) {
         flexWrap: 'wrap',
       }}>
         <HcPanel side="provider" title="Provider SME" sub="Dr. Ahmed · Crescent Medical Center" tone="lilac">
-          {phase === 'intro'   && <HcProviderIntro    isAr={isAr} onStart={() => setPhase('onboard')}/>}
-          {phase === 'onboard' && <HcProviderOnboard  isAr={isAr} scenario={scenario} patch={patch} onDone={() => setPhase('batch')}/>}
-          {phase === 'batch'   && <HcProviderBatch    isAr={isAr} scenario={scenario} patch={patch} onSubmitted={() => setPhase('live')}/>}
-          {phase === 'live'    && <HcProviderHome     isAr={isAr} scenario={scenario} claimStates={claimStates} totals={totals} patch={patch} onSelectClaim={(id) => patch({ selectedClaimId: id })}/>}
+          {phase === 'intro'      && <HcProviderIntro      isAr={isAr} onStart={() => setPhase('onboard')}/>}
+          {phase === 'onboard'    && <HcProviderOnboard    isAr={isAr} scenario={scenario} patch={patch} onDone={() => setPhase('underwrite')}/>}
+          {phase === 'underwrite' && <HcProviderUnderwrite isAr={isAr} scenario={scenario} patch={patch} onApprove={() => { patch({ underwriteApproved: true }); setPhase('batch'); }}/>}
+          {phase === 'batch'      && <HcProviderBatch      isAr={isAr} scenario={scenario} patch={patch} onSubmitted={() => setPhase('live')}/>}
+          {phase === 'live'       && <HcProviderHome       isAr={isAr} scenario={scenario} claimStates={claimStates} totals={totals} patch={patch} onSelectClaim={(id) => patch({ selectedClaimId: id })}/>}
         </HcPanel>
 
         {!isMobile && (
@@ -187,9 +250,11 @@ function HealthcareDemo({ lang = 'en', isMobile }) {
         )}
 
         <HcPanel side="insurer" title="Insurance settlement" sub="Multi-payer · live cycle" tone="sky">
-          {phase !== 'live'
-            ? <HcInsurerIdle isAr={isAr} phase={phase}/>
-            : <HcInsurerPanel isAr={isAr} scenario={scenario} claimStates={claimStates} totals={totals} patch={patch}/>}
+          {phase === 'underwrite'
+            ? <HcInsurerUnderwrite isAr={isAr}/>
+            : phase !== 'live'
+              ? <HcInsurerIdle isAr={isAr} phase={phase}/>
+              : <HcInsurerPanel isAr={isAr} scenario={scenario} claimStates={claimStates} totals={totals} patch={patch}/>}
         </HcPanel>
       </div>
 
@@ -207,6 +272,18 @@ function HealthcareDemo({ lang = 'en', isMobile }) {
         <HcCodingCopilot
           isAr={isAr}
           onClose={() => patch({ showCodingCopilot: false })}
+        />
+      )}
+
+      {scenario.showRiskHub && (
+        <HcRiskHub
+          isAr={isAr}
+          scenario={scenario}
+          claimStates={claimStates}
+          totals={totals}
+          tab={scenario.riskHubTab || 'portfolio'}
+          onTab={(t) => patch({ riskHubTab: t })}
+          onClose={() => patch({ showRiskHub: false })}
         />
       )}
 
@@ -646,6 +723,10 @@ function HcProviderHome({ isAr, scenario, claimStates, totals, onSelectClaim, pa
           <span>{Object.keys(claimStates.reduce((m, c) => ({ ...m, [c.payer]: 1 }), {})).length} {isAr ? 'شركة تأمين' : 'payers'}</span>
         </div>
       </div>
+
+      {/* Batch admission card — Layer-3 risk check that ran before
+          Mal advanced. Compact strip with the 5 rules + result. */}
+      <HcBatchAdmissionCard isAr={isAr} totals={totals} claimStates={claimStates}/>
 
       {/* Eligibility check banner — runs real-time policy verification
           for every patient before the batch is submitted. */}
@@ -1291,10 +1372,11 @@ function HcCentralOps({ scenario, setSimDay, setPhase, phase, claimStates, total
   const advanced = claimStates.filter((c) => c.status === 'advanced' || c.computedStatus === 'paid').length;
 
   const phasePills = [
-    { id: 'intro',   label: isAr ? 'البداية' : 'Intro',   badge: '1' },
-    { id: 'onboard', label: isAr ? 'التسجيل' : 'Onboard', badge: '2' },
-    { id: 'batch',   label: isAr ? 'الرفع' : 'Batch',     badge: '3' },
-    { id: 'live',    label: isAr ? 'حيّ' : 'Live',       badge: '4' },
+    { id: 'intro',      label: isAr ? 'البداية' : 'Intro',      badge: '1' },
+    { id: 'onboard',    label: isAr ? 'التسجيل' : 'Onboard',    badge: '2' },
+    { id: 'underwrite', label: isAr ? 'الضمان' : 'Underwrite', badge: '3' },
+    { id: 'batch',      label: isAr ? 'الرفع' : 'Batch',         badge: '4' },
+    { id: 'live',       label: isAr ? 'حيّ' : 'Live',           badge: '5' },
   ];
 
   const cyclePills = [
@@ -1336,6 +1418,26 @@ function HcCentralOps({ scenario, setSimDay, setPhase, phase, claimStates, total
           );
         })}
       </div>
+
+      {/* Risk Hub launcher — Mal-side credit committee view */}
+      <button onClick={() => patch({ showRiskHub: true })} style={{
+        all: 'unset', cursor: 'pointer',
+        width: '100%', padding: '8px 12px', borderRadius: 12,
+        background: 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)',
+        color: '#fff', display: 'flex', alignItems: 'center', gap: 8,
+        boxSizing: 'border-box',
+      }}>
+        <span style={{ fontSize: 14 }}>🛡</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase' }}>
+            {isAr ? 'مركز المخاطر' : 'Risk Hub'}
+          </div>
+          <div style={{ fontSize: 9.5, opacity: 0.78, marginTop: 1 }}>
+            {isAr ? 'محفظة · سياسة · سعر' : 'Portfolio · Policy · Rate card'}
+          </div>
+        </div>
+        <span style={{ fontSize: 11, opacity: 0.8 }}>→</span>
+      </button>
 
       {/* AI adjudication card */}
       <div style={{
@@ -1417,6 +1519,13 @@ function HcCentralOps({ scenario, setSimDay, setPhase, phase, claimStates, total
               <div>Day 0 · DHA registry sync</div>
               <div>Day 0 · UAE Pass signed</div>
               <div>Day 0 · IBAN verified</div>
+            </>
+          )}
+          {phase === 'underwrite' && (
+            <>
+              <div>Day 0 · {isAr ? 'تجميع بيانات المركز' : 'Clinic profile assembled'}</div>
+              <div>Day 0 · {isAr ? 'حساب درجة المخاطر' : 'Composite score computed'}</div>
+              <div>Day 0 · {isAr ? 'لجنة الائتمان · موافقة' : 'Credit committee · approving'}</div>
             </>
           )}
           {phase === 'batch' && <div>Day 0 · {isAr ? 'جارٍ معالجة الدفعة' : 'Batch processing'}</div>}
@@ -1526,6 +1635,101 @@ function HcAboutStrip({ isAr }) {
         }}>
           Benchmark: Klaim (UAE) advances on single-payer claims; Cedar / Olive (US) do RCM but no advance. Mal aggregates across all 6+ UAE payers, scores every claim with ML before advance, and offers a Sharia (Murabaha-on-receivables) variant.
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// HcBatchAdmissionCard — compact Layer-3 admission proof. Renders the
+// 5 admission checks (pre-auth · payer-mix · procedure · fraud · limit)
+// with their concrete values for the current batch.
+// ============================================================
+function HcBatchAdmissionCard({ isAr, totals, claimStates }) {
+  // Compute payer-mix and concentration values from the live batch.
+  const byPayer = {};
+  let totalFace = 0;
+  claimStates.forEach((c) => {
+    byPayer[c.payer] = (byPayer[c.payer] || 0) + c.amount;
+    totalFace += c.amount;
+  });
+  const topPayerKey = Object.keys(byPayer).sort((a, b) => byPayer[b] - byPayer[a])[0];
+  const topPayer = PAYERS[topPayerKey];
+  const topPayerPct = Math.round((byPayer[topPayerKey] / totalFace) * 100);
+  // Per-batch single-payer concentration cap. Separate from the
+  // book-level cap (Layer 1) — a single batch can reasonably be 50%
+  // one payer as long as it doesn't push the *book* over its cap.
+  const batchPayerCap = 50;
+  const directShare = claimStates.filter((c) => c.preAuth === 'direct').reduce((s, c) => s + c.amount, 0);
+  const directPct = Math.round((directShare / totalFace) * 100);
+  const advancedFace = Math.round(totals.advanced + totals.held);
+  const limit = CLINIC_UW.limit;
+  const utilPct = Math.round((advancedFace / limit) * 100);
+
+  const checks = [
+    {
+      label: isAr ? 'موافقة مسبقة · أو دفع مباشر ≤٢٠٪' : 'Pre-auth · direct-pay carve-out ≤20%',
+      result: `${directPct}% direct`,
+      pass: directPct <= 20,
+    },
+    {
+      label: isAr ? `تركّز ${topPayer.name} ≤${batchPayerCap}٪ من الدفعة` : `${topPayer.name} ≤${batchPayerCap}% of batch face`,
+      result: `${topPayerPct}%`,
+      pass: topPayerPct <= batchPayerCap,
+    },
+    {
+      label: isAr ? 'لا إجراء واحد >٤٠٪ من الدفعة' : 'No single procedure >40% of batch',
+      result: isAr ? '✓' : 'clean',
+      pass: true,
+    },
+    {
+      label: isAr ? 'فحوصات الاحتيال · كثافة · مرضى مكرّرون' : 'Fraud flags · density · duplicate-patient',
+      result: '0',
+      pass: true,
+    },
+    {
+      label: isAr ? `داخل الحدّ المتجدّد · ${utilPct}% مستخدم` : `Within revolving headroom · ${utilPct}% util`,
+      result: 'AED ' + Math.round(advancedFace / 1000) + 'K',
+      pass: utilPct <= 100,
+    },
+  ];
+  const allPass = checks.every((c) => c.pass);
+
+  return (
+    <div style={{
+      padding: 12, borderRadius: 12,
+      background: allPass ? 'rgba(10,128,86,0.06)' : 'rgba(184,54,75,0.08)',
+      border: '1px solid ' + (allPass ? 'rgba(10,128,86,0.32)' : 'rgba(184,54,75,0.32)'),
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{
+          width: 22, height: 22, borderRadius: 999, flexShrink: 0,
+          background: allPass ? '#0a8056' : '#b8364b', color: '#fff',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 700,
+        }}>{allPass ? '✓' : '✗'}</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: allPass ? '#0a8056' : '#b8364b' }}>
+            {allPass
+              ? (isAr ? 'الدفعة مقبولة · ٥/٥ فحوصات' : 'Batch admitted · 5/5 checks pass')
+              : (isAr ? 'الدفعة محجوبة' : 'Batch blocked')}
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--mal-mid)' }}>
+            {isAr ? 'الطبقة ٣ · قبل الدفع' : 'Layer-3 admission · ran before pay-out'}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {checks.map((c, i) => (
+          <div key={i} style={{
+            display: 'grid', gridTemplateColumns: '14px 1fr auto', gap: 6, alignItems: 'center',
+            fontSize: 10.5,
+          }}>
+            <span style={{ color: c.pass ? '#0a8056' : '#b8364b', fontWeight: 700 }}>{c.pass ? '✓' : '✗'}</span>
+            <span style={{ color: 'var(--mal-ink)' }}>{c.label}</span>
+            <span style={{ fontFamily: 'var(--mal-font-mono)', color: 'var(--mal-mid)' }}>{c.result}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -1892,6 +2096,527 @@ function HcCodingCopilot({ isAr, onClose }) {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ============================================================
+// HcProviderUnderwrite — Layer-2 clinic underwriting screen.
+// Shows the composite score, scoring inputs, tier, revolving limit,
+// advance rate, fee. Approve & continue → batch.
+// ============================================================
+function HcProviderUnderwrite({ isAr, scenario, patch, onApprove }) {
+  const uw = CLINIC_UW;
+  return (
+    <div className="mal-scroll" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflowY: 'auto' }}>
+      <div className="mal-caption">{isAr ? 'لجنة الائتمان · مال' : 'Mal credit committee'}</div>
+      <div className="mal-h1" style={{ fontSize: 22, marginTop: -2 }}>
+        {isAr ? 'الضمان · المركز' : 'Clinic underwriting'}
+      </div>
+
+      {/* Composite score hero */}
+      <div style={{
+        padding: 14, borderRadius: 14,
+        background: 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)',
+        color: '#fff', position: 'relative', overflow: 'hidden',
+      }}>
+        <div className="mal-orb" style={{ position: 'absolute', width: 200, height: 200, top: -90, insetInlineEnd: -80, opacity: .3 }}/>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 60, height: 60, borderRadius: 999,
+            background: 'rgba(255,255,255,0.12)',
+            border: '1px solid rgba(255,255,255,0.24)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            fontFamily: 'var(--mal-font-display)', fontStyle: 'italic',
+            fontSize: 26, fontWeight: 700,
+          }}>{uw.composite}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10.5, opacity: .7, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+              {isAr ? 'الدرجة المركّبة' : 'Composite UW score'}
+            </div>
+            <div style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic', fontSize: 22, marginTop: 2 }}>
+              {isAr ? 'فئة' : 'Tier'} {uw.tier} · {uw.facility}
+            </div>
+            <div style={{ fontSize: 10.5, opacity: .8, marginTop: 2 }}>
+              {uw.licence.regulator} · {uw.licence.number} · {isAr ? 'صلاحية' : 'vintage'} {uw.licence.vintage}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Limit + advance + fee summary */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+        {[
+          { lab: isAr ? 'حدّ متجدّد' : 'Revolving limit', val: 'AED ' + (uw.limit / 1000000).toFixed(1) + 'M', tone: 'var(--mal-primary)' },
+          { lab: isAr ? 'نسبة السلفة' : 'Advance rate',  val: (uw.advancePct * 100).toFixed(0) + '%',      tone: '#0a8056' },
+          { lab: isAr ? 'الرسم الأساسي' : 'Base fee',    val: (uw.feeBase * 100).toFixed(1) + '%',         tone: 'var(--mal-ink-2)' },
+        ].map((k) => (
+          <div key={k.lab} style={{
+            padding: '8px 10px', borderRadius: 10,
+            background: 'var(--mal-surface-2)', border: '1px solid var(--mal-line)',
+          }}>
+            <div style={{ fontSize: 9.5, color: 'var(--mal-mid-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{k.lab}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--mal-font-mono)', color: k.tone, marginTop: 2 }}>{k.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Scoring breakdown */}
+      <div style={{
+        padding: 12, borderRadius: 12,
+        background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+      }}>
+        <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 6 }}>
+          {isAr ? 'مدخلات التقييم' : 'Scoring inputs · weighted'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {uw.scoreInputs.map((row) => (
+            <div key={row.lab} style={{
+              display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 8, alignItems: 'center',
+              padding: '6px 8px', borderRadius: 8,
+              background: 'var(--mal-surface-2)',
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 600 }}>{row.lab}</div>
+                <div style={{ fontSize: 10, color: 'var(--mal-mid)', marginTop: 1 }}>{row.sub}</div>
+              </div>
+              <div style={{ fontSize: 11.5, fontFamily: 'var(--mal-font-mono)', fontWeight: 600, color: '#0a8056' }}>{row.val}</div>
+              <div style={{ fontSize: 9.5, color: 'var(--mal-mid-2)', fontFamily: 'var(--mal-font-mono)' }}>w {row.weight}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={{
+        padding: '8px 12px', borderRadius: 10,
+        background: 'rgba(10,128,86,0.08)',
+        border: '1px solid rgba(10,128,86,0.32)',
+        fontSize: 11, color: 'var(--mal-ink)', lineHeight: 1.55,
+      }}>
+        ✓ {isAr
+          ? `كل الحدود مُحترَمة · مراجعة دوريّة: ${uw.review}`
+          : `All thresholds clear · review cadence: ${uw.review}`}
+      </div>
+
+      <button onClick={onApprove} style={{
+        all: 'unset', cursor: 'pointer', textAlign: 'center',
+        padding: '12px 0', borderRadius: 999,
+        background: 'var(--mal-ink)', color: '#FAF7EE',
+        fontSize: 13, fontWeight: 600,
+      }}>
+        {scenario.underwriteApproved
+          ? (isAr ? 'تابع للرفع' : 'Continue to batch upload')
+          : (isAr ? 'وافق وأصدر الحدّ' : 'Approve & issue limit')} →
+      </button>
+    </div>
+  );
+}
+
+// ============================================================
+// HcInsurerUnderwrite — Layer-1 insurer concentration policy view.
+// Renders the 6 payers as cards with their book share, cap, advance
+// cap, cycle cap. Shows utilisation vs cap so the concentration
+// headroom is visible.
+// ============================================================
+function HcInsurerUnderwrite({ isAr }) {
+  return (
+    <div className="mal-scroll" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflowY: 'auto' }}>
+      <div className="mal-caption">{isAr ? 'سياسة التركّز · شركات التأمين' : 'Concentration policy · insurers'}</div>
+      <div className="mal-h1" style={{ fontSize: 22, marginTop: -2 }}>
+        {isAr ? '٦ شركات · ٣ فئات' : '6 payers · 3 tiers'}
+      </div>
+
+      <div style={{
+        padding: '8px 12px', borderRadius: 10,
+        background: 'var(--mal-primary-50)', border: '1px solid var(--mal-primary-3)',
+        fontSize: 11, lineHeight: 1.55,
+      }}>
+        {isAr
+          ? 'كل شركة تأمين لها حدّ تركّز في محفظة مال. التصنيف يُحدِّد حصّة الكتاب القصوى ونسبة التقدّم والدورة المسموحة.'
+          : 'Every insurer carries a book-concentration cap. Tier sets the maximum book share, advance rate, and cycle Mal will fund.'}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {INSURER_UW.map((i) => {
+          const p = PAYERS[i.key];
+          const utilPct = Math.round((i.bookShare / i.bookCap) * 100);
+          const utilTone = utilPct >= 90 ? '#b8364b' : utilPct >= 70 ? '#b06a14' : '#0a8056';
+          return (
+            <div key={i.key} style={{
+              padding: '10px 12px', borderRadius: 10,
+              background: 'var(--mal-paper)',
+              border: '1px solid var(--mal-line)',
+              borderInlineStart: '3px solid ' + p.tone,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: p.tone }}>{p.name}</span>
+                <span style={{
+                  fontSize: 9.5, padding: '1px 6px', borderRadius: 999,
+                  background: i.tier === 'A' ? 'rgba(10,128,86,0.14)' : i.tier === 'B' ? 'rgba(176,106,20,0.14)' : 'rgba(184,54,75,0.14)',
+                  color: i.tier === 'A' ? '#0a8056' : i.tier === 'B' ? '#b06a14' : '#b8364b',
+                  fontWeight: 700, letterSpacing: '.04em',
+                }}>{isAr ? 'فئة' : 'Tier'} {i.tier}</span>
+                <span style={{ marginInlineStart: 'auto', fontSize: 9.5, color: 'var(--mal-mid-2)', fontFamily: 'var(--mal-font-mono)' }}>
+                  S&P {i.rating}
+                </span>
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--mal-mid)', marginBottom: 6 }}>{i.notes}</div>
+              {/* Utilisation bar */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--mal-mid)', marginBottom: 3 }}>
+                <span>{isAr ? 'حصّة الكتاب' : 'Book share'} <strong style={{ color: 'var(--mal-ink)' }}>{(i.bookShare * 100).toFixed(0)}%</strong></span>
+                <span>{isAr ? 'حدّ' : 'cap'} {(i.bookCap * 100).toFixed(0)}% · <span style={{ color: utilTone, fontWeight: 700 }}>{utilPct}% util</span></span>
+              </div>
+              <div style={{ height: 4, background: 'var(--mal-line)', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: utilPct + '%', height: '100%', background: utilTone, transition: 'width .4s' }}/>
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 6, fontSize: 10, color: 'var(--mal-mid)' }}>
+                <span>{isAr ? 'حد التقدّم' : 'Advance cap'} <strong style={{ color: 'var(--mal-ink)' }}>{(i.advanceCap * 100).toFixed(0)}%</strong></span>
+                <span>·</span>
+                <span>{isAr ? 'الدورة' : 'Cycle cap'} <strong style={{ color: 'var(--mal-ink)' }}>{i.cycleCap}d</strong></span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// HcRiskHub — Mal credit-committee view, opened from the central
+// column. 3 tabs: Portfolio, Policy, Rate Card.
+//   Portfolio · book by insurer with utilisation + by-clinic top-5
+//   Policy    · the three-layer framework + EWS triggers
+//   Rate card · pricing matrix by tier × pre-auth × insurer
+// ============================================================
+function HcRiskHub({ isAr, scenario, claimStates, totals, tab, onTab, onClose }) {
+  const tabs = [
+    { id: 'portfolio', label: isAr ? 'المحفظة' : 'Portfolio' },
+    { id: 'policy',    label: isAr ? 'السياسة' : 'Policy' },
+    { id: 'ratecard',  label: isAr ? 'الأسعار' : 'Rate card' },
+  ];
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', inset: 0, zIndex: 80,
+      background: 'rgba(15,17,23,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    }}>
+      <div onClick={(e) => e.stopPropagation()} style={{
+        maxWidth: 760, width: '100%', maxHeight: '92vh',
+        background: 'var(--mal-paper)', borderRadius: 18,
+        boxShadow: '0 24px 80px rgba(0,0,0,0.32)',
+        overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        animation: 'mal-fade-up .25s ease',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--mal-line)',
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          background: 'linear-gradient(135deg, #2A1F6F 0%, #1A1A28 100%)',
+          color: '#fff',
+        }}>
+          <div style={{ flex: 1 }}>
+            <div className="mal-caption" style={{ opacity: 0.7 }}>🛡 {isAr ? 'مركز مخاطر مال' : 'Mal Risk Hub'}</div>
+            <div style={{ fontFamily: 'var(--mal-font-display)', fontStyle: 'italic', fontSize: 22, lineHeight: 1.2, marginTop: 4 }}>
+              {isAr ? 'محفظة · سياسة · أسعار' : 'Portfolio · Policy · Rate card'}
+            </div>
+          </div>
+          <button onClick={onClose} aria-label="Close" style={{
+            all: 'unset', cursor: 'pointer',
+            width: 28, height: 28, borderRadius: 999,
+            background: 'rgba(255,255,255,0.12)',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}>✕</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', gap: 6, padding: '10px 14px 0',
+          borderBottom: '1px solid var(--mal-line)',
+          background: 'var(--mal-surface-2)',
+        }}>
+          {tabs.map((t) => (
+            <button key={t.id} onClick={() => onTab(t.id)} style={{
+              all: 'unset', cursor: 'pointer',
+              padding: '7px 14px', borderRadius: '10px 10px 0 0',
+              fontSize: 12, fontWeight: tab === t.id ? 700 : 500,
+              color: tab === t.id ? 'var(--mal-primary)' : 'var(--mal-mid)',
+              borderBottom: '2px solid ' + (tab === t.id ? 'var(--mal-primary)' : 'transparent'),
+              marginBottom: -1,
+            }}>{t.label}</button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 18 }}>
+          {tab === 'portfolio' && <HcRiskHubPortfolio isAr={isAr} scenario={scenario} totals={totals} claimStates={claimStates}/>}
+          {tab === 'policy'    && <HcRiskHubPolicy    isAr={isAr}/>}
+          {tab === 'ratecard'  && <HcRiskHubRateCard  isAr={isAr}/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HcRiskHubPortfolio({ isAr, scenario, totals, claimStates }) {
+  // Simulated book-level numbers (the active batch is one slice of it).
+  const bookFace = 84000000;          // AED 84M book
+  const bookOutstanding = 31500000;   // AED 31.5M outstanding
+  const bookEws = 2;                  // 2 EWS triggers firing
+  const topClinics = [
+    { name: 'Crescent Medical Center', tier: 'A', exposure: 1450000, denial: '4.2%' },
+    { name: 'Al Noor Polyclinic',      tier: 'A', exposure: 1180000, denial: '5.1%' },
+    { name: 'Bayan Dental Group',      tier: 'B', exposure:  920000, denial: '7.4%' },
+    { name: 'Reem Diagnostics',        tier: 'A', exposure:  860000, denial: '3.9%' },
+    { name: 'Dubai Eye Specialists',   tier: 'B', exposure:  640000, denial: '6.8%' },
+  ];
+  const ews = [
+    { code: 'INS · ADNIC', tone: '#b06a14', msg: isAr ? 'تأخّر ٤ أيام عن الدورة المتوقَّعة' : '4-day slippage vs forecast cycle' },
+    { code: 'CLN · Bayan Dental', tone: '#b06a14', msg: isAr ? 'معدّل الرفض ارتفع ٢.٣ نقطة هذا الشهر' : 'denial rate up 2.3pp this month' },
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Book summary strip */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+        {[
+          { lab: isAr ? 'الكتاب الإجمالي' : 'Book face',      val: 'AED ' + (bookFace / 1000000).toFixed(0) + 'M', tone: 'var(--mal-mid)' },
+          { lab: isAr ? 'المتبقّي' : 'Outstanding',           val: 'AED ' + (bookOutstanding / 1000000).toFixed(1) + 'M', tone: 'var(--mal-primary)' },
+          { lab: isAr ? 'العائد المتوقّع (٩٠ي)' : 'Yield 90d', val: '3.1%', tone: '#0a8056' },
+          { lab: isAr ? 'إنذارات نشطة' : 'EWS firing',         val: String(bookEws), tone: '#b06a14' },
+        ].map((k) => (
+          <div key={k.lab} style={{
+            padding: '8px 10px', borderRadius: 10,
+            background: 'var(--mal-surface-2)', border: '1px solid var(--mal-line)',
+          }}>
+            <div style={{ fontSize: 9.5, color: 'var(--mal-mid-2)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{k.lab}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, fontFamily: 'var(--mal-font-mono)', color: k.tone, marginTop: 2 }}>{k.val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* By-insurer concentration */}
+      <div>
+        <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 6 }}>
+          {isAr ? 'التركّز · حسب شركة التأمين' : 'Concentration · by insurer'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {INSURER_UW.map((i) => {
+            const p = PAYERS[i.key];
+            const utilPct = Math.round((i.bookShare / i.bookCap) * 100);
+            const utilTone = utilPct >= 90 ? '#b8364b' : utilPct >= 70 ? '#b06a14' : '#0a8056';
+            return (
+              <div key={i.key} style={{
+                display: 'grid', gridTemplateColumns: '90px 1fr 80px', gap: 10, alignItems: 'center',
+                padding: '6px 10px', borderRadius: 8,
+                background: 'var(--mal-surface-2)',
+                borderInlineStart: '3px solid ' + p.tone,
+              }}>
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: p.tone }}>{p.name}</div>
+                <div>
+                  <div style={{ height: 6, background: 'var(--mal-line)', borderRadius: 999, overflow: 'hidden', position: 'relative' }}>
+                    <div style={{ width: (i.bookShare * 100 / i.bookCap * 100) * 0.6 + '%', height: '100%', background: utilTone, transition: 'width .4s' }}/>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'end', fontSize: 10.5, fontFamily: 'var(--mal-font-mono)' }}>
+                  <span style={{ color: 'var(--mal-ink)', fontWeight: 600 }}>{(i.bookShare * 100).toFixed(0)}%</span>
+                  <span style={{ color: 'var(--mal-mid-2)' }}> / {(i.bookCap * 100).toFixed(0)}%</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Top-5 clinics by exposure */}
+      <div>
+        <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 6 }}>
+          {isAr ? 'أعلى ٥ مراكز · حسب التعرّض' : 'Top 5 clinics · by exposure'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {topClinics.map((c) => (
+            <div key={c.name} style={{
+              display: 'grid', gridTemplateColumns: '1fr 60px 90px 60px', gap: 8, alignItems: 'center',
+              padding: '6px 10px', borderRadius: 8,
+              background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+            }}>
+              <span style={{ fontSize: 11.5, fontWeight: 600 }}>{c.name}</span>
+              <span style={{
+                fontSize: 9.5, padding: '1px 6px', borderRadius: 999,
+                background: c.tier === 'A' ? 'rgba(10,128,86,0.14)' : 'rgba(176,106,20,0.14)',
+                color: c.tier === 'A' ? '#0a8056' : '#b06a14',
+                fontWeight: 700, justifySelf: 'start',
+              }}>{c.tier}</span>
+              <span style={{ fontSize: 11, fontFamily: 'var(--mal-font-mono)', textAlign: 'end' }}>
+                AED {(c.exposure / 1000).toFixed(0)}K
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--mal-mid)', textAlign: 'end' }}>{c.denial}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* EWS triggers */}
+      <div>
+        <div className="mal-caption" style={{ color: 'var(--mal-mid)', marginBottom: 6 }}>
+          {isAr ? 'إنذارات مبكّرة · نشطة' : 'Early-warning triggers · live'}
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {ews.map((e, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '7px 10px', borderRadius: 8,
+              background: e.tone + '14',
+              border: '1px solid ' + e.tone + '40',
+            }}>
+              <span style={{ fontSize: 12 }}>⚠️</span>
+              <span style={{ fontSize: 10, fontFamily: 'var(--mal-font-mono)', fontWeight: 700, color: e.tone }}>{e.code}</span>
+              <span style={{ fontSize: 11, color: 'var(--mal-ink)' }}>{e.msg}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function HcRiskHubPolicy({ isAr }) {
+  const layers = [
+    {
+      n: 1,
+      title: isAr ? 'الطبقة ١ · تركّز شركات التأمين' : 'Layer 1 · Insurer concentration',
+      desc: isAr
+        ? 'حدود الكتاب القصوى لكل شركة تأمين · يحمي مال من تجميد دفعات شركة واحدة.'
+        : 'Top-down book caps per insurer. Protects Mal from a single payer freezing its book.',
+      rules: ['Tier A ≤ 30% book · advance ≤ 95% · cycle ≤ 90d',
+              'Tier B ≤ 15% book · advance ≤ 88% · cycle ≤ 60d',
+              'Tier C ≤ 5%  book · advance ≤ 80% · cycle ≤ 30d',
+              'Quarterly re-rating off CBUAE pay-cycle stats + S&P / AM Best'],
+    },
+    {
+      n: 2,
+      title: isAr ? 'الطبقة ٢ · حدّ المركز' : 'Layer 2 · Clinic revolving limit',
+      desc: isAr
+        ? 'القرار الائتماني الفعلي · درجة مركَّبة → فئة → حدّ متجدّد.'
+        : 'The actual credit decision. Composite score → tier → revolving line.',
+      rules: ['Licence vintage + regulator (DOH / DHA / MOH)',
+              '12-month denial rate (>8% = decline)',
+              '12-month collection cycle (>65d = haircut)',
+              'Coding accuracy + UBO / KYC + premises type + peer LGD',
+              'Limit tiers: AED 250k → 10M · 12-month review · monthly soft-pull'],
+    },
+    {
+      n: 3,
+      title: isAr ? 'الطبقة ٣ · قبول الدفعة' : 'Layer 3 · Per-batch admission',
+      desc: isAr
+        ? 'فحص الدفعة قبل التقدّم · يمنع التركّز السيئ والاحتيال.'
+        : 'Pre-pay-out check on every batch. Stops concentration and fraud.',
+      rules: BATCH_ADMISSION_RULES.map((r) => r.label),
+    },
+    {
+      n: 0,
+      title: isAr ? 'مُتقاطع · إنذار مبكّر' : 'Cross-cutting · Early warning',
+      desc: isAr
+        ? 'مُحفِّزات تُوقِف السلف الجديدة وتُكرّم الالتزامات القائمة.'
+        : 'Triggers that pause new advances while honouring committed ones.',
+      rules: ['Denial-rate breach · insurer slippage >5 days',
+              'Regulator notice · bank-account change',
+              'Patient-complaint spike · audit notice',
+              'Loss waterfall: clinic recourse → rider reserve → book'],
+    },
+  ];
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        padding: '10px 12px', borderRadius: 10,
+        background: 'var(--mal-primary-50)', border: '1px solid var(--mal-primary-3)',
+        fontSize: 11, lineHeight: 1.6, color: 'var(--mal-ink)',
+      }}>
+        {isAr
+          ? 'سياسة مال للمخاطر تعمل على ثلاث طبقات. الطبقة ١ تحمي من تركّز شركات التأمين. الطبقة ٢ هي القرار الائتماني للمراكز. الطبقة ٣ فلتر الدفعة قبل الدفع.'
+          : 'Mal\'s risk policy operates in three layers. Layer 1 caps insurer concentration. Layer 2 is the credit decision per clinic. Layer 3 filters every batch before advance.'}
+      </div>
+
+      {layers.map((L) => (
+        <div key={L.n} style={{
+          padding: 12, borderRadius: 12,
+          background: 'var(--mal-paper)', border: '1px solid var(--mal-line)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <span style={{
+              width: 22, height: 22, borderRadius: 999,
+              background: L.n === 0 ? '#b06a14' : 'var(--mal-primary)',
+              color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700,
+            }}>{L.n === 0 ? '⚠' : L.n}</span>
+            <div style={{ fontSize: 13, fontWeight: 700 }}>{L.title}</div>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--mal-mid)', lineHeight: 1.55, marginBottom: 6 }}>{L.desc}</div>
+          <ul style={{ margin: 0, paddingInlineStart: 18, fontSize: 11, lineHeight: 1.65 }}>
+            {L.rules.map((r, i) => <li key={i}>{r}</li>)}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function HcRiskHubRateCard({ isAr }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{
+        padding: '10px 12px', borderRadius: 10,
+        background: 'var(--mal-primary-50)', border: '1px solid var(--mal-primary-3)',
+        fontSize: 11, lineHeight: 1.55,
+      }}>
+        {isAr
+          ? 'السعر دالّة لفئة المركز × فئة شركة التأمين × حالة الموافقة المسبقة. كل سطر يظهر للعميل في صفحة المطالبة.'
+          : 'Price is a function of clinic tier × insurer tier × pre-auth status. Every row is shown to the provider on the claim page.'}
+      </div>
+
+      <div style={{
+        borderRadius: 12, overflow: 'hidden',
+        border: '1px solid var(--mal-line)',
+      }}>
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 70px 70px 90px', gap: 0,
+          padding: '8px 12px',
+          background: 'var(--mal-surface-2)',
+          fontSize: 10, fontWeight: 700, color: 'var(--mal-mid)', textTransform: 'uppercase', letterSpacing: '.06em',
+        }}>
+          <span>{isAr ? 'الصفّ' : 'Row'}</span>
+          <span style={{ textAlign: 'end' }}>{isAr ? 'سلفة' : 'Advance'}</span>
+          <span style={{ textAlign: 'end' }}>{isAr ? 'رسم' : 'Fee'}</span>
+          <span style={{ textAlign: 'end' }}>{isAr ? 'دورة' : 'Cycle'}</span>
+        </div>
+        {RATE_CARD.map((r, i) => (
+          <div key={i} style={{
+            display: 'grid', gridTemplateColumns: '1fr 70px 70px 90px', gap: 0,
+            padding: '9px 12px',
+            background: i % 2 ? 'var(--mal-paper)' : 'transparent',
+            borderTop: '1px solid var(--mal-line)',
+            fontSize: 11, alignItems: 'center',
+          }}>
+            <span style={{ color: 'var(--mal-ink)' }}>{r.row}</span>
+            <span style={{ textAlign: 'end', fontFamily: 'var(--mal-font-mono)', color: '#0a8056', fontWeight: 600 }}>{r.advance}</span>
+            <span style={{ textAlign: 'end', fontFamily: 'var(--mal-font-mono)', color: 'var(--mal-primary)', fontWeight: 600 }}>{r.fee}</span>
+            <span style={{ textAlign: 'end', fontFamily: 'var(--mal-font-mono)', color: 'var(--mal-mid)' }}>{r.cycle}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{
+        padding: '8px 12px', borderRadius: 10,
+        background: 'rgba(10,128,86,0.08)', border: '1px solid rgba(10,128,86,0.32)',
+        fontSize: 10.5, lineHeight: 1.55, color: 'var(--mal-ink)',
+      }}>
+        {isAr
+          ? '✓ السعر النهائي مساوٍ للقاعدة + (١-معدّل الاسترداد × مضاعف فئة شركة التأمين) + (دورة × كلفة التمويل) + التشغيل.'
+          : '✓ Final fee = base + (1 - recovery × insurer-tier multiplier) + (cycle × cost-of-funds) + ops load.'}
       </div>
     </div>
   );
