@@ -87,12 +87,20 @@ const DEFAULT_SCENARIO = {
   buyerOnboardingDone: false,
   supplierOnboardingDone: false,
 
-  // Invite story (replaces the legacy cold-cold parallel onboarding).
-  // 'wizard' = supplier still running the invite wizard,
-  // 'active' = invite sent, buyer is going through the invited 10-step flow,
-  // 'done'   = buyer hit limit reveal; auto-advances to 'home'.
-  inviteStage: 'wizard',
+  // Invite story (optional layer on top of the cold-cold parallel onboarding).
+  //   null            = no invite story active; cold parallel onboarding runs.
+  //   'wizard'        = supplier (during onboarding phase) is running the invite wizard,
+  //                     buyer sees an "incoming invite" splash. Set by tapping the
+  //                     supplier-side "Get started" at intro.
+  //   'active'        = invite sent during onboarding; buyer runs the invited 10-step flow.
+  //   'done'          = buyer hit limit reveal via the invited flow; auto-advances to 'home'.
+  //   'home-wizard'   = supplier (post-onboarding, on home) opened the invite wizard.
+  //   'home-pending'  = supplier sent a post-onboarding invite; buyer (already active)
+  //                     sees an incoming-invite card with Accept/Decline.
+  //   'home-accepted' = buyer accepted while already active; transient → null after toast.
+  inviteStage: null,
   invitedBy: null,             // INVITE_DEMO_FIXTURE-shaped object, set when wizard completes
+  pendingInvite: null,         // mirror of invitedBy for the home-phase accept card
 
   // Invoice the supplier issued
   invoice: {
@@ -433,15 +441,20 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile, embedded = false }) 
     return () => clearTimeout(t);
   }, [scenario.buyerToast?.title, scenario.supplierToast?.title]);
 
-  // Auto-advance to 'home' once the invited buyer onboarding finishes. The
-  // supplier is treated as an already-established Mal customer in this
-  // storyline, so we no longer wait on a supplier-side completion flag.
+  // Auto-advance to 'home' from the onboarding phase. Two paths:
+  //  · Cold (inviteStage === null) : wait for BOTH legacy *OnboardingDone flags
+  //  · Invite-led                  : advance when inviteStage flips to 'done'
   dmE(() => {
-    if (phase === 'onboarding' && scenario.inviteStage === 'done') {
+    if (phase !== 'onboarding') return;
+    const coldDone = !scenario.inviteStage
+                     && scenario.buyerOnboardingDone
+                     && scenario.supplierOnboardingDone;
+    const invitedDone = scenario.inviteStage === 'done';
+    if (coldDone || invitedDone) {
       const t = setTimeout(() => setPhase('home'), 700);
       return () => clearTimeout(t);
     }
-  }, [phase, scenario.inviteStage]);
+  }, [phase, scenario.inviteStage, scenario.buyerOnboardingDone, scenario.supplierOnboardingDone]);
 
   // Cross-date toasts: when simDay changes, fire alerts for any EMI dueDay
   // that was just crossed without a payment. We only fire on forward movement.
@@ -1053,18 +1066,25 @@ function DemoToast({ toast }) {
 // ==================================================================
 
 function BuyerSurface({ phase, setPhase, scenario, patch, lang }) {
-  if (phase === 'intro') return <DemoIntroBuyer lang={lang} onProceed={() => setPhase('onboarding')}/>;
+  // Choosing the buyer's "Get started" picks the cold path (inviteStage stays null).
+  if (phase === 'intro') return <DemoIntroBuyer lang={lang} onProceed={() => {
+    patch({ inviteStage: null }); setPhase('onboarding');
+  }}/>;
   if (phase === 'onboarding') {
-    // Mirror of the supplier-side state machine. While supplier runs the invite
-    // wizard, buyer side shows a calm "incoming invite" splash. Once supplier
-    // hits 'active', buyer runs the invited 10-step BuyerOnboardingFlow.
-    const stage = scenario.inviteStage || 'wizard';
-    if (stage === 'wizard') {
-      return <DemoBuyerIncomingInvite lang={lang}/>;
+    // Cold path: legacy parallel onboarding. Both sides race to finish.
+    if (!scenario.inviteStage) {
+      if (scenario.buyerOnboardingDone) {
+        return <DemoOnboardingReady lang={lang} side="buyer" partnerDone={scenario.supplierOnboardingDone}/>;
+      }
+      return <BuyerOnboardingFlow lang={lang}
+                                  controlledStep={scenario.buyerStep}
+                                  onStepChange={(n) => patch({ buyerStep: n })}
+                                  onDone={() => patch({ buyerOnboardingDone: true })}/>;
     }
-    if (scenario.buyerOnboardingDone) {
-      return <DemoOnboardingReady lang={lang} side="buyer" partnerDone={true}/>;
-    }
+    // Invite-led path: supplier is bringing the buyer in.
+    const stage = scenario.inviteStage;
+    if (stage === 'wizard') return <DemoBuyerIncomingInvite lang={lang}/>;
+    if (scenario.buyerOnboardingDone) return <DemoOnboardingReady lang={lang} side="buyer" partnerDone={true}/>;
     const invitedBy = scenario.invitedBy || window.INVITE_DEMO_FIXTURE;
     return <BuyerOnboardingFlow lang={lang}
                                 invitedBy={invitedBy}
@@ -1072,7 +1092,7 @@ function BuyerSurface({ phase, setPhase, scenario, patch, lang }) {
                                 onStepChange={(n) => patch({ buyerStep: n })}
                                 onDone={() => patch({ buyerOnboardingDone: true, inviteStage: 'done' })}/>;
   }
-  if (phase === 'home' || phase === 'issue') return <DemoBuyerHomeEmpty lang={lang}/>;
+  if (phase === 'home' || phase === 'issue') return <DemoBuyerHomeEmpty lang={lang} scenario={scenario} patch={patch}/>;
   if (phase === 'receive') return <DemoBuyerHomeWithInvoice lang={lang} scenario={scenario} onProceed={() => setPhase('plan')}/>;
   if (phase === 'plan' || phase === 'sign') return <DemoBuyerPlanPicker lang={lang} scenario={scenario} patch={patch}
                                                                          onSign={() => setPhase('sign')}
@@ -1221,8 +1241,11 @@ function DemoIntroBuyer({ lang, onProceed }) {
   );
 }
 
-function DemoBuyerHomeEmpty({ lang }) {
+function DemoBuyerHomeEmpty({ lang, scenario, patch }) {
   const isAr = lang === 'ar';
+  const pendingInvite = scenario?.pendingInvite;
+  const inviteAccepted = scenario?.inviteStage === 'home-accepted';
+  const supplierName = pendingInvite?.supplier?.name || 'Atlas Packaging FZ-LLC';
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="mal-caption">{isAr ? 'مرحباً، عيشة' : 'Hi, Aisha'}</div>
@@ -1241,6 +1264,66 @@ function DemoBuyerHomeEmpty({ lang }) {
           </div>
         </div>
       </Card>
+
+      {/* Pending invite from a supplier: only shown when the buyer is already
+          active (i.e. cold-onboarded + sitting on home) and a supplier has
+          sent a network-connection invite via the home wizard. */}
+      {pendingInvite && !inviteAccepted && (
+        <Card padded style={{
+          background: 'linear-gradient(135deg, #EFEAFF, #FAF7EE)',
+          border: '1px solid var(--mal-primary-50)',
+          display: 'flex', flexDirection: 'column', gap: 10,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Avatar tone={pendingInvite.supplier?.tone || 'sky'} name={(supplierName.match(/\b\w/g) || ['A','P']).slice(0,2).join('')} size={40}/>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <Pill tone="info" dot>{isAr ? 'طلب اتّصال' : 'Connection request'}</Pill>
+              <div style={{ fontSize: 14, fontWeight: 500, marginTop: 6 }}>
+                {isAr ? `${supplierName} يريد العمل معك على مال` : `${supplierName} wants to connect on Mal`}
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
+                {isAr ? 'لا حاجة لإعادة الإعداد. اقبل لتظهر فواتيرهم هنا.' : 'No re-onboarding needed. Accept and their invoices will land here.'}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+            <Button kind="secondary" size="md" full onClick={() => patch?.({ pendingInvite: null, inviteStage: null })}>
+              {isAr ? 'تجاهل' : 'Decline'}
+            </Button>
+            <Button kind="primary" size="md" full iconRight="check" onClick={() => patch?.({
+              inviteStage: 'home-accepted',
+              buyerToast: {
+                title: isAr ? 'تمّ الاتّصال' : 'Connected',
+                sub: isAr ? `${supplierName} الآن في شبكتك` : `${supplierName} is now in your network`,
+                icon: 'check', tone: 'success',
+              },
+              supplierToast: {
+                title: isAr ? 'قبلت عيشة الدعوة' : 'Aisha accepted your invite',
+                sub: isAr ? 'فواتيرك جاهزة للتمويل' : 'Their invoices are ready to finance',
+                icon: 'check', tone: 'success',
+              },
+            })}>
+              {isAr ? 'اقبل' : 'Accept'}
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {/* Brief acceptance confirmation. Disappears with the next phase change. */}
+      {inviteAccepted && (
+        <Card padded style={{
+          background: 'linear-gradient(135deg, #E6F7EC, #FAF7EE)',
+          border: '1px solid var(--mal-success)',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          {dmIco.check ? dmIco.check({ width: 22, height: 22, stroke: 'var(--mal-success)' }) : '✓'}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{isAr ? `${supplierName} · مُتّصل` : `${supplierName} · Connected`}</div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{isAr ? 'فواتيرهم ستظهر هنا قريباً' : 'Their invoices will appear here shortly'}</div>
+          </div>
+        </Card>
+      )}
+
       <div style={{ padding: '16px 14px', textAlign: 'center', color: 'var(--mal-mid)', fontSize: 12 }}>
         {isAr ? 'في انتظار أوّل فاتورة من مورّديك…' : 'Awaiting your first supplier invoice…'}
       </div>
@@ -2692,11 +2775,25 @@ function DemoRefinanceSuccess({ lang, scenario, setBuyerRoute }) {
 // ==================================================================
 
 function SupplierSurface({ phase, setPhase, scenario, patch, lang }) {
-  if (phase === 'intro') return <DemoIntroSupplier lang={lang} onProceed={() => setPhase('onboarding')}/>;
+  // Choosing the supplier's "Get started" picks the invite-led path
+  // (scenario.inviteStage starts in 'wizard').
+  if (phase === 'intro') return <DemoIntroSupplier lang={lang} onProceed={() => {
+    patch({ inviteStage: 'wizard' }); setPhase('onboarding');
+  }}/>;
   if (phase === 'onboarding') {
-    // Invite storyline: supplier (already an established Mal customer) brings
-    // a new buyer in. Sub-stages: wizard → active (buyer onboarding) → done.
-    const stage = scenario.inviteStage || 'wizard';
+    // Cold path: legacy parallel onboarding.
+    if (!scenario.inviteStage) {
+      if (scenario.supplierOnboardingDone) {
+        return <DemoOnboardingReady lang={lang} side="supplier" partnerDone={scenario.buyerOnboardingDone}/>;
+      }
+      return <SupplierOnboardingFlow lang={lang}
+                                     controlledStep={scenario.supplierStep}
+                                     onStepChange={(n) => patch({ supplierStep: n })}
+                                     onDone={() => patch({ supplierOnboardingDone: true })}/>;
+    }
+    // Invite-led path: supplier (already-established Mal customer in this story)
+    // brings a new buyer in. Sub-stages: wizard → active (buyer onboarding) → done.
+    const stage = scenario.inviteStage;
     if (stage === 'wizard') {
       return <SupplierInviteBuyerFlow
         lang={lang}
@@ -2714,7 +2811,31 @@ function SupplierSurface({ phase, setPhase, scenario, patch, lang }) {
     }
     return <DemoSupplierTrackingBuyer lang={lang} scenario={scenario}/>;
   }
-  if (phase === 'home') return <DemoSupplierHome lang={lang} onIssue={() => setPhase('issue')}/>;
+  if (phase === 'home') {
+    // Two sub-flows on home: (a) the default supplier home with a new
+    // "Invite a buyer" CTA, (b) the wizard itself running inline when the
+    // supplier has tapped that CTA. The wizard's onDone moves the invite to
+    // 'home-pending' so the buyer can accept it from their (already-active) home.
+    if (scenario.inviteStage === 'home-wizard') {
+      return <SupplierInviteBuyerFlow
+        lang={lang}
+        onDone={() => patch({
+          inviteStage: 'home-pending',
+          pendingInvite: window.__MAL_LAST_INVITE || window.INVITE_DEMO_FIXTURE,
+          buyerToast: {
+            title: lang === 'ar' ? 'طلب اتّصال من أطلس' : 'Connection request from Atlas',
+            sub: lang === 'ar' ? 'افتح الرسالة لقبول الاتّصال' : 'Tap to accept and connect',
+            icon: 'invoice', tone: 'iri',
+          },
+        })}
+        onCancel={() => patch({ inviteStage: null })}
+      />;
+    }
+    return <DemoSupplierHome lang={lang}
+                             onIssue={() => setPhase('issue')}
+                             onInvite={() => patch({ inviteStage: 'home-wizard' })}
+                             scenario={scenario}/>;
+  }
   if (phase === 'issue') return <DemoSupplierIssueInvoice lang={lang} scenario={scenario} patch={patch} onIssued={() => setPhase('receive')}/>;
   if (phase === 'receive' || phase === 'plan' || phase === 'sign') return <DemoSupplierAwaiting lang={lang} scenario={scenario}/>;
   if (phase === 'funded') return <DemoSupplierFunded lang={lang} scenario={scenario}/>;
@@ -2749,8 +2870,10 @@ function DemoIntroSupplier({ lang, onProceed }) {
   );
 }
 
-function DemoSupplierHome({ lang, onIssue }) {
+function DemoSupplierHome({ lang, onIssue, onInvite, scenario }) {
   const isAr = lang === 'ar';
+  const pendingInvite = scenario?.pendingInvite;
+  const inviteAccepted = scenario?.inviteStage === 'home-accepted';
   return (
     <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -2770,12 +2893,42 @@ function DemoSupplierHome({ lang, onIssue }) {
         </div>
       </Card>
 
+      {/* Pending invite status: shown after the supplier sent a post-onboarding
+          invite and is waiting on the buyer to accept */}
+      {pendingInvite && !inviteAccepted && (
+        <Card padded style={{ background: 'linear-gradient(135deg, #FFF8E1, #FAF7EE)', border: '1px solid #F4D38C', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Avatar tone="lilac" name={(pendingInvite.buyer?.legalName?.match(/\b\w/g) || ['C','T']).slice(0,2).join('')} size={36}/>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{pendingInvite.buyer?.legalName || 'Crescent Trading FZE'}</div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{isAr ? 'الدعوة في انتظار القبول' : 'Awaiting their acceptance'}</div>
+          </div>
+          <Pill tone="warn" dot>{isAr ? 'مَدعو' : 'Invited'}</Pill>
+        </Card>
+      )}
+
+      {/* Acceptance toast/card. Lives briefly after the buyer accepts */}
+      {inviteAccepted && pendingInvite && (
+        <Card padded style={{ background: 'linear-gradient(135deg, #E6F7EC, #FAF7EE)', border: '1px solid var(--mal-success)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {dmIco.check ? dmIco.check({ width: 22, height: 22, stroke: 'var(--mal-success)' }) : '✓'}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{pendingInvite.buyer?.legalName || 'Crescent Trading FZE'} · {isAr ? 'مُتّصل' : 'Connected'}</div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{isAr ? 'الآن يمكنك تمويل فواتيرهم' : 'You can now finance their invoices'}</div>
+          </div>
+          <Pill tone="success" dot>{isAr ? 'فعّال' : 'Active'}</Pill>
+        </Card>
+      )}
+
       {/* Anchor pre-approved limits. Buyers Mal already cleared for this supplier */}
       <AnchorPreapprovedCard isAr={isAr}/>
 
       <Button kind="primary" size="lg" full icon="bolt" onClick={onIssue}>
         {isAr ? 'أصدر فاتورة جديدة' : 'Issue a new invoice'}
       </Button>
+      {onInvite && !pendingInvite && (
+        <Button kind="secondary" size="lg" full icon="plus" onClick={onInvite}>
+          {isAr ? 'ادعُ مشترياً جديداً' : 'Invite a buyer to your network'}
+        </Button>
+      )}
     </div>
   );
 }
