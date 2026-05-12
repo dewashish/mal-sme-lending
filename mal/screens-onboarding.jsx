@@ -7,26 +7,44 @@
 const { useState: oS, useEffect: oE } = React;
 
 // ============================================================
-// Buyer Onboarding. 11 screens
+// Buyer Onboarding. 11 screens (or 10 when supplier-invited; `license` is
+// skipped because the inviting supplier has already DED-verified the buyer).
+// `invitedBy` shape:
+//   { supplier: { name, licence, tone? },
+//     buyer:    { legalName, licenceNo, licenceEmirate, trn, sub? },
+//     contact:  { name, mobile, email? },
+//     invoice:  { id, amount, reservedLimit, eta }  // optional preview
+//   }
 // ============================================================
-const BUYER_STEPS = [
-  'welcome', 'phone', 'otp', 'license', 'uaepass',
-  'owners', 'bank', 'documents', 'review', 'decision', 'limit'
-];
+const BUYER_STEPS_COLD    = ['welcome', 'phone', 'otp', 'license', 'uaepass', 'owners', 'bank', 'documents', 'review', 'decision', 'limit'];
+const BUYER_STEPS_INVITED = ['welcome', 'phone', 'otp',            'uaepass', 'owners', 'bank', 'documents', 'review', 'decision', 'limit'];
+const BUYER_STEPS = BUYER_STEPS_COLD; // back-compat export
 
-function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDone, controlledStep, onStepChange }) {
+// Demo fixture for the supplier-invited buyer journey. Used by the persona
+// picker / buyer 'invited' route to bypass the full supplier-side wizard.
+const INVITE_DEMO_FIXTURE = {
+  supplier: { name: 'Atlas Packaging FZ-LLC', licence: 'JAFZA-882140', tone: 'sky' },
+  buyer:    { legalName: 'Crescent Trading FZE', licenceNo: 'DED-1247739', licenceEmirate: 'Dubai', trn: '100247531800003', sub: 'General Trading · Est. 2017 · Active' },
+  contact:  { name: 'Aisha Bin Hamad', mobile: '50 247 8810', email: 'aisha.b@crescenttrading.ae' },
+  invoice:  { id: 'INV-2026-1187', amount: 250000, reservedLimit: 220000, eta: 'Today, 14:00' },
+};
+
+function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDone, controlledStep, onStepChange, invitedBy = null }) {
+  const STEPS = invitedBy ? BUYER_STEPS_INVITED : BUYER_STEPS_COLD;
   const [internalStep, setInternalStep] = oS(initialStep);
   const isControlled = typeof controlledStep === 'number';
   const stepIdx = isControlled ? controlledStep : internalStep;
   const setStepIdx = (n) => {
-    const clamped = Math.min(BUYER_STEPS.length - 1, Math.max(0, n));
+    const clamped = Math.min(STEPS.length - 1, Math.max(0, n));
     if (isControlled) onStepChange?.(clamped);
     else setInternalStep(clamped);
   };
-  const step = BUYER_STEPS[stepIdx];
+  const step = STEPS[stepIdx];
   const next = () => setStepIdx(stepIdx + 1);
   const back = () => setStepIdx(stepIdx - 1);
   const isAr = lang === 'ar';
+  const invitedSupplierName = invitedBy?.supplier?.name || '';
+  const invitedBuyerLegalName = invitedBy?.buyer?.legalName || '';
 
   // Persist progress on each "Continue" click. Only commit-style, not keystrokes.
   React.useEffect(() => {
@@ -71,7 +89,7 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
   );
 
   // ── 0 · Welcome ───────────────────────────────────────────
-  if (step === 'welcome') return (
+  if (step === 'welcome' && !invitedBy) return (
     <div style={{ height: '100%', minHeight: 760, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #FAF7EE 0%, #EFEAFF 60%, #FAF7EE 100%)' }}/>
       <div style={{ position: 'absolute', top: 60, insetInlineEnd: -80, width: 320, height: 320, opacity: .6 }}>
@@ -96,37 +114,97 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
     </div>
   );
 
-  // ── 1 · Phone ─────────────────────────────────────────────
-  if (step === 'phone') return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760 }}>
-      <Header title={isAr ? 'رقم هاتف الشركة' : 'Your business mobile'} sub={isAr ? 'سنرسل رمزاً للتحقّق.' : 'We\'ll send a 6-digit code.'}/>
-      <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
-        <Field label={isAr ? 'رقم الجوّال' : 'Mobile number'}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <div className="mal-input" style={{ width: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-              <span style={{ fontSize: 16 }}>🇦🇪</span><span>+971</span>
+  // ── 0' · Welcome (invited) ───────────────────────────────
+  if (step === 'welcome' && invitedBy) return (
+    <div style={{ height: '100%', minHeight: 760, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #FAF7EE 0%, #E8F2FF 60%, #FAF7EE 100%)' }}/>
+      <div style={{ position: 'absolute', top: 60, insetInlineEnd: -80, width: 320, height: 320, opacity: .55 }}>
+        <div className="mal-orb" style={{ width: '100%', height: '100%', animation: 'mal-orb-spin 22s linear infinite' }}/>
+      </div>
+      <div style={{ flex: 1, padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 20, position: 'relative', zIndex: 1 }}>
+        <MalLogo size={26}/>
+        <Pill tone="info" dot>{isAr ? 'دعوة من مورّد' : 'Supplier invite'}</Pill>
+        <h1 className="mal-display" style={{ fontSize: 44, fontStyle: 'italic', lineHeight: 1.02, margin: 0 }}>
+          {isAr
+            ? <>دُعيتَ من<br/><span className="mal-iri-text">{invitedSupplierName}</span></>
+            : <>You're invited by<br/><span className="mal-iri-text">{invitedSupplierName}</span></>}
+        </h1>
+        <Card padded style={{ display: 'flex', gap: 12, alignItems: 'center', background: 'var(--mal-paper)' }}>
+          <Avatar tone={invitedBy.supplier?.tone || 'sky'} name={(invitedSupplierName.match(/\b\w/g) || []).slice(0,2).join('')} size={40}/>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{invitedBuyerLegalName}</div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+              {isAr ? 'تم التحقّق مسبقاً من السجل التجاري' : 'Pre-verified via the trade register'} · {invitedBy.buyer?.licenceNo}
             </div>
-            <Input defaultValue="50 247 8810" style={{ flex: 1 }}/>
           </div>
-        </Field>
-        <Field label={isAr ? 'البريد الإلكتروني للعمل' : 'Business email'}>
-          <Input defaultValue="aisha.b@crescenttrading.ae"/>
-        </Field>
-        <label style={{ display: 'flex', gap: 10, fontSize: 12, color: 'var(--mal-mid)', alignItems: 'flex-start', marginTop: 6 }}>
-          <input type="checkbox" defaultChecked style={{ marginTop: 3 }}/>
-          <span>{isAr ? 'أوافق على الشروط وسياسة الخصوصية ومشاركة بيانات AECB.' : 'I agree to the Terms, Privacy, and AECB data sharing.'}</span>
-        </label>
-        <div style={{ marginTop: 'auto' }}>
-          <Button kind="primary" size="lg" full onClick={next} iconRight="arrow">{isAr ? 'إرسال الرمز' : 'Send code'}</Button>
+          {Ico.check({ stroke: 'var(--mal-success)' })}
+        </Card>
+        {invitedBy.invoice && (
+          <Card padded style={{ background: 'linear-gradient(135deg, #EFEAFF, #FAF7EE)', border: '1px solid var(--mal-primary-50)' }}>
+            <div className="mal-caption" style={{ marginBottom: 6 }}>{isAr ? 'فاتورة في الانتظار' : 'Invoice waiting'}</div>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>{invitedBy.invoice.id} · AED {invitedBy.invoice.amount.toLocaleString()}</div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
+              {isAr ? 'ستُحوَّل خلال ٤ ساعات بعد التفعيل' : 'Wires within 4h once you activate'}
+            </div>
+          </Card>
+        )}
+        <Button kind="primary" size="lg" full iconRight="arrow" onClick={next}>
+          {isAr ? 'متابعة الإعداد · ٥ دقائق' : 'Continue setup · 5 min'}
+        </Button>
+        <div style={{ display: 'flex', gap: 14, fontSize: 11, color: 'var(--mal-mid)', justifyContent: 'center' }}>
+          <span>ADGM FSRA</span><span>·</span><span>UAE Pass</span><span>·</span><span>AECB</span>
         </div>
       </div>
     </div>
   );
 
+  // ── 1 · Phone ─────────────────────────────────────────────
+  if (step === 'phone') {
+    const phoneVal = invitedBy?.contact?.mobile || '50 247 8810';
+    const emailVal = invitedBy?.contact?.email  || 'aisha.b@crescenttrading.ae';
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760 }}>
+        <Header title={isAr ? 'رقم هاتف الشركة' : 'Your business mobile'} sub={
+          invitedBy
+            ? (isAr ? `تمّت تعبئة هذه البيانات من قِبل ${invitedSupplierName}. تأكَّد منها فقط.` : `Pre-filled by ${invitedSupplierName}. Just confirm.`)
+            : (isAr ? 'سنرسل رمزاً للتحقّق.' : 'We\'ll send a 6-digit code.')
+        }/>
+        <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+          <Field label={isAr ? 'رقم الجوّال' : 'Mobile number'}>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div className="mal-input" style={{ width: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <span style={{ fontSize: 16 }}>🇦🇪</span><span>+971</span>
+              </div>
+              <Input defaultValue={phoneVal} style={{ flex: 1 }}/>
+            </div>
+          </Field>
+          <Field label={isAr ? 'البريد الإلكتروني للعمل' : 'Business email'}>
+            <Input defaultValue={emailVal}/>
+          </Field>
+          {invitedBy && (
+            <div style={{ display: 'flex', gap: 8, fontSize: 11, color: 'var(--mal-mid)', alignItems: 'center' }}>
+              {Ico.check({ width: 12, height: 12, stroke: 'var(--mal-success)' })}
+              <span>{isAr ? `مرسلة من ${invitedSupplierName}` : `Shared by ${invitedSupplierName}`}</span>
+            </div>
+          )}
+          <label style={{ display: 'flex', gap: 10, fontSize: 12, color: 'var(--mal-mid)', alignItems: 'flex-start', marginTop: 6 }}>
+            <input type="checkbox" defaultChecked style={{ marginTop: 3 }}/>
+            <span>{isAr ? 'أوافق على الشروط وسياسة الخصوصية ومشاركة بيانات AECB.' : 'I agree to the Terms, Privacy, and AECB data sharing.'}</span>
+          </label>
+          <div style={{ marginTop: 'auto' }}>
+            <Button kind="primary" size="lg" full onClick={next} iconRight="arrow">{isAr ? 'إرسال الرمز' : 'Send code'}</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── 2 · OTP ───────────────────────────────────────────────
-  if (step === 'otp') return (
+  if (step === 'otp') {
+    const otpPhone = '+971 ' + (invitedBy?.contact?.mobile || '50 247 8810');
+    return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760 }}>
-      <Header title={isAr ? 'أدخل الرمز' : 'Enter the code'} sub={isAr ? 'أُرسل إلى ‎+971 50 247 8810' : 'Sent to +971 50 247 8810'}/>
+      <Header title={isAr ? 'أدخل الرمز' : 'Enter the code'} sub={isAr ? `أُرسل إلى ${otpPhone}` : `Sent to ${otpPhone}`}/>
       <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 24 }}>
           {['4','7','2','9','0','—'].map((d, i) => (
@@ -146,7 +224,8 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
         </div>
       </div>
     </div>
-  );
+    );
+  }
 
   // ── 3 · Trade Licence ─────────────────────────────────────
   if (step === 'license') return (
@@ -205,7 +284,11 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
   // ── 5 · Owners / UBO ──────────────────────────────────────
   if (step === 'owners') return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760 }}>
-      <Header title={isAr ? 'المالكون والمفوّضون' : 'Owners & signatories'} sub={isAr ? 'سحبناهم من السجل التجاري.' : 'Pre-filled from the trade register. Adjust if needed.'}/>
+      <Header title={isAr ? 'المالكون والمفوّضون' : 'Owners & signatories'} sub={
+        invitedBy
+          ? (isAr ? `سحبناهم من سجلّات ${invitedSupplierName}. تحقّق فقط.` : `Pulled via ${invitedSupplierName}'s trade register record. Just confirm.`)
+          : (isAr ? 'سحبناهم من السجل التجاري.' : 'Pre-filled from the trade register. Adjust if needed.')
+      }/>
       <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
         {[
           { name: 'Aisha Bin Hamad', role: isAr ? 'مالك ٦٠٪ · مفوّض' : 'Owner 60% · Signatory', tone: 'lilac', tag: 'UBO' },
@@ -304,10 +387,11 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
       <Header title={isAr ? 'مراجعة الطلب' : 'Review your application'}/>
       <div style={{ padding: 18, flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
         {[
-          [isAr ? 'الشركة' : 'Company', 'Crescent Trading FZE'],
-          [isAr ? 'الرخصة' : 'Licence', 'DED-1247739 · Dubai'],
-          [isAr ? 'TRN' : 'TRN', '100247531800003'],
-          [isAr ? 'المالك المستفيد' : 'Beneficial owner', 'Aisha Bin Hamad'],
+          ...(invitedBy ? [[isAr ? 'دُعيت من' : 'Invited by', invitedSupplierName]] : []),
+          [isAr ? 'الشركة' : 'Company', invitedBuyerLegalName || 'Crescent Trading FZE'],
+          [isAr ? 'الرخصة' : 'Licence', (invitedBy?.buyer?.licenceNo || 'DED-1247739') + ' · ' + (invitedBy?.buyer?.licenceEmirate || 'Dubai')],
+          [isAr ? 'TRN' : 'TRN', invitedBy?.buyer?.trn || '100247531800003'],
+          [isAr ? 'المالك المستفيد' : 'Beneficial owner', invitedBy?.contact?.name || 'Aisha Bin Hamad'],
           [isAr ? 'البنك' : 'Bank', 'Emirates NBD · ●●●● 4419'],
           [isAr ? 'الإيرادات السنوية المقدّرة' : 'Est. annual revenue', 'AED 12.4M'],
         ].map(([k, v], i) => (
@@ -332,11 +416,11 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
 
   // ── 9 · Decision Loading ──────────────────────────────────
   if (step === 'decision') {
-    return <DecisionStep isAr={isAr} onDone={next}/>;
+    return <DecisionStep isAr={isAr} onDone={next} invitedSupplierName={invitedSupplierName}/>;
   }
 
   // ── 10 · Limit Reveal (the hero) ──────────────────────────
-  if (step === 'limit') return <HeroLimit lang={lang} onContinue={onDone || next}/>;
+  if (step === 'limit') return <HeroLimit lang={lang} onContinue={onDone || next} inviteContext={invitedBy}/>;
 
   return null;
 }
@@ -344,12 +428,15 @@ function BuyerOnboardingFlow({ lang, initialStep = 0, viewport = 'mobile', onDon
 // Decision step. CSS-only staggered animation. Each row reveals at its
 // own delay; no React state, so re-mounts don't break it. After ~4.5s
 // total the Continue button fades in and is clickable.
-function DecisionStep({ isAr, onDone }) {
+function DecisionStep({ isAr, onDone, invitedSupplierName }) {
   const ROWS = [
     { l: isAr ? 'سحب AECB'                  : 'AECB pull' },
     { l: isAr ? 'تحليل ١٢ شهراً بنكي'        : '12-mo cash-flow scoring' },
     { l: isAr ? 'محرّك سياسة الائتمان'      : 'Credit policy engine' },
     { l: isAr ? 'مراجعة مستندات'            : 'Document review' },
+    ...(invitedSupplierName
+      ? [{ l: isAr ? `ربط علاقتك بـ ${invitedSupplierName}` : `Linking your ${invitedSupplierName} relationship` }]
+      : []),
     { l: isAr ? 'القرار النهائي'             : 'Final decision' },
   ];
   return (
@@ -415,11 +502,11 @@ function DecisionStep({ isAr, onDone }) {
         ))}
       </Card>
       <div style={{ marginTop: 'auto', position: 'relative' }}>
-        {/* Continue button. Appears after all rows complete (~5s) */}
+        {/* Continue button. Appears after all rows complete (~last row delay + .5s) */}
         <div style={{
           opacity: 0,
           animation: 'mal-decision-fade-in .4s ease forwards',
-          animationDelay: '5s',
+          animationDelay: `${0.4 + (ROWS.length - 1) * 0.85 + 0.5}s`,
         }}>
           <Button kind="primary" size="lg" full iconRight="arrow" onClick={onDone}>
             {isAr ? 'عرض حدّك الائتماني' : 'Reveal your limit'}
@@ -660,4 +747,245 @@ function SupplierOnboardingFlow({ lang, initialStep = 0, onDone, controlledStep,
   return null;
 }
 
-Object.assign(window, { BuyerOnboardingFlow, SupplierOnboardingFlow, BUYER_STEPS, SUPPLIER_STEPS });
+// ============================================================
+// Supplier-side: Invite a Buyer wizard
+// Three-step flow: search by trade licence → buyer contact → preview & send.
+// Output is a fixture-shaped `inviteRecord` written to MalSession so the
+// supplier app can show it in the "Invited buyers" section.
+// ============================================================
+function SupplierInviteBuyerFlow({ lang, onDone, onCancel }) {
+  const isAr = lang === 'ar';
+  const [step, setStep] = oS(0);
+  const [licenceNo, setLicenceNo] = oS('');
+  const [emirate, setEmirate] = oS('DUBAI');
+  const [foundCo, setFoundCo] = oS(null);
+  const [contactName, setContactName] = oS('');
+  const [contactMobile, setContactMobile] = oS('');
+  const [contactEmail, setContactEmail] = oS('');
+  const [paymentTerms, setPaymentTerms] = oS('60');
+  const [annualVolume, setAnnualVolume] = oS('1-5M');
+  const [verifying, setVerifying] = oS(false);
+
+  const phases = isAr ? ['ابحث', 'جهة الاتصال', 'إرسال'] : ['Find', 'Contact', 'Send'];
+  const back = () => step > 0 ? setStep(step - 1) : onCancel?.();
+  const next = () => setStep(step + 1);
+
+  const verifyLicence = () => {
+    setVerifying(true);
+    setTimeout(() => {
+      setVerifying(false);
+      // Demo: any licence number returns the Crescent fixture.
+      setFoundCo({
+        legalName: 'Crescent Trading FZE',
+        licenceNo: licenceNo || 'DED-1247739',
+        licenceEmirate: emirate === 'DUBAI' ? 'Dubai' : emirate === 'AUH' ? 'Abu Dhabi' : 'Sharjah',
+        trn: '100247531800003',
+        sub: isAr ? 'تجارة عامة · قيد ٢٠١٧ · سارية' : 'General Trading · Est. 2017 · Active',
+      });
+    }, 900);
+  };
+
+  const sendInvite = () => {
+    const record = {
+      id: 'INV-' + Math.random().toString(36).slice(2, 8).toUpperCase(),
+      supplier: { name: 'Atlas Packaging FZ-LLC', licence: 'JAFZA-882140', tone: 'sky' },
+      buyer: foundCo,
+      contact: { name: contactName || 'Aisha Bin Hamad', mobile: contactMobile || '50 247 8810', email: contactEmail || 'aisha.b@crescenttrading.ae' },
+      relationship: { paymentTerms, annualVolume },
+      status: 'invited',
+      sentAt: new Date().toISOString(),
+    };
+    if (window.MalSession) {
+      const cache = window.MalSession.getCache() || {};
+      const existing = (cache.supplierInvitedBuyers && cache.supplierInvitedBuyers.list) || [];
+      window.MalSession.saveSlice('supplierInvitedBuyers', { list: [record, ...existing] });
+    }
+    window.__MAL_LAST_INVITE = record;
+    setStep(3);
+  };
+
+  const Header = () => (
+    <div style={{ padding: '14px 18px 6px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <IconBtn icon="arrowL" size={32} onClick={back}/>
+        <div className="mal-caption" style={{ flex: 1 }}>{isAr ? 'دعوة مشترٍ' : 'Invite a buyer'}</div>
+        <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{Math.min(step + 1, phases.length)} / {phases.length}</span>
+      </div>
+      {step < 3 && <Stepper steps={phases} current={Math.min(step, phases.length - 1)}/>}
+    </div>
+  );
+
+  // ── 0 · Find ──────────────────────────────────────────────
+  if (step === 0) return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760 }}>
+      <Header/>
+      <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+        <div style={{ marginTop: 4 }}>
+          <div className="mal-display-sm" style={{ fontStyle: 'italic' }}>{isAr ? 'ابحث عن شركة المشتري' : 'Find your buyer'}</div>
+          <div style={{ fontSize: 13, color: 'var(--mal-mid)', marginTop: 4 }}>
+            {isAr ? 'تحقّق مباشر مع السجل التجاري.' : 'Live DED / trade-register check.'}
+          </div>
+        </div>
+        <Field label={isAr ? 'الإمارة' : 'Emirate'}>
+          <Tabs value={emirate} onChange={setEmirate} items={[
+            { value: 'DUBAI', label: 'Dubai' }, { value: 'AUH', label: 'Abu Dhabi' }, { value: 'SHJ', label: 'Sharjah' },
+          ]}/>
+        </Field>
+        <Field label={isAr ? 'رقم الرخصة التجارية' : 'Trade licence number'}>
+          <Input placeholder="DED-1247739" value={licenceNo} onChange={e => { setLicenceNo(e.target.value); setFoundCo(null); }}/>
+        </Field>
+        {!foundCo && !verifying && (
+          <Button kind="secondary" size="md" onClick={verifyLicence} icon="search">
+            {isAr ? 'تحقّق من الشركة' : 'Verify with trade register'}
+          </Button>
+        )}
+        {verifying && (
+          <Card padded style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div className="mal-orb" style={{ width: 28, height: 28 }}/>
+            <div style={{ fontSize: 13, color: 'var(--mal-mid)' }}>{isAr ? 'يتم التحقّق…' : 'Verifying with DED…'}</div>
+          </Card>
+        )}
+        {foundCo && (
+          <Card padded style={{ background: 'linear-gradient(135deg, #EFEAFF, #FAF7EE)', border: '1px solid var(--mal-primary-50)' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {Ico.check({ width: 22, height: 22, stroke: 'var(--mal-success)' })}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 500, fontSize: 14 }}>{foundCo.legalName}</div>
+                <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{foundCo.sub} · {foundCo.licenceNo}</div>
+              </div>
+            </div>
+          </Card>
+        )}
+        <div style={{ marginTop: 'auto' }}>
+          <Button kind="primary" size="lg" full disabled={!foundCo} onClick={next} iconRight="arrow">
+            {isAr ? 'متابعة' : 'Continue'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── 1 · Buyer contact + relationship ────────────────────
+  if (step === 1) return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760 }}>
+      <Header/>
+      <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14, flex: 1 }}>
+        <div>
+          <div className="mal-display-sm" style={{ fontStyle: 'italic' }}>{isAr ? 'جهة الاتصال لدى المشتري' : 'Their contact at the buyer'}</div>
+          <div style={{ fontSize: 13, color: 'var(--mal-mid)', marginTop: 4 }}>
+            {isAr ? 'سنرسل لهم دعوة عبر الرسائل القصيرة والبريد.' : 'We\'ll send them an SMS + email invite.'}
+          </div>
+        </div>
+        <Field label={isAr ? 'الاسم' : 'Contact name'}>
+          <Input placeholder="Aisha Bin Hamad" value={contactName} onChange={e => setContactName(e.target.value)}/>
+        </Field>
+        <Field label={isAr ? 'الجوّال' : 'Mobile'}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div className="mal-input" style={{ width: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <span style={{ fontSize: 16 }}>🇦🇪</span><span>+971</span>
+            </div>
+            <Input placeholder="50 247 8810" value={contactMobile} onChange={e => setContactMobile(e.target.value)} style={{ flex: 1 }}/>
+          </div>
+        </Field>
+        <Field label={isAr ? 'البريد' : 'Business email'}>
+          <Input placeholder="aisha.b@crescenttrading.ae" value={contactEmail} onChange={e => setContactEmail(e.target.value)}/>
+        </Field>
+        <Field label={isAr ? 'شروط الدفع المعتادة' : 'Typical payment terms'}>
+          <Tabs value={paymentTerms} onChange={setPaymentTerms} items={[
+            { value: '30', label: 'Net 30' }, { value: '60', label: 'Net 60' }, { value: '90', label: 'Net 90' },
+          ]}/>
+        </Field>
+        <Field label={isAr ? 'حجم سنوي تقديري' : 'Estimated annual volume'}>
+          <Tabs value={annualVolume} onChange={setAnnualVolume} items={[
+            { value: '<1M', label: '< 1M' }, { value: '1-5M', label: '1–5M' }, { value: '>5M', label: '> 5M' },
+          ]}/>
+        </Field>
+        <div style={{ marginTop: 'auto' }}>
+          <Button kind="primary" size="lg" full onClick={next} iconRight="arrow">
+            {isAr ? 'معاينة' : 'Preview'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── 2 · Preview + send ──────────────────────────────────
+  if (step === 2) return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 760 }}>
+      <Header/>
+      <div style={{ padding: 18, flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="mal-display-sm" style={{ fontStyle: 'italic' }}>{isAr ? 'معاينة الدعوة' : 'Preview the invite'}</div>
+        <Card padded style={{ background: 'var(--mal-surface-2)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{isAr ? 'إلى' : 'To'}</div>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>{contactName || 'Aisha Bin Hamad'} · {foundCo?.legalName}</div>
+          <div style={{ fontSize: 12, color: 'var(--mal-mid)' }}>{contactMobile ? `+971 ${contactMobile}` : '+971 50 247 8810'} · {contactEmail || 'aisha.b@crescenttrading.ae'}</div>
+        </Card>
+        {[
+          [isAr ? 'الشركة' : 'Company', foundCo?.legalName],
+          [isAr ? 'الرخصة' : 'Licence', `${foundCo?.licenceNo} · ${foundCo?.licenceEmirate}`],
+          [isAr ? 'شروط الدفع' : 'Payment terms', `Net ${paymentTerms}`],
+          [isAr ? 'حجم سنوي' : 'Annual volume', annualVolume === '<1M' ? '< AED 1M' : annualVolume === '1-5M' ? 'AED 1–5M' : '> AED 5M'],
+        ].map(([k, v], i) => (
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0',
+            borderBottom: '1px solid var(--mal-line-2)', fontSize: 13 }}>
+            <span style={{ color: 'var(--mal-mid)' }}>{k}</span>
+            <span style={{ fontWeight: 500 }}>{v}</span>
+          </div>
+        ))}
+        <Card padded style={{ background: '#FFF8E1', border: '1px solid #F4D38C', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          {Ico.info({ stroke: '#B86F1A' })}
+          <div style={{ fontSize: 12, color: '#5C4310' }}>
+            {isAr
+              ? 'يجب على المشتري إكمال هويّة UAE Pass، والمالكين، والبنك. لا يمكن تمويل فواتيرهم قبل التفعيل.'
+              : 'Buyer still completes UAE Pass, owners, and bank connect. You can\'t finance their invoices until they\'re Active.'}
+          </div>
+        </Card>
+        <div style={{ marginTop: 'auto' }}>
+          <Button kind="iri" size="lg" full onClick={sendInvite} iconRight="arrow">
+            {isAr ? 'إرسال الدعوة' : 'Send invite'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── 3 · Sent ────────────────────────────────────────────
+  if (step === 3) return (
+    <div style={{ minHeight: 760, padding: 28, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 18, textAlign: 'center', justifyContent: 'center' }}>
+      <div className="mal-orb" style={{ width: 120, height: 120, animation: 'mal-orb-spin 12s linear infinite' }}/>
+      <div className="mal-display-md mal-iri-text" style={{ fontStyle: 'italic' }}>
+        {isAr ? 'أُرسلت الدعوة' : 'Invite sent'}
+      </div>
+      <div style={{ fontSize: 14, color: 'var(--mal-mid)', maxWidth: 300 }}>
+        {isAr
+          ? `أرسلنا الدعوة إلى ${contactName || 'Aisha Bin Hamad'}. ستظهر هنا كـ "في الانتظار" حتى تكتمل.`
+          : `We sent the invite to ${contactName || 'Aisha Bin Hamad'}. Track them in Buyers — status will move from Invited → Started → Active.`}
+      </div>
+      <Card padded style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', maxWidth: 340 }}>
+        <Avatar tone="lilac" name={(foundCo?.legalName?.match(/\b\w/g) || ['A']).slice(0,2).join('')} size={40}/>
+        <div style={{ flex: 1, textAlign: 'start' }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{foundCo?.legalName}</div>
+          <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{contactName || 'Aisha Bin Hamad'}</div>
+        </div>
+        <Pill tone="warn" dot>{isAr ? 'مَدعو' : 'Invited'}</Pill>
+      </Card>
+      <div style={{ display: 'flex', gap: 10, marginTop: 8, width: '100%', maxWidth: 340 }}>
+        <Button kind="secondary" size="lg" full onClick={() => { setStep(0); setFoundCo(null); setLicenceNo(''); setContactName(''); setContactMobile(''); setContactEmail(''); }}>
+          {isAr ? 'دعوة أخرى' : 'Invite another'}
+        </Button>
+        <Button kind="primary" size="lg" full onClick={onDone} iconRight="arrow">
+          {isAr ? 'انتهيت' : 'Done'}
+        </Button>
+      </div>
+    </div>
+  );
+
+  return null;
+}
+
+Object.assign(window, {
+  BuyerOnboardingFlow, SupplierOnboardingFlow,
+  SupplierInviteBuyerFlow,
+  BUYER_STEPS, BUYER_STEPS_COLD, BUYER_STEPS_INVITED, SUPPLIER_STEPS,
+  INVITE_DEMO_FIXTURE,
+});

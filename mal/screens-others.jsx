@@ -26,12 +26,13 @@ function SupplierApp({ route, setRoute, lang, viewport }) {
     invoice: <SupplierInvoiceAccept lang={lang} setRoute={setRoute} viewport={viewport}/>,
     success: <SupplierSuccess lang={lang} setRoute={setRoute}/>,
     cash: <SupplierCash lang={lang} viewport={viewport}/>,
-    buyers: <SupplierBuyers lang={lang} viewport={viewport}/>,
+    buyers: <SupplierBuyers lang={lang} setRoute={setRoute} viewport={viewport}/>,
+    invite: <SupplierInviteBuyerFlow lang={lang} onDone={() => setRoute('buyers')} onCancel={() => setRoute('buyers')}/>,
     help: <PlaceholderHelp lang={lang}/>,
   };
   if (viewport === 'mobile') {
     return <>
-      {!['invoice','success'].includes(route) &&
+      {!['invoice','success','invite'].includes(route) &&
         <MobileTopBar title={lang === 'ar' ? 'أطلس للتغليف' : 'Atlas Packaging'}
           subtitle={lang === 'ar' ? 'مورّد · فعّال' : 'Supplier · Active'}
           right={<IconBtn icon="bell" size={32}/>}/>}
@@ -42,15 +43,31 @@ function SupplierApp({ route, setRoute, lang, viewport }) {
   return (
     <DesktopShell persona={lang === 'ar' ? 'مورّد' : 'Supplier'} productLabel={lang === 'ar' ? 'الفاتورة الذكية' : 'Smart Invoice'}
       navItems={navItems} active={route} onChange={setRoute} lang={lang}
-      headerRight={<Button kind="iri" size="sm" icon="bolt">{lang === 'ar' ? 'موّل الكل' : 'Finance all'}</Button>}>
+      headerRight={<Button kind="iri" size="sm" icon="plus" onClick={() => setRoute('invite')}>{lang === 'ar' ? 'ادعُ مشترياً' : 'Invite buyer'}</Button>}>
       {Page[route] || Page.home}
     </DesktopShell>
   );
 }
 
 function SupplierHome({ lang, setRoute, viewport }) {
+  const pendingInvites = (window.MalSession?.getCache?.()?.supplierInvitedBuyers?.list || []).filter(r => r.status !== 'active');
+  const pendingCount = pendingInvites.length;
   return (
     <div style={{ padding: viewport === 'desktop' ? 0 : 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {pendingCount > 0 && (
+        <Card padded onClick={() => setRoute('buyers')} style={{ cursor: 'pointer', background: 'linear-gradient(135deg, #FFF8E1, #FAF7EE)', border: '1px solid #F4D38C', display: 'flex', gap: 12, alignItems: 'center' }}>
+          {Ico.info({ stroke: '#B86F1A' })}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>
+              {lang === 'ar' ? `${pendingCount} مشترٍ في انتظار التفعيل` : `${pendingCount} buyer${pendingCount === 1 ? '' : 's'} pending activation`}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>
+              {lang === 'ar' ? 'الفواتير في الانتظار حتى يكتمل المشتري الإعداد.' : 'Invoices queued until they finish onboarding.'}
+            </div>
+          </div>
+          <Pill tone="warn" dot>{lang === 'ar' ? 'متابعة' : 'Track'}</Pill>
+        </Card>
+      )}
       {/* Big balance card */}
       <Card padded style={{ background: 'linear-gradient(135deg, #FAF7EE 0%, #F0EBDE 100%)' }}>
         <div className="mal-caption">{lang === 'ar' ? 'متاح للتمويل اليوم' : 'Available to finance today'}</div>
@@ -59,9 +76,10 @@ function SupplierHome({ lang, setRoute, viewport }) {
           <span>{lang === 'ar' ? '٢ عرض' : '2 offers'}</span><span>·</span>
           <span>{lang === 'ar' ? 'تحويل خلال ٤ ساعات' : 'wire in 4h'}</span>
         </div>
-        <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+        <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button kind="primary" icon="bolt" onClick={() => setRoute('invoice')}>{lang === 'ar' ? 'موّل أحدث فاتورة' : 'Finance latest'}</Button>
           <Button kind="secondary" icon="upload">{lang === 'ar' ? 'رفع' : 'Upload'}</Button>
+          <Button kind="ghost" icon="plus" onClick={() => setRoute('invite')}>{lang === 'ar' ? 'ادعُ مشترياً' : 'Invite buyer'}</Button>
         </div>
       </Card>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
@@ -230,10 +248,59 @@ function SupplierCash({ lang, viewport }) {
   );
 }
 
-function SupplierBuyers({ lang, viewport }) {
+function SupplierBuyers({ lang, setRoute, viewport }) {
+  const isAr = lang === 'ar';
+  // Read live invites from MalSession; show empty-state if none.
+  const invites = (window.MalSession?.getCache?.()?.supplierInvitedBuyers?.list || []);
+  const statusLabel = (s) => {
+    if (s === 'invited')  return isAr ? 'مَدعو' : 'Invited';
+    if (s === 'started')  return isAr ? 'بدأ' : 'Started';
+    if (s === 'review')   return isAr ? 'قيد المراجعة' : 'In review';
+    if (s === 'active')   return isAr ? 'فعّال' : 'Active';
+    return s;
+  };
+  const statusTone = (s) => s === 'active' ? 'success' : s === 'review' ? 'info' : 'warn';
+
   return (
     <div style={{ padding: viewport === 'desktop' ? 0 : 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {viewport === 'desktop' && <h1 className="mal-h1">{lang === 'ar' ? 'المشترون' : 'Buyers'}</h1>}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {viewport === 'desktop' && <h1 className="mal-h1" style={{ flex: 1 }}>{isAr ? 'المشترون' : 'Buyers'}</h1>}
+        {viewport !== 'desktop' && <div style={{ flex: 1, fontSize: 15, fontWeight: 500 }}>{isAr ? 'المشترون' : 'Buyers'}</div>}
+        <Button kind="primary" size="sm" icon="plus" onClick={() => setRoute('invite')}>
+          {isAr ? 'ادعُ مشترياً' : 'Invite a buyer'}
+        </Button>
+      </div>
+
+      {/* Invited section */}
+      <div className="mal-caption" style={{ marginTop: 6 }}>
+        {isAr ? `مدعوّون · ${invites.length}` : `Invited · ${invites.length}`}
+      </div>
+      {invites.length === 0 && (
+        <Card padded style={{ background: 'var(--mal-surface-2)', borderStyle: 'dashed', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{isAr ? 'لم تَدعُ أحداً بعد' : 'No invites yet'}</div>
+          <div style={{ fontSize: 12, color: 'var(--mal-mid)' }}>
+            {isAr ? 'ادعُ مشترياً عبر الرخصة. سيُتحقّق منهم تلقائياً ويُكملون الإعداد في ٥ دقائق.' : 'Invite a buyer by trade licence. They\'re auto-verified and finish setup in 5 min.'}
+          </div>
+          <Button kind="secondary" size="sm" icon="plus" onClick={() => setRoute('invite')}>
+            {isAr ? 'ابدأ دعوة' : 'Start an invite'}
+          </Button>
+        </Card>
+      )}
+      {invites.map((inv, i) => (
+        <Card key={inv.id || i} padded>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Avatar tone="lilac" name={(inv.buyer?.legalName?.match(/\b\w/g) || ['A']).slice(0,2).join('')}/>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>{inv.buyer?.legalName}</div>
+              <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{inv.contact?.name} · Net {inv.relationship?.paymentTerms}</div>
+            </div>
+            <Pill tone={statusTone(inv.status)} dot>{statusLabel(inv.status)}</Pill>
+          </div>
+        </Card>
+      ))}
+
+      {/* Established buyers */}
+      <div className="mal-caption" style={{ marginTop: 10 }}>{isAr ? 'فعّالون' : 'Active relationships'}</div>
       {[
         { n: 'Crescent Trading FZE', g: 'A', exp: 412000, fin: 1.4 },
         { n: 'Solea Hospitality', g: 'B', exp: 89400, fin: 1.8 },
@@ -245,7 +312,7 @@ function SupplierBuyers({ lang, viewport }) {
             <Avatar tone="sky" name={b.n.slice(0, 2)}/>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 14, fontWeight: 500 }}>{b.n}</div>
-              <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{lang === 'ar' ? 'تعرّض' : 'Exposure'} AED {b.exp.toLocaleString()}</div>
+              <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{isAr ? 'تعرّض' : 'Exposure'} AED {b.exp.toLocaleString()}</div>
             </div>
             <Pill tone={b.g === 'A' ? 'success' : 'neutral'}>Tier {b.g}</Pill>
             <span className="mal-num" style={{ fontSize: 13, color: 'var(--mal-mid)' }}>{b.fin}%/30d</span>
