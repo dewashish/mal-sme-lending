@@ -87,6 +87,13 @@ const DEFAULT_SCENARIO = {
   buyerOnboardingDone: false,
   supplierOnboardingDone: false,
 
+  // Invite story (replaces the legacy cold-cold parallel onboarding).
+  // 'wizard' = supplier still running the invite wizard,
+  // 'active' = invite sent, buyer is going through the invited 10-step flow,
+  // 'done'   = buyer hit limit reveal; auto-advances to 'home'.
+  inviteStage: 'wizard',
+  invitedBy: null,             // INVITE_DEMO_FIXTURE-shaped object, set when wizard completes
+
   // Invoice the supplier issued
   invoice: {
     id: 'INV-2026-0418',
@@ -426,17 +433,15 @@ function DemoMode({ lang = 'en', setLang, onExit, isMobile, embedded = false }) 
     return () => clearTimeout(t);
   }, [scenario.buyerToast?.title, scenario.supplierToast?.title]);
 
-  // Auto-advance phase to 'home' only when BOTH sides finish onboarding.
-  // Independent: each side completes at its own pace, sees a "ready · waiting"
-  // screen until the other catches up. ~700ms after both are done, advance.
+  // Auto-advance to 'home' once the invited buyer onboarding finishes. The
+  // supplier is treated as an already-established Mal customer in this
+  // storyline, so we no longer wait on a supplier-side completion flag.
   dmE(() => {
-    if (phase === 'onboarding'
-        && scenario.buyerOnboardingDone
-        && scenario.supplierOnboardingDone) {
+    if (phase === 'onboarding' && scenario.inviteStage === 'done') {
       const t = setTimeout(() => setPhase('home'), 700);
       return () => clearTimeout(t);
     }
-  }, [phase, scenario.buyerOnboardingDone, scenario.supplierOnboardingDone]);
+  }, [phase, scenario.inviteStage]);
 
   // Cross-date toasts: when simDay changes, fire alerts for any EMI dueDay
   // that was just crossed without a payment. We only fire on forward movement.
@@ -675,8 +680,8 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
           }}>
             {phase === 'live'
               ? <DemoCenterColumnLive scenario={scenario} setSimDay={setSimDay} stepDay={stepDay} setPhase={setPhase} patch={patch} lang={lang}/>
-              : <SyncIndicatorNarrative phase={phase} lang={lang}/>}
-            <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan}/>
+              : <SyncIndicatorNarrative phase={phase} lang={lang} scenario={scenario}/>}
+            <DemoFooterHint phase={phase} lang={lang} simDay={scenario.simDay} plan={scenario.plan} scenario={scenario}/>
           </div>
         )}
 
@@ -692,11 +697,14 @@ function DemoStage({ scenario, setScenario, patch, phase, setPhase, setSimDay, s
   );
 }
 
-function SyncIndicatorNarrative({ phase, lang }) {
+function SyncIndicatorNarrative({ phase, lang, scenario }) {
   const isAr = lang === 'ar';
-  const flowing = phase === 'issue' || phase === 'receive' || phase === 'sign' || phase === 'funded';
-  const direction = (phase === 'issue' || phase === 'receive') ? 'r2l'
-                  : (phase === 'sign' || phase === 'funded') ? 'l2r' : null;
+  const stage = scenario?.inviteStage;
+  const inviteFlowing = phase === 'onboarding' && (stage === 'wizard' || stage === 'active');
+  const flowing = inviteFlowing || phase === 'issue' || phase === 'receive' || phase === 'sign' || phase === 'funded';
+  // Supplier → buyer for the invite handoff; supplier → buyer also for sign/funded.
+  const direction = (phase === 'issue' || phase === 'receive' || (phase === 'onboarding' && stage === 'wizard')) ? 'r2l'
+                  : (phase === 'sign' || phase === 'funded' || (phase === 'onboarding' && stage === 'active')) ? 'l2r' : null;
   return (
     <div style={{
       width: 70, marginInline: 'auto', display: 'flex',
@@ -1047,15 +1055,22 @@ function DemoToast({ toast }) {
 function BuyerSurface({ phase, setPhase, scenario, patch, lang }) {
   if (phase === 'intro') return <DemoIntroBuyer lang={lang} onProceed={() => setPhase('onboarding')}/>;
   if (phase === 'onboarding') {
-    // Per-side completion: when buyer finishes, mark only the buyer flag.
-    // Phase only advances when BOTH sides have completed (handled below).
-    if (scenario.buyerOnboardingDone) {
-      return <DemoOnboardingReady lang={lang} side="buyer" partnerDone={scenario.supplierOnboardingDone}/>;
+    // Mirror of the supplier-side state machine. While supplier runs the invite
+    // wizard, buyer side shows a calm "incoming invite" splash. Once supplier
+    // hits 'active', buyer runs the invited 10-step BuyerOnboardingFlow.
+    const stage = scenario.inviteStage || 'wizard';
+    if (stage === 'wizard') {
+      return <DemoBuyerIncomingInvite lang={lang}/>;
     }
+    if (scenario.buyerOnboardingDone) {
+      return <DemoOnboardingReady lang={lang} side="buyer" partnerDone={true}/>;
+    }
+    const invitedBy = scenario.invitedBy || window.INVITE_DEMO_FIXTURE;
     return <BuyerOnboardingFlow lang={lang}
+                                invitedBy={invitedBy}
                                 controlledStep={scenario.buyerStep}
                                 onStepChange={(n) => patch({ buyerStep: n })}
-                                onDone={() => patch({ buyerOnboardingDone: true })}/>;
+                                onDone={() => patch({ buyerOnboardingDone: true, inviteStage: 'done' })}/>;
   }
   if (phase === 'home' || phase === 'issue') return <DemoBuyerHomeEmpty lang={lang}/>;
   if (phase === 'receive') return <DemoBuyerHomeWithInvoice lang={lang} scenario={scenario} onProceed={() => setPhase('plan')}/>;
@@ -1129,6 +1144,50 @@ function DemoOnboardingReady({ lang, side, partnerDone }) {
                 : `Waiting for ${isBuyer ? 'supplier' : 'buyer'} to finish onboarding…`}
             </div>
           )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Calm "an invite is on its way" splash. Auto-resolves when the supplier
+// finishes the invite wizard (state machine flips to 'active').
+function DemoBuyerIncomingInvite({ lang }) {
+  const isAr = lang === 'ar';
+  return (
+    <div style={{ height: '100%', minHeight: 720, display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, #FAF7EE 0%, #EFEAFF 60%, #FAF7EE 100%)' }}/>
+      <div style={{ position: 'absolute', top: 60, insetInlineEnd: -60, width: 280, height: 280, opacity: .5 }}>
+        <div className="mal-orb" style={{ width: '100%', height: '100%', animation: 'mal-orb-spin 22s linear infinite' }}/>
+      </div>
+      <div style={{ flex: 1, padding: 30, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', gap: 18, position: 'relative', zIndex: 1 }}>
+        <div style={{
+          width: 88, height: 88, borderRadius: 999,
+          background: 'var(--mal-primary-50)',
+          color: 'var(--mal-primary-3)',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'mal-spin 4s linear infinite',
+        }}>
+          {dmIco.invoice ? dmIco.invoice({ width: 36, height: 36 }) : '📨'}
+        </div>
+        <div className="mal-display-md" style={{ fontStyle: 'italic', margin: 0 }}>
+          {isAr ? 'دعوة في الطريق…' : 'An invite is on its way…'}
+        </div>
+        <div style={{ color: 'var(--mal-mid)', fontSize: 13, lineHeight: 1.5, maxWidth: 280 }}>
+          {isAr
+            ? 'أحد موردّيك على وشك دعوتك إلى مال. سنُعلمك حين تصل.'
+            : 'One of your suppliers is about to invite you to Mal. We\'ll alert you the moment it arrives.'}
+        </div>
+        <div style={{
+          marginTop: 14, padding: '12px 14px',
+          background: 'var(--mal-paper)', borderRadius: 14,
+          border: '1px solid var(--mal-line)',
+          display: 'flex', alignItems: 'center', gap: 10,
+          fontSize: 12, color: 'var(--mal-mid)',
+          maxWidth: 300, width: '100%',
+        }}>
+          <div style={{ width: 14, height: 14, border: '2px solid var(--mal-primary-3)', borderTopColor: 'transparent', borderRadius: 999, animation: 'mal-spin 1s linear infinite' }}/>
+          {isAr ? 'انتظر، الجانب الآخر يرسل الدعوة…' : 'Hold tight — supplier is sending it…'}
         </div>
       </div>
     </div>
@@ -2635,13 +2694,25 @@ function DemoRefinanceSuccess({ lang, scenario, setBuyerRoute }) {
 function SupplierSurface({ phase, setPhase, scenario, patch, lang }) {
   if (phase === 'intro') return <DemoIntroSupplier lang={lang} onProceed={() => setPhase('onboarding')}/>;
   if (phase === 'onboarding') {
-    if (scenario.supplierOnboardingDone) {
-      return <DemoOnboardingReady lang={lang} side="supplier" partnerDone={scenario.buyerOnboardingDone}/>;
+    // Invite storyline: supplier (already an established Mal customer) brings
+    // a new buyer in. Sub-stages: wizard → active (buyer onboarding) → done.
+    const stage = scenario.inviteStage || 'wizard';
+    if (stage === 'wizard') {
+      return <SupplierInviteBuyerFlow
+        lang={lang}
+        onDone={() => patch({
+          inviteStage: 'active',
+          invitedBy: window.__MAL_LAST_INVITE || window.INVITE_DEMO_FIXTURE,
+          buyerToast: {
+            title: lang === 'ar' ? 'دعوة من أطلس للتغليف' : 'New invite from Atlas Packaging',
+            sub: lang === 'ar' ? 'افتح الرسالة لإكمال الإعداد' : 'Open to finish setup · 5 min',
+            icon: 'invoice', tone: 'iri',
+          },
+        })}
+        onCancel={() => {}}
+      />;
     }
-    return <SupplierOnboardingFlow lang={lang}
-                                   controlledStep={scenario.supplierStep}
-                                   onStepChange={(n) => patch({ supplierStep: n })}
-                                   onDone={() => patch({ supplierOnboardingDone: true })}/>;
+    return <DemoSupplierTrackingBuyer lang={lang} scenario={scenario}/>;
   }
   if (phase === 'home') return <DemoSupplierHome lang={lang} onIssue={() => setPhase('issue')}/>;
   if (phase === 'issue') return <DemoSupplierIssueInvoice lang={lang} scenario={scenario} patch={patch} onIssued={() => setPhase('receive')}/>;
@@ -2763,6 +2834,111 @@ function DemoSupplierIssueInvoice({ lang, scenario, patch, onIssued }) {
               style={{ background: issued ? 'var(--mal-success)' : undefined }}>
         {issued ? (isAr ? 'تمّ الإصدار' : 'Issued') : (isAr ? 'أصدر الفاتورة' : 'Issue invoice')}
       </Button>
+    </div>
+  );
+}
+
+// Shown to the supplier after they send an invite, while the invited buyer is
+// going through their 10-step onboarding. Status pill is derived from the
+// buyer's controlled step index (BUYER_STEPS_INVITED).
+function DemoSupplierTrackingBuyer({ lang, scenario }) {
+  const isAr = lang === 'ar';
+  const invitedSteps = window.BUYER_STEPS_INVITED || [
+    'welcome','phone','otp','uaepass','owners','bank','documents','review','decision','limit',
+  ];
+  const buyerStep = scenario.buyerStep || 0;
+  const total = invitedSteps.length;
+  // Map step → coarse status. Welcome/phone/otp = Invited; through bank = Started;
+  // docs/review/decision = In review; limit = Active.
+  const statusFor = (s) => {
+    if (scenario.inviteStage === 'done' || scenario.buyerOnboardingDone) return 'active';
+    if (s >= 8) return 'review';   // review, decision
+    if (s >= 3) return 'started';  // uaepass, owners, bank, documents
+    return 'invited';
+  };
+  const status = statusFor(buyerStep);
+  const pill = {
+    invited: { tone: 'warn',    en: 'Invited',   ar: 'مَدعو' },
+    started: { tone: 'info',    en: 'Started',   ar: 'بدأ' },
+    review:  { tone: 'info',    en: 'In review', ar: 'قيد المراجعة' },
+    active:  { tone: 'success', en: 'Active',    ar: 'فعّال' },
+  }[status];
+  const supplierName = scenario.invitedBy?.supplier?.name || 'Atlas Packaging FZ-LLC';
+  const buyerName    = scenario.invitedBy?.buyer?.legalName || 'Crescent Trading FZE';
+  const buyerInitials = (buyerName.match(/\b\w/g) || ['C','T']).slice(0, 2).join('');
+  const pct = Math.round((buyerStep / Math.max(1, total - 1)) * 100);
+
+  return (
+    <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <Avatar name="AP" tone="sky" size={36}/>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{supplierName}</div>
+          <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{isAr ? 'مورّد · مفعّل' : 'Supplier · Active'}</div>
+        </div>
+      </div>
+
+      <div style={{ fontFamily: 'var(--mal-font-display)', fontSize: 22, fontStyle: 'italic', lineHeight: 1.2 }}>
+        {isAr ? 'تتبَّع مشتريك المَدعو' : 'Tracking your invited buyer'}
+      </div>
+
+      <Card padded style={{ background: 'linear-gradient(135deg, #EFEAFF, #FAF7EE)', border: '1px solid var(--mal-primary-50)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Avatar tone="lilac" name={buyerInitials} size={42}/>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 500 }}>{buyerName}</div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
+              {(scenario.invitedBy?.contact?.name || 'Aisha Bin Hamad')} · {(scenario.invitedBy?.buyer?.licenceNo || 'DED-1247739')}
+            </div>
+          </div>
+          <Pill tone={pill.tone} dot>{isAr ? pill.ar : pill.en}</Pill>
+        </div>
+        <div style={{ height: 6, background: 'rgba(0,0,0,.06)', borderRadius: 99, marginTop: 14, overflow: 'hidden' }}>
+          <div style={{ width: pct + '%', height: '100%', background: 'linear-gradient(90deg, var(--mal-iri-1), var(--mal-iri-3))', transition: 'width .4s ease' }}/>
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 8, display: 'flex', justifyContent: 'space-between' }}>
+          <span>{isAr ? `الخطوة ${buyerStep + 1} / ${total}` : `Step ${buyerStep + 1} / ${total}`}</span>
+          <span>{invitedSteps[buyerStep] || ''}</span>
+        </div>
+      </Card>
+
+      <Card padded style={{ background: 'var(--mal-surface-2)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="mal-caption">{isAr ? 'مراحل التفعيل' : 'Activation stages'}</div>
+        {[
+          { id: 'invited', en: 'Invited',   ar: 'مَدعو',         hint: isAr ? 'أُرسلت الدعوة'  : 'Invite sent' },
+          { id: 'started', en: 'Started',   ar: 'بدأ',           hint: isAr ? 'فتح الدعوة'    : 'Opened invite' },
+          { id: 'review',  en: 'In review', ar: 'قيد المراجعة',  hint: isAr ? 'تحقّق ائتماني' : 'Credit check' },
+          { id: 'active',  en: 'Active',    ar: 'فعّال',         hint: isAr ? 'جاهز للتمويل'  : 'Ready to finance' },
+        ].map((s, i) => {
+          const order = ['invited','started','review','active'];
+          const done = order.indexOf(status) >= i;
+          const current = order.indexOf(status) === i;
+          return (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+              <div style={{ width: 18, height: 18, borderRadius: 999,
+                background: done ? 'var(--mal-success)' : 'transparent',
+                border: '1.5px solid ' + (done ? 'var(--mal-success)' : 'var(--mal-line)'),
+                color: '#fff',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {done ? (dmIco.check ? dmIco.check({ width: 11, height: 11, stroke: '#fff' }) : '✓') : null}
+              </div>
+              <span style={{ flex: 1, fontWeight: current ? 500 : 400, color: done ? 'var(--mal-ink)' : 'var(--mal-mid)' }}>
+                {isAr ? s.ar : s.en}
+              </span>
+              <span style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{s.hint}</span>
+            </div>
+          );
+        })}
+      </Card>
+
+      <Card padded style={{ background: 'var(--mal-info-bg)', border: 'none', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+        {dmIco.info ? dmIco.info({ width: 14, height: 14, color: 'var(--mal-info)' }) : 'ℹ'}
+        <div style={{ fontSize: 12, color: 'var(--mal-ink)', lineHeight: 1.5 }}>
+          {isAr
+            ? 'لا يمكنك تمويل فواتيرهم حتى يصبحون فعّالين. أيّ فاتورة ترسلها الآن تظهر بحالة "في الانتظار".'
+            : 'You can\'t finance their invoices until they\'re Active. Anything you upload now sits in a "Queued" state.'}
+        </div>
+      </Card>
     </div>
   );
 }
@@ -3135,19 +3311,30 @@ function CountUpReveal({ value }) {
 // Footer hint
 // ==================================================================
 
-function DemoFooterHint({ phase, lang, simDay, plan }) {
+function DemoFooterHint({ phase, lang, simDay, plan, scenario }) {
   const isAr = lang === 'ar';
+  const stage = scenario?.inviteStage;
   return (
     <div style={{
       maxWidth: 220, marginInline: 'auto', textAlign: 'center',
       padding: '6px 8px', color: 'var(--mal-mid)', fontSize: 11, lineHeight: 1.5,
     }}>
+      {phase === 'onboarding' && stage === 'wizard' && (
+        isAr
+          ? '✉️ المورّد يدعو المشتري الآن. سيتلقّى المشتري الدعوة فور الإرسال.'
+          : '✉️ Supplier is inviting the buyer. The buyer phone wakes up the moment the invite is sent.'
+      )}
+      {phase === 'onboarding' && stage === 'active' && (
+        isAr
+          ? '🪪 المشتري يكمل إعداده المدعو · ١٠ خطوات. تابع التقدّم على جهاز المورّد.'
+          : '🪪 Buyer is going through the invited 10-step flow. Watch their status update on the supplier side.'
+      )}
       {phase === 'live' && (
         isAr
           ? '🎮 اسحب الدائرة لتحريك التاريخ. اضغط «ادفع» على القسط، أو تخطَّ ليوم لاحق لرؤية التعثّر.'
           : '🎮 Drag the dial to move the date. Click "Pay" on an EMI, or skip forward to see overdue stages emerge.'
       )}
-      {phase !== 'live' && (
+      {phase !== 'live' && phase !== 'onboarding' && (
         isAr
           ? '🎮 اضغط على المراحل أعلاه للتنقّل. الدائرة تظهر عند «حيّ · يوميّاً».'
           : '🎮 Click any phase pill above to navigate. The dial appears at "Live · Day-by-day".'
