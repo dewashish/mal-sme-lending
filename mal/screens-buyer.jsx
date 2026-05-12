@@ -6,24 +6,46 @@ const { useState: uS, useEffect: uE, useMemo: uM } = React;
 // ============================================================
 // Reusable bits
 // ============================================================
-function HeroLimit({ lang, amount = 850000, tier = 'A', onContinue }) {
+function HeroLimit({ lang, amount = 850000, tier = 'A', onContinue, inviteContext = null }) {
   const [revealed, setRev] = uS(false);
   uE(() => { const t = setTimeout(() => setRev(true), 900); return () => clearTimeout(t); }, []);
+  const isAr = lang === 'ar';
+  const reserved = inviteContext?.invoice?.reservedLimit;
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18, minHeight: '100%' }}>
       <div style={{ height: 220, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="mal-orb" style={{ width: 180, height: 180, animation: 'mal-orb-spin 14s linear infinite' }}/>
       </div>
       <div style={{ textAlign: 'center' }}>
-        <div className="mal-caption" style={{ marginBottom: 10 }}>{lang === 'ar' ? 'حدّك الائتماني' : 'Your credit limit'}</div>
+        <div className="mal-caption" style={{ marginBottom: 10 }}>{isAr ? 'حدّك الائتماني' : 'Your credit limit'}</div>
         <div className="mal-display-md mal-iri-text" style={{ fontStyle: 'italic' }}>
           {revealed ? <CountUp to={amount} format={v => 'AED ' + v.toLocaleString()}/> : 'AED ─'}
         </div>
-        <div style={{ marginTop: 14, display: 'inline-flex', gap: 8, alignItems: 'center' }}>
-          <Pill tone="ink" dot>{lang === 'ar' ? 'فئة' : 'Tier'} {tier}</Pill>
-          <Pill tone="success" dot>{lang === 'ar' ? 'موافق' : 'Approved'}</Pill>
+        <div style={{ marginTop: 14, display: 'inline-flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Pill tone="ink" dot>{isAr ? 'فئة' : 'Tier'} {tier}</Pill>
+          <Pill tone="success" dot>{isAr ? 'موافق' : 'Approved'}</Pill>
+          {reserved && (
+            <Pill tone="info" dot>
+              {isAr
+                ? `AED ${reserved.toLocaleString()} جاهزة لـ ${inviteContext.supplier?.name}`
+                : `AED ${reserved.toLocaleString()} ready for ${inviteContext.supplier?.name}`}
+            </Pill>
+          )}
         </div>
       </div>
+      {inviteContext?.invoice && (
+        <Card padded style={{ background: 'linear-gradient(135deg, #EFEAFF, #FAF7EE)', border: '1px solid var(--mal-primary-50)' }}>
+          <div className="mal-caption" style={{ marginBottom: 6 }}>{isAr ? 'فاتورة جاهزة للإطلاق' : 'Invoice ready to release'}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <Avatar tone={inviteContext.supplier?.tone || 'sky'} name={(inviteContext.supplier?.name?.match(/\b\w/g) || ['A']).slice(0,2).join('')} size={40}/>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 500 }}>{inviteContext.supplier?.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--mal-mid)' }}>{inviteContext.invoice.id} · AED {inviteContext.invoice.amount.toLocaleString()}</div>
+            </div>
+            <Pill tone="success" dot>{isAr ? 'تحويل ٤ س' : '4h wire'}</Pill>
+          </div>
+        </Card>
+      )}
       <Card padded style={{ marginTop: 6 }}>
         <div className="mal-caption" style={{ marginBottom: 10 }}>{lang === 'ar' ? 'خطط مفعّلة' : 'Plans unlocked'}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -71,10 +93,18 @@ function BuyerApp({ route, setRoute, lang, viewport }) {
   ];
   const tabItems = navItems.slice(0, 5).map(it => ({ ...it, label: it.label }));
 
+  // For the invited demo, prefer the most recent supplier-sent invite if one
+  // exists in the session cache (so the supplier wizard wires up live), else
+  // fall back to the static fixture.
+  const _liveInvite = (window.MalSession?.getCache?.()?.supplierInvitedBuyers?.list?.[0]) || window.__MAL_LAST_INVITE;
+  const _inviteCtx  = _liveInvite || window.INVITE_DEMO_FIXTURE;
+
   // pages
   const Page = {
     onboarding: <BuyerOnboardingFlow lang={lang} onDone={() => setRoute('home')} />,
+    invited:    <BuyerOnboardingFlow lang={lang} invitedBy={_inviteCtx} onDone={() => setRoute('home')} />,
     limitReveal: <HeroLimit lang={lang} onContinue={() => setRoute('home')} />,
+    limitRevealInvited: <HeroLimit lang={lang} onContinue={() => setRoute('home')} inviteContext={_inviteCtx} />,
     home: <BuyerHome lang={lang} viewport={viewport} setRoute={setRoute} />,
     invoices: <BuyerInvoices lang={lang} setRoute={setRoute} viewport={viewport}/>,
     invoice: <BuyerInvoiceDetail lang={lang} setRoute={setRoute} viewport={viewport}/>,
@@ -98,7 +128,7 @@ function BuyerApp({ route, setRoute, lang, viewport }) {
   if (viewport === 'mobile') {
     return (
       <>
-        {!['onboarding','limitReveal','plan','confirm','success','invoice', ..._extendRoutes].includes(route) &&
+        {!['onboarding','invited','limitReveal','limitRevealInvited','plan','confirm','success','invoice', ..._extendRoutes].includes(route) &&
           <MobileTopBar
             title={lang === 'ar' ? 'مرحباً، عيشة' : 'Hi, Aisha'}
             subtitle={lang === 'ar' ? 'تجارة الهلال (FZE)' : 'Crescent Trading FZE'}
@@ -113,7 +143,9 @@ function BuyerApp({ route, setRoute, lang, viewport }) {
 
   // desktop
   if (route === 'onboarding') return <BuyerOnboardingFlow lang={lang} onDone={() => setRoute('home')} />;
+  if (route === 'invited')    return <BuyerOnboardingFlow lang={lang} invitedBy={_inviteCtx} onDone={() => setRoute('home')} />;
   if (route === 'limitReveal') return <HeroLimit lang={lang} onContinue={() => setRoute('home')} />;
+  if (route === 'limitRevealInvited') return <HeroLimit lang={lang} onContinue={() => setRoute('home')} inviteContext={_inviteCtx} />;
   return (
     <DesktopShell
       persona={lang === 'ar' ? 'مشتري' : 'Buyer'}
@@ -204,8 +236,34 @@ const sampleInvoices = [
 
 function BuyerHome({ lang, viewport, setRoute }) {
   const desktop = viewport === 'desktop';
+  const isAr = lang === 'ar';
+  // Prefer a live invite from MalSession (set by SupplierInviteBuyerFlow), else
+  // fall back to the static demo fixture so the banner is always discoverable.
+  const liveInvite = window.MalSession?.getCache?.()?.supplierInvitedBuyers?.list?.[0]
+                  || window.__MAL_LAST_INVITE
+                  || window.INVITE_DEMO_FIXTURE;
   return (
     <div style={{ padding: desktop ? 0 : 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {liveInvite && liveInvite.status !== 'active' && (
+        <Card padded onClick={() => setRoute('invited')} style={{
+          cursor: 'pointer',
+          background: 'linear-gradient(135deg, #EFEAFF, #FAF7EE)',
+          border: '1px solid var(--mal-primary-50)',
+          display: 'flex', alignItems: 'center', gap: 12,
+        }}>
+          <Avatar tone={liveInvite.supplier?.tone || 'sky'} name={(liveInvite.supplier?.name?.match(/\b\w/g) || ['A']).slice(0,2).join('')} size={40}/>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Pill tone="info" dot>{isAr ? 'دعوة من مورّد' : 'Supplier invite'}</Pill>
+            <div style={{ fontSize: 14, fontWeight: 500, marginTop: 6 }}>
+              {isAr ? `أكمل إعدادك المدعو من ${liveInvite.supplier?.name}` : `Continue your invite from ${liveInvite.supplier?.name}`}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--mal-mid)', marginTop: 2 }}>
+              {isAr ? 'تم التحقّق مسبقاً · ٥ دقائق' : 'Pre-verified · 5 min to finish'}
+            </div>
+          </div>
+          {Ico.arrow({ color: 'var(--mal-primary-3)' })}
+        </Card>
+      )}
       {/* Limit hero card */}
       <Card padded style={{ background: 'linear-gradient(135deg, #1A1A28 0%, #2A1F6F 100%)', color: '#fff', border: 'none', overflow: 'hidden', position: 'relative' }}>
         <div className="mal-orb" style={{ position: 'absolute', width: 220, height: 220, top: -80, insetInlineEnd: -80, opacity: .55 }}/>

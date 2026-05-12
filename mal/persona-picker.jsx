@@ -249,17 +249,55 @@ function PersonaPicker({ lang = 'en', setLang, onPick, onBack, isMobile, onDemo 
                 </button>
 
                 {supportsOnboarding && (
-                  <button onClick={(e) => { e.stopPropagation(); onPick(p.id, { route: 'onboarding' }); }}
-                          style={{
-                            all: 'unset', cursor: 'pointer',
-                            position: 'relative', zIndex: 2,
-                            fontSize: 12, color: 'var(--mal-primary-3)',
-                            fontWeight: 500,
-                            textDecoration: 'underline', textUnderlineOffset: 3,
-                            textDecorationColor: 'var(--mal-primary-50)',
-                          }}>
-                    {isAr ? '↻ ابدأ من الإعداد' : '↻ Start fresh from onboarding'}
-                  </button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, position: 'relative', zIndex: 2 }}>
+                    <button onClick={(e) => { e.stopPropagation(); onPick(p.id, { route: 'onboarding' }); }}
+                            style={{
+                              all: 'unset', cursor: 'pointer',
+                              fontSize: 12, color: 'var(--mal-primary-3)',
+                              fontWeight: 500,
+                              textDecoration: 'underline', textUnderlineOffset: 3,
+                              textDecorationColor: 'var(--mal-primary-50)',
+                            }}>
+                      {isAr ? '↻ ابدأ من الإعداد' : '↻ Start fresh from onboarding'}
+                    </button>
+                    {p.id === 'buyer' && (
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        // Seed a demo invite so the invited route has context even without
+                        // running the supplier wizard first.
+                        if (window.MalSession && window.INVITE_DEMO_FIXTURE) {
+                          const cache = window.MalSession.getCache() || {};
+                          if (!cache.supplierInvitedBuyers || !cache.supplierInvitedBuyers.list?.length) {
+                            window.MalSession.saveSlice('supplierInvitedBuyers', {
+                              list: [{ ...window.INVITE_DEMO_FIXTURE, id: 'INV-DEMO', status: 'invited', sentAt: new Date().toISOString() }],
+                            });
+                          }
+                        }
+                        onPick(p.id, { route: 'invited' });
+                      }}
+                              style={{
+                                all: 'unset', cursor: 'pointer',
+                                fontSize: 12, color: 'var(--mal-primary-3)',
+                                fontWeight: 500,
+                                textDecoration: 'underline', textUnderlineOffset: 3,
+                                textDecorationColor: 'var(--mal-primary-50)',
+                              }}>
+                        {isAr ? '👋 ادخل كمشترٍ مَدعو' : '👋 Enter as an invited buyer'}
+                      </button>
+                    )}
+                    {p.id === 'supplier' && (
+                      <button onClick={(e) => { e.stopPropagation(); onPick(p.id, { route: 'invite' }); }}
+                              style={{
+                                all: 'unset', cursor: 'pointer',
+                                fontSize: 12, color: 'var(--mal-primary-3)',
+                                fontWeight: 500,
+                                textDecoration: 'underline', textUnderlineOffset: 3,
+                                textDecorationColor: 'var(--mal-primary-50)',
+                              }}>
+                        {isAr ? '✉ ادعُ مشترياً' : '✉ Invite a buyer'}
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             );
