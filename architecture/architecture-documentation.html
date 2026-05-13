@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mal · SME Banking Architecture Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --surface:#FAF7EE; --paper:#FFFFFF; --paper-2:#FBF9F2;
+    --ink:#1A1A28; --mid:#6B6B7D; --mid-2:#9CA0AE;
+    --line:#E8E5D9; --line-2:#F2EFE6;
+    --primary:#2A1F6F; --primary-3:#5B3FB2; --primary-50:#EFEAFF;
+    --iri-1:#C9B7E8; --iri-2:#F0B7C2; --iri-3:#F4D38C; --iri-4:#B7D6C0;
+    --success:#2E8B57; --success-bg:#E6F7EC;
+    --warn:#B86F1A; --warn-bg:#FFF8E1;
+    --info:#2A6FB2; --info-bg:#E3EEFA;
+    --rose:#C1303C; --rose-bg:#FFEEEE;
+    --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+    --sh-1: 0 1px 0 rgba(26,26,40,.04), 0 1px 2px rgba(26,26,40,.04);
+    --sh-2: 0 1px 0 rgba(26,26,40,.04), 0 4px 12px rgba(26,26,40,.06);
+    --sh-3: 0 18px 60px -24px rgba(26,26,40,.18), 0 4px 16px rgba(26,26,40,.06);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; background:var(--surface); color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif; font-feature-settings:'ss01','cv11';
+    -webkit-font-smoothing:antialiased; line-height:1.6; font-size:15.5px; }
+  .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
+  .display{ font-family:'Playfair Display', Georgia, serif; font-style:italic; letter-spacing:-.012em; }
+  .iri-text{
+    background: linear-gradient(110deg, var(--primary-3) 0%, var(--iri-1) 35%, var(--iri-2) 55%, var(--iri-3) 75%, var(--primary-3) 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip:text; color:transparent;
+    animation: shimmer 9s linear infinite;
+  }
+  @keyframes shimmer{ to { background-position:-200% 0; } }
+  a{ color:var(--primary-3); text-decoration:none; border-bottom:1px solid transparent; transition:border-color .15s; }
+  a:hover{ border-bottom-color:var(--primary-3); }
+
+  /* Layout */
+  .shell{ display:grid; grid-template-columns: 260px minmax(0, 1fr); gap:48px;
+    max-width: 1400px; margin: 0 auto; padding: 56px 40px 96px; }
+  @media (max-width: 960px){ .shell{ grid-template-columns: 1fr; padding: 36px 20px 64px; gap:24px; } }
+
+  /* Sidebar TOC */
+  aside.toc{ position:sticky; top:32px; align-self:start; max-height:calc(100vh - 64px); overflow:auto; }
+  aside.toc .crest{
+    width:36px; height:36px; border-radius:11px;
+    background: conic-gradient(from 90deg, var(--iri-1), var(--iri-2), var(--iri-3), var(--iri-4), var(--iri-1));
+    display:inline-flex; align-items:center; justify-content:center;
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:600; color:var(--primary); font-size:18px;
+    box-shadow: 0 4px 14px -6px rgba(91,63,178,.4), inset 0 0 0 3px var(--paper);
+  }
+  aside.toc h6{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--mid-2); margin: 24px 0 8px; }
+  aside.toc ol{ list-style:none; padding:0; margin:0; counter-reset: toc; display:flex; flex-direction:column; gap:2px; }
+  aside.toc ol li{ counter-increment: toc; }
+  aside.toc ol li a{
+    display:flex; align-items:flex-start; gap:8px; padding:7px 10px; border-radius:8px;
+    color:var(--mid); font-size:13px; line-height:1.35;
+    border:1px solid transparent; transition: all .15s;
+  }
+  aside.toc ol li a:hover{ background:var(--paper); color:var(--ink); border-color:var(--line); }
+  aside.toc ol li a::before{ content: counter(toc, decimal-leading-zero);
+    font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--mid-2); padding-top:2px; flex-shrink:0; }
+  @media (max-width: 960px){ aside.toc{ position:static; max-height:none; } }
+
+  /* Hero */
+  header.hero{
+    background:
+      radial-gradient(900px 320px at 8% -10%, var(--iri-1) 0%, transparent 55%),
+      radial-gradient(700px 280px at 92% 110%, var(--iri-2) 0%, transparent 55%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+    border:1px solid var(--line); border-radius:var(--r-xl);
+    padding:56px 56px; margin-bottom: 48px;
+    position:relative; overflow:hidden;
+  }
+  header.hero .tag{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px;
+    background:var(--paper); border:1px solid var(--line); border-radius:999px;
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--mid); }
+  header.hero .tag .dot{ width:6px; height:6px; border-radius:999px; background:var(--success); }
+  header.hero h1{
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:500;
+    font-size: clamp(40px, 5vw, 64px); line-height:1.02; letter-spacing:-.022em;
+    margin:18px 0 14px;
+  }
+  header.hero p.lede{ color:var(--mid); font-size:16.5px; max-width:760px; margin:0; line-height:1.6; }
+  header.hero .meta{ display:flex; gap:24px; flex-wrap:wrap; font-size:12px; color:var(--mid); margin-top:22px; padding-top:22px; border-top:1px solid var(--line-2); }
+  header.hero .meta b{ color:var(--ink); font-weight:600; }
+
+  /* Sections */
+  section.s{ background:var(--paper); border:1px solid var(--line); border-radius:var(--r-xl);
+    padding: 44px 48px; box-shadow:var(--sh-2); margin-bottom: 36px; }
+  @media (max-width: 960px){ section.s{ padding: 28px 22px; } }
+  section.s > h2{
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:500;
+    font-size: 38px; letter-spacing:-.02em; line-height:1.05;
+    margin:0 0 6px;
+  }
+  section.s > .kicker{
+    font-family:'JetBrains Mono', monospace; font-size:11.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--mid-2); margin-bottom:14px;
+  }
+  section.s > .lede{ color:var(--mid); font-size:15.5px; max-width:780px; line-height:1.65; margin: 0 0 24px; }
+  section.s h3{
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:500;
+    font-size: 22px; line-height:1.2; letter-spacing:-.012em; margin: 36px 0 10px;
+    padding-top: 8px;
+  }
+  section.s h3:first-of-type{ margin-top: 16px; }
+  section.s h4{
+    font-size: 14px; font-weight:600; margin: 20px 0 8px; letter-spacing:-.005em;
+  }
+  section.s p{ margin: 0 0 14px; color:var(--ink); }
+  section.s p.muted{ color:var(--mid); }
+  section.s ul, section.s ol{ padding-left: 20px; margin: 0 0 14px; }
+  section.s ul li, section.s ol li{ margin-bottom: 6px; }
+  section.s b{ font-weight:600; }
+
+  /* Callout */
+  .callout{
+    background: var(--paper-2); border:1px solid var(--line); border-left:3px solid var(--primary-3);
+    border-radius: 0 var(--r-md) var(--r-md) 0;
+    padding: 14px 18px; margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout b{ display:block; margin-bottom: 3px; font-size:12.5px;
+    color:var(--primary); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
+  .callout.warn{ border-left-color:var(--warn); background: var(--warn-bg); }
+  .callout.warn b{ color:var(--warn); }
+  .callout.success{ border-left-color:var(--success); background: var(--success-bg); }
+  .callout.success b{ color:var(--success); }
+  .callout.rose{ border-left-color:var(--rose); background: var(--rose-bg); }
+  .callout.rose b{ color:var(--rose); }
+
+  /* Table */
+  table.t{ width:100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13.5px; }
+  table.t th{ text-align:left; padding: 10px 14px; background: var(--paper-2); border-bottom:1px solid var(--line);
+    font-size: 11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--mid); font-weight:600;
+    font-family:'JetBrains Mono', monospace; }
+  table.t td{ padding: 12px 14px; border-bottom:1px solid var(--line-2); vertical-align: top; }
+  table.t tr:hover td{ background: var(--paper-2); }
+  table.t .vendor{ font-family:'JetBrains Mono', monospace; font-size:12px; }
+
+  /* Pill */
+  .pill{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px;
+    background: var(--paper-2); border:1px solid var(--line); color:var(--mid); margin-right:4px; margin-bottom:4px;
+    font-family:'JetBrains Mono', monospace; }
+  .pill.primary{ background: var(--primary-50); border-color: color-mix(in srgb, var(--primary-3) 30%, white); color:var(--primary); }
+  .pill.warn{ background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 35%, white); color:var(--warn); }
+  .pill.success{ background: var(--success-bg); border-color: color-mix(in srgb, var(--success) 35%, white); color:var(--success); }
+  .pill.info{ background: var(--info-bg); border-color: color-mix(in srgb, var(--info) 35%, white); color:var(--info); }
+
+  /* ADR card */
+  .adr{ background: var(--paper-2); border:1px solid var(--line); border-radius: var(--r-md);
+    padding: 14px 18px; margin: 10px 0; }
+  .adr .h{ display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
+  .adr .h .n{ font-family:'JetBrains Mono', monospace; font-size:11px;
+    color:var(--mid-2); letter-spacing:.08em; text-transform:uppercase; }
+  .adr .h h4{ font-size:15px; margin:0; font-weight:600; }
+  .adr p{ font-size:13.5px; margin: 4px 0; color:var(--ink); }
+  .adr p.muted{ color:var(--mid); font-size:12.5px; }
+  .adr .vs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  .adr .vs span{ font-size:11px; padding:2px 8px; border-radius:6px; background:var(--paper); border:1px solid var(--line); color:var(--mid); }
+  .adr .vs span.win{ background: var(--success-bg); color:var(--success); border-color: color-mix(in srgb, var(--success) 30%, white); }
+
+  /* Stat row */
+  .stats{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 24px; }
+  @media (max-width:760px){ .stats{ grid-template-columns: repeat(2, 1fr); } }
+  .stat{ padding: 14px 16px; border:1px solid var(--line); border-radius: var(--r-md); background: var(--paper-2); }
+  .stat .l{ font-size: 11px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase; font-family:'JetBrains Mono', monospace; }
+  .stat .v{ font-family:'Playfair Display', serif; font-style:italic; font-size: 26px; line-height:1.1; margin-top: 4px; }
+  .stat .s{ font-size: 11.5px; color:var(--mid); margin-top: 2px; }
+
+  /* Org chart */
+  .org{ display:flex; flex-direction:column; align-items:center; gap:12px; padding: 24px 0; }
+  .org .row{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
+  .org .box{
+    background: var(--paper); border:1px solid var(--line); border-radius: 10px;
+    padding: 10px 14px; min-width: 160px; text-align:center; box-shadow: var(--sh-1);
+  }
+  .org .box.exec{
+    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-3) 100%);
+    color:#fff; border-color:transparent;
+  }
+  .org .box.exec .role{ color:rgba(255,255,255,.85); }
+  .org .box .name{ font-weight:600; font-size:13.5px; }
+  .org .box .role{ font-size:11px; color:var(--mid); margin-top:2px;
+    font-family:'JetBrains Mono', monospace; letter-spacing:.04em; }
+  .org .line{ width:2px; height:18px; background: var(--mid-2); opacity:.4; }
+
+  /* Code blocks */
+  pre{ background: var(--ink); color: #E5E5EE; padding:14px 18px; border-radius:var(--r-md);
+    font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.55; overflow:auto;
+    margin: 12px 0; }
+  pre .c{ color: #82B6E7; } /* comment */
+  pre .k{ color: #F4D38C; } /* keyword */
+  pre .s{ color: #B7D6C0; } /* string */
+  pre .n{ color: #F0B7C2; } /* identifier */
+  code.k{ background: var(--paper-2); border:1px solid var(--line);
+    border-radius:5px; padding: 1px 6px; font-family:'JetBrains Mono', monospace; font-size: 12px; }
+
+  /* 2 col split */
+  .cols-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  @media (max-width: 760px){ .cols-2{ grid-template-columns: 1fr; } }
+  .cols-3{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  @media (max-width: 760px){ .cols-3{ grid-template-columns: 1fr; } }
+
+  /* Bullet card */
+  .card{ background: var(--paper-2); border:1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; }
+  .card h4{ margin: 0 0 6px; font-size:14px; }
+  .card p{ font-size:13px; color:var(--mid); margin:0; line-height:1.55; }
+
+  /* Footer */
+  footer.footer{ margin-top: 48px; padding: 28px 32px; text-align:center; color:var(--mid); font-size:12px;
+    border-top:1px solid var(--line); }
+  footer .display{ font-size: 18px; color:var(--ink); }
+
+  /* Anchor offset for sticky TOC */
+  section.s, header.hero{ scroll-margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ─────────────────── SIDEBAR TOC ─────────────────── -->
+  <aside class="toc">
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:6px;">
+      <span class="crest">m</span>
+      <div>
+        <div style="font-weight:600; font-size:13px;">Mal</div>
+        <div style="font-size:11px; color:var(--mid);">SME Banking · UAE</div>
+      </div>
+    </div>
+    <h6>Contents</h6>
+    <ol>
+      <li><a href="#summary">Executive summary</a></li>
+      <li><a href="#principles">Architectural principles</a></li>
+      <li><a href="#core">Core banking infrastructure</a></li>
+      <li><a href="#integrations">Third-party integrations</a></li>
+      <li><a href="#sharia">Sharia compliance layer</a></li>
+      <li><a href="#ai">AI / ML components</a></li>
+      <li><a href="#regulatory">Regulatory &amp; compliance</a></li>
+      <li><a href="#security">Security &amp; data residency</a></li>
+      <li><a href="#team">Team structure &amp; headcount</a></li>
+      <li><a href="#adrs">Key architectural decisions</a></li>
+      <li><a href="#vendors">Vendor matrix</a></li>
+      <li><a href="#roadmap">Phased roadmap &amp; cost</a></li>
+    </ol>
+    <h6 style="margin-top: 28px;">Companion</h6>
+    <ol style="counter-reset: toc 0;">
+      <li><a href="./architecture-diagram.html">Visual architecture diagram</a></li>
+    </ol>
+    <h6 style="margin-top: 28px;">Document</h6>
+    <div style="font-size: 11.5px; color: var(--mid);">
+      v1.0 · 2026-05-13<br>
+      Confidential — Mal exec + board
+    </div>
+  </aside>
+
+  <!-- ─────────────────── MAIN ─────────────────── -->
+  <main>
+
+    <!-- HERO ─────────────────────────────────────────── -->
+    <header class="hero">
+      <span class="tag"><span class="dot"></span> v1.0 · 2026-05-13 · For exec review</span>
+      <div class="mono" style="font-size:11px; color:var(--mid); letter-spacing:.16em; text-transform:uppercase; margin-top:14px;">Architecture documentation</div>
+      <h1>Mal · SME Banking <span class="iri-text">for the UAE</span></h1>
+      <p class="lede">
+        A reference architecture, vendor stack, team model, and 24-month execution plan for launching Mal: a Sharia-native, AI-augmented, cloud-resident bank for UAE small and medium businesses (5–50 FTE). The product surface is multi-currency accounts, expense management, Murabaha-compliant invoice financing, and an integrated accounting and insights layer.
+      </p>
+      <div class="meta">
+        <div><b>Customer</b> · UAE SME · 5–50 employees · mainland + free-zone</div>
+        <div><b>Licensing path</b> · CBUAE Finance Company → SVF → Specialised Bank</div>
+        <div><b>Cloud</b> · AWS me-central-1 (Abu Dhabi)</div>
+        <div><b>Sharia</b> · AAOIFI · SSB · quarterly audit</div>
+      </div>
+    </header>
+
+
+    <!-- 1 · EXECUTIVE SUMMARY ───────────────────────── -->
+    <section class="s" id="summary">
+      <div class="kicker">§ 01 · Executive summary</div>
+      <h2>What we're building</h2>
+      <p class="lede">Mal is an SME-only bank for the UAE. It does four things by year two: hold money (multi-currency current accounts and expense cards), move money (Aani / UAEFTS / SWIFT for AED and cross-border), finance receivables (Sharia-compliant invoice finance via Murabaha), and explain money (AI-driven cash-flow forecast and insights on integrated accounting data).</p>
+
+      <div class="stats">
+        <div class="stat"><div class="l">Y1 target</div><div class="v">2,500</div><div class="s">active SME accounts</div></div>
+        <div class="stat"><div class="l">Y2 target</div><div class="v">12,000</div><div class="s">active SME accounts</div></div>
+        <div class="stat"><div class="l">Time to fund</div><div class="v">&lt; 4h</div><div class="s">invoice → supplier wire</div></div>
+        <div class="stat"><div class="l">Onboarding</div><div class="v">&lt; 10 min</div><div class="s">SME application → limit reveal</div></div>
+      </div>
+
+      <h3>Why this architecture, in three sentences</h3>
+      <p><b>Buy where you can, build where it differentiates.</b> Core banking (Mambu), card issuance (Nymcard), KYC/KYB (Sumsub), credit bureau (AECB), accounting connectors (Codat / native), open banking (Lean), and FX (Currencycloud) are bought. The onboarding experience, the Murabaha contract engine, the cash-flow forecasting and underwriting models, the Sharia compliance layer, and the SME-facing app are <em>built</em>. That split is what makes Mal feel native rather than a re-skin.</p>
+
+      <p><b>Sharia by design, not bolt-on.</b> Every product is contract-typed in the data model. The ledger knows the difference between profit on a Murabaha sale and forbidden interest on a conventional loan; the underwriting model surfaces both. Late fees never accrue to Mal income.</p>
+
+      <p><b>UAE-resident and CBUAE-aligned.</b> All customer PII and ledger journal data live on AWS me-central-1 (Abu Dhabi). DR is warm in AWS me-south-1 (Bahrain), an approved alternate. Audit trails are immutable for 10 years.</p>
+
+      <div class="callout">
+        <b>The single business question this architecture optimises for</b>
+        How quickly can a UAE SME — that we don't yet know — go from "I have an invoice my buyer wants to pay over 60 days" to "my supplier's bank account just received the wire," with the contract structured halal and the credit decision auditable? Target: under 4 hours, end-to-end, fully online.
+      </div>
+    </section>
+
+
+    <!-- 2 · PRINCIPLES ────────────────────────────── -->
+    <section class="s" id="principles">
+      <div class="kicker">§ 02 · Principles</div>
+      <h2>Architectural principles</h2>
+      <p class="lede">Eight tenets that decide every design trade-off. When a vendor pitches, when a team debates monolith versus services, when the SSB asks for a contract change — these are the rules we go back to.</p>
+
+      <div class="cols-2">
+        <div class="card"><h4>1 · API-first, headless core</h4><p>The product surface is one of many clients. Every domain capability is a versioned API before it is a UI. This is what lets us ship an iOS app, a web app, and a partner API on the same primitives.</p></div>
+        <div class="card"><h4>2 · Event-sourced ledger</h4><p>The ledger is the source of truth, and the ledger is a stream. Balances are a projection; statements are a projection; analytics are a projection. We can rebuild any view of money by replaying journal events.</p></div>
+        <div class="card"><h4>3 · Cloud-native, multi-AZ, UAE-resident</h4><p>Everything stateful runs on managed AWS services in me-central-1, replicated across three AZs. Nothing customer-identifying leaves UAE without explicit consent and a CBUAE notification.</p></div>
+        <div class="card"><h4>4 · Sharia by design</h4><p>Contract type is a first-class field on every money-moving record. The system refuses to construct a transaction that hasn't been approved in template by the SSB.</p></div>
+        <div class="card"><h4>5 · Zero-trust by default</h4><p>No service trusts another by network position. mTLS between services, OIDC for users, signed receipts on every state transition. Step-up auth for risk events.</p></div>
+        <div class="card"><h4>6 · Polyglot persistence</h4><p>OLTP on Postgres, sessions and idempotency on Redis, analytics on ClickHouse, lakehouse on Iceberg, features on Feast. Each store has a job; none do two.</p></div>
+        <div class="card"><h4>7 · Composable &amp; vendor-replaceable</h4><p>Every vendor is behind an adapter. We can swap KYC providers without touching domain code; we can change card processors without re-issuing BINs (we can't, but the architecture pretends we could).</p></div>
+        <div class="card"><h4>8 · Audit-first</h4><p>If it can't be audited, we don't ship it. Every record carries provenance: who decided, when, on what model version, with what input snapshot.</p></div>
+      </div>
+    </section>
+
+
+    <!-- 3 · CORE BANKING ───────────────────────────── -->
+    <section class="s" id="core">
+      <div class="kicker">§ 03 · Core banking</div>
+      <h2>Core banking infrastructure</h2>
+      <p class="lede">Three sub-systems: account management (who the customer is, what wallets they hold), transaction processing (how money moves in and out), and the ledger (the canonical record of every cent).</p>
+
+      <h3>3.1 · Account management</h3>
+      <p>Mambu is the SaaS core. It runs in Mambu's UAE-region tenancy and gives us deposit products, loan accounts, and lifecycle hooks. Around it we layer:</p>
+      <ul>
+        <li><b>Customer service</b> · holds the canonical KYB record: trade licence, UBO graph (≥25% per UBO per CBUAE Rulebook §3.1, ≥80% aggregate coverage), authorised signatories, employees with delegated authority. The graph is versioned; every change generates an event.</li>
+        <li><b>Account service</b> · multi-currency wallets per SME. AED is primary; USD, EUR, GBP are sub-ledgers held with Currencycloud as the FX counterparty. Virtual IBANs are issued through a partner bank (Wio or RAKBank under a BIN-sponsorship arrangement) until Mal holds its own SVF licence.</li>
+        <li><b>Cards</b> · virtual + physical issuance via Nymcard. Per-employee spend controls (MCC blocks, daily/monthly caps, single-merchant locks). 3DS via Visa Token Service.</li>
+        <li><b>Consent &amp; delegation</b> · explicit, time-bound, revocable. Every API call carries the consent scope it was issued under, validated at the gateway.</li>
+      </ul>
+
+      <h3>3.2 · Transaction processing</h3>
+      <p>A single Payments Orchestrator service decides which rail to use, holds idempotency keys, manages retries, and runs the compensating saga if downstream fails. It writes to the ledger first (pending), then sends to the rail; on confirmation it posts the final journal; on rail failure it issues a reversal.</p>
+
+      <pre><span class="c">// Payments Orchestrator · pseudocode for an outgoing AED transfer</span>
+<span class="k">async function</span> <span class="n">sendAED</span>(req) {
+  <span class="k">const</span> idem = req.idempotencyKey;
+  <span class="k">const</span> pending = <span class="k">await</span> ledger.<span class="n">writePending</span>({ idem, dr: customer, cr: suspense, amount });
+  <span class="k">const</span> rail   = <span class="n">selectRail</span>(req); <span class="c">// aani | uaefts | swift</span>
+  <span class="k">try</span> {
+    <span class="k">const</span> ack  = <span class="k">await</span> rail.<span class="n">send</span>({ idem, ...req });
+    <span class="k">await</span> ledger.<span class="n">commit</span>({ idem, dr: suspense, cr: counterparty, ref: ack });
+  } <span class="k">catch</span> (err) {
+    <span class="k">await</span> ledger.<span class="n">reverse</span>({ idem });
+    <span class="k">throw</span> err;
+  }
+}</pre>
+
+      <p>Rail selection rules:</p>
+      <ul>
+        <li>AED domestic ≤ AED 1M and beneficiary at a connected bank → <b>Aani</b> instant.</li>
+        <li>AED domestic &gt; AED 1M, or beneficiary at a non-Aani-connected bank → <b>UAEFTS</b> RTGS.</li>
+        <li>Cross-border GCC AED corridor → <b>Buna</b>.</li>
+        <li>Everywhere else → <b>SWIFT</b> via partner bank.</li>
+      </ul>
+
+      <h3>3.3 · The ledger</h3>
+      <p>The ledger is double-entry, append-only, and event-sourced. Every transaction produces one or more journal entries; each entry is a Kafka event with a strict Avro schema. Balances are a materialised projection refreshed in real-time on the OLTP side and lazily on the analytics side.</p>
+
+      <p>Each journal record carries:</p>
+      <ul>
+        <li><b>Contract type</b> — Murabaha, Wakala, Mudaraba, Qard Hasan, FX spot, etc. This is what makes Sharia review tractable at scale.</li>
+        <li><b>Tenant chain</b> — the source SME, the counterparty, the product, the underlying invoice or asset.</li>
+        <li><b>Provenance</b> — service, version, decision model + version (if any), input hash.</li>
+        <li><b>Reversibility window</b> — until what timestamp can this entry be reversed without dual approval.</li>
+      </ul>
+
+      <div class="callout success">
+        <b>Why we don't build our own core</b>
+        At Mal's stage, building a core banking system is a category error. Mambu gives us deposit and loan products, regulator-friendly defaults, and integrations that already pass UAE bank audit. What we <em>do</em> build is the orchestration around it — Payments Orchestrator, Murabaha contract engine, Customer graph — because these are where our product-market fit lives.
+      </div>
+    </section>
+
+
+    <!-- 4 · INTEGRATIONS ───────────────────────────── -->
+    <section class="s" id="integrations">
+      <div class="kicker">§ 04 · Integrations</div>
+      <h2>Third-party integrations</h2>
+      <p class="lede">Every external dependency is fronted by an adapter service that owns retries, schema mapping, rate-limit budgets, and circuit-breaking. The domain services never call a vendor SDK directly.</p>
+
+      <h3>4.1 · Payment rails</h3>
+      <table class="t">
+        <thead><tr><th>Rail</th><th>Owner</th><th>Use case</th><th>Latency</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td><b>Aani</b></td><td>CBUAE / Al Etihad Payments</td><td>AED instant retail + SME, account-to-account</td><td>&lt; 10s</td><td>Mandated rail for instant; SDK via partner bank</td></tr>
+          <tr><td><b>UAEFTS</b></td><td>CBUAE</td><td>AED RTGS for high-value</td><td>Same day</td><td>For ≥ AED 1M or non-Aani-connected counterparties</td></tr>
+          <tr><td><b>IPP / IPI</b></td><td>CBUAE</td><td>Interbank file transfers (declining)</td><td>Batch</td><td>Mostly legacy; Aani is replacing</td></tr>
+          <tr><td><b>Buna</b></td><td>Arab Monetary Fund</td><td>Cross-border AED + regional</td><td>Hours</td><td>GCC corridor; growing</td></tr>
+          <tr><td><b>SWIFT</b></td><td>SWIFT (via partner)</td><td>USD / EUR / GBP cross-border</td><td>0–2 days</td><td>Through correspondent at Wio or RAKBank</td></tr>
+          <tr><td><b>Visa / Mastercard</b></td><td>Schemes (via Nymcard)</td><td>SME spend cards, virtual + physical</td><td>Authorise: 200ms</td><td>3DS + Visa Token Service for tokenisation</td></tr>
+        </tbody>
+      </table>
+
+      <h3>4.2 · KYC / KYB / AML</h3>
+      <p>Three layers, run in parallel during onboarding and continuously thereafter (perpetual KYB).</p>
+      <ul>
+        <li><b>Identity</b> · UAE Pass federated; Emirates ID OCR + face-match via Sumsub as fallback for non-UAE-Pass principals. <span class="pill">Sumsub</span> <span class="pill">FOCAL</span></li>
+        <li><b>Business</b> · trade licence + MoA + UBO graph; live DED/JAFZA/ADGM register lookups; Sumsub KYB module. <span class="pill">Sumsub KYB</span></li>
+        <li><b>Screening</b> · sanctions, PEP, adverse media, in real-time at first onboarding and then continuously. Hits flow to the Compliance team as alerts. <span class="pill">ComplyAdvantage</span> <span class="pill">Refinitiv World-Check</span></li>
+      </ul>
+      <p>The KYC orchestration is a Temporal workflow with explicit states (<code class="k">submitted → screening → manual_review → approved | rejected</code>) and SLA timers; if any stage hangs past its budget the workflow pages the on-call AML analyst. Outcomes write to the customer-graph event stream so downstream services see consistent state.</p>
+
+      <h3>4.3 · Credit scoring &amp; alternative data</h3>
+      <p>Two sources for every credit decision:</p>
+      <ul>
+        <li><b>AECB</b> · the UAE credit bureau. Mandatory pull for any SME credit product. Cached for 90 days; refreshed on material event (new application, default, bureau notice).</li>
+        <li><b>Alternative data</b> · 12 months of bank statements via Lean (read-only open banking), accounting data via Wafeq/Zoho/QuickBooks connectors, e-invoicing data via Peppol, payment-rail history (if the SME holds a Mal account). These feed the cash-flow forecasting and underwriting models.</li>
+      </ul>
+
+      <h3>4.4 · Accounting software</h3>
+      <p>The integrated accounting layer is what turns Mal from a bank into a finance operating system. We support four UAE-relevant tools natively, and many more via Codat (a meta-integrator) as a fallback:</p>
+      <ul>
+        <li><b>Wafeq</b> · UAE-native, Peppol-ready, FTA-aligned. Default recommended tool for new SMEs onboarding.</li>
+        <li><b>Zoho Books</b> · Strong UAE penetration; API-first.</li>
+        <li><b>QuickBooks Online / Xero</b> · For SMEs with international owners or auditors.</li>
+        <li><b>Tally Prime</b> · For SMEs with Indian ownership / supply chain.</li>
+        <li><b>Codat</b> · Meta-integrator covering ~30 long-tail tools and on-prem (Sage 50, Microsoft Dynamics) at the cost of higher latency.</li>
+      </ul>
+
+      <h3>4.5 · Open banking aggregation</h3>
+      <p><b>Lean Technologies</b> is the primary UAE open-banking aggregator. We use it to pull 12 months of bank statements from the customer's existing bank (Emirates NBD, ADCB, Mashreq, FAB, ADIB, Wio) for underwriting and cash-flow modelling. <b>Tarabut Gateway</b> is the backup for the broader MENA footprint.</p>
+
+      <h3>4.6 · FX &amp; multi-currency</h3>
+      <p><b>Currencycloud</b> is the FX engine and multi-currency holding partner. Mal holds USD, EUR, GBP balances with Currencycloud sub-ledgers; the Treasury team books spot and forward contracts daily to hedge net positions. AED stays on the partner bank's books.</p>
+    </section>
+
+
+    <!-- 5 · SHARIA ─────────────────────────────────── -->
+    <section class="s" id="sharia">
+      <div class="kicker">§ 05 · Sharia</div>
+      <h2>Sharia compliance layer</h2>
+      <p class="lede">Five integrated mechanisms: governance, contract engine, real-time screening, charitable purification, and audit trail. AAOIFI standards are the baseline; CBUAE's Higher Sharia Authority circulars are the local overlay.</p>
+
+      <h3>5.1 · Governance — the Sharia Supervisory Board</h3>
+      <p>Three external scholars (AAOIFI-certified, at least one with UAE Higher Sharia Authority recognition) and an internal Head of Sharia who is full-time staff. The SSB meets monthly. Its outputs:</p>
+      <ul>
+        <li><b>Standing fatwas</b> per product (Murabaha invoice finance, Tawarruq cash equivalents, Wakala investment accounts, Qard Hasan emergency overdrafts).</li>
+        <li><b>Contract templates</b> · text and structure pre-approved; the engine refuses to render a contract outside template.</li>
+        <li><b>Audit sample</b> · 5% of executed Murabaha contracts each quarter, drawn randomly, reviewed for structural conformity.</li>
+        <li><b>Annual public report</b> · published on Mal's website, addressed to customers.</li>
+      </ul>
+
+      <h3>5.2 · The Murabaha engine</h3>
+      <p>Invoice financing's mechanic: Mal buys the receivable from the supplier (acquires an asset), then sells the underlying obligation to the buyer at a disclosed cost-plus markup with deferred settlement. Mal's profit is the markup, not interest on a loan. The system enforces this by structure: there is no "loan" entity for invoice finance; there is a <code class="k">murabaha_contract</code> with an asset, a markup, and an EMI schedule.</p>
+
+      <p>What the engine enforces at runtime:</p>
+      <ul>
+        <li>Asset existence — there is a real, deliverable good or service backing the invoice.</li>
+        <li>Pre-purchase — Mal must own the asset (briefly) before selling it to the buyer; the time gap is logged.</li>
+        <li>Disclosure — the buyer sees Mal's cost, profit margin, and tenor before signing the binding promise (<em>wa'd</em>).</li>
+        <li>No re-pricing — the markup is fixed at signing. Roll-overs are new contracts, not amendments.</li>
+      </ul>
+
+      <h3>5.3 · Halal screening</h3>
+      <p>Every counterparty (supplier or buyer) is screened at onboarding and at every transaction. We block industries deemed haram by AAOIFI: alcohol, gambling, conventional financial services, adult entertainment, pork, weapons, tobacco. Industry classification uses NAICS / ISIC mapped to AAOIFI's exclusions; <b>IdealRatings</b> provides the ongoing reference data.</p>
+
+      <h3>5.4 · Late fees → charity</h3>
+      <p>If an SME pays late, a small penalty is charged — but it cannot accrue to Mal income. Penalty amounts are diverted into a registered UAE charity (e.g., Emirates Red Crescent), and the SME sees the destination on their statement. This is a structural choice, not an opt-in; the ledger refuses to credit penalty income to Mal's P&amp;L accounts.</p>
+
+      <h3>5.5 · Zakat calculation</h3>
+      <p>For Sharia-electing SMEs, Mal calculates the annual Zakat due on net business assets. The tool tracks <em>hawl</em> (one lunar year ownership) per asset class, applies the 2.5% rate on the net <em>nisab</em>-eligible amount, and surfaces the calculation in the customer's home dashboard. Mal does not collect or remit Zakat; the SME pays directly to the charity of their choice.</p>
+
+      <h3>5.6 · The audit trail</h3>
+      <p>Every Sharia-relevant decision (template approval, screening result, contract execution, late-fee diversion) writes an immutable event. The SSB's quarterly audit pulls a stratified random sample directly from the event store; the auditor's read-only console queries the same data the engine sees.</p>
+    </section>
+
+
+    <!-- 6 · AI/ML ──────────────────────────────────── -->
+    <section class="s" id="ai">
+      <div class="kicker">§ 06 · AI / ML</div>
+      <h2>AI / ML components</h2>
+      <p class="lede">Five model families, all owned and trained in-house on customer data with CBUAE-aligned consent. Vendor models are used only for non-decisioning tasks (translation, OCR, embeddings).</p>
+
+      <h3>6.1 · Fraud detection</h3>
+      <p>A two-stage system runs on every authorising payment.</p>
+      <ul>
+        <li><b>Stage 1 · Real-time scoring</b> (&lt; 100ms p99). A GBM model on transactional features (amount, hour, MCC, device, geolocation, velocity) and a graph-neural-network on the counterparty graph (does this beneficiary cluster with known fraud rings?). Output: <code class="k">approve | step_up | decline</code>.</li>
+        <li><b>Stage 2 · Asynchronous review</b>. Higher-recall ensemble queues borderline cases for the Fraud Ops queue; case is enriched with device-fingerprint history and behavioural biometrics.</li>
+      </ul>
+      <p>Training data is labelled from chargebacks, customer disputes, and Fraud Ops adjudication. Models retrain weekly with drift checks; if PSI exceeds 0.2 on any input feature, training is paused and the model owner is paged.</p>
+
+      <h3>6.2 · Cash-flow forecasting</h3>
+      <p>A 13-week rolling forecast per SME. The model is a blend: a Transformer encoder over the SME's transaction sequence + a GBM on aggregated features (rolling averages, seasonality, sector benchmarks). Confidence bands are produced via quantile regression. Inputs:</p>
+      <ul>
+        <li>Mal account transactions</li>
+        <li>Open-banking statements from other banks (via Lean)</li>
+        <li>Accounting data (invoices issued, bills received, AR/AP ageing)</li>
+        <li>Sector + size cohort benchmarks (derived from the broader customer base)</li>
+      </ul>
+      <p>The output drives both the customer-facing insights ("you're projected to be tight in week 4 — consider drawing AED 80K from your line") and the internal underwriting model.</p>
+
+      <h3>6.3 · Underwriting</h3>
+      <p>A real-time credit decisioning model returns a tier (A/B/C) and a limit at onboarding. It is an XGBoost ensemble trained on AECB bureau data + alternative data (statements, accounting, payment history). The model is explainable — SHAP values are surfaced to the customer in plain language ("your strong cash-flow stability and supplier diversity contributed most to the AED 850K limit").</p>
+      <p>Decision policy is encoded as a separate <em>policy engine</em> on top of the model — overrides for SSB-flagged sectors, regulatory caps, single-name exposure limits. Policy is in version control; every decision logs the policy hash it was made under.</p>
+
+      <h3>6.4 · Personalised insights</h3>
+      <p>Smaller, simpler models. Anomaly detection on expense categories ("you spent 30% more on logistics this quarter — here's why"), peer-cohort benchmarking ("SMEs your size in your sector pay vendors in 47 days on average; you pay in 62"), and predictive nudges ("if you finance these two invoices, your runway extends from 6 to 11 weeks").</p>
+
+      <h3>6.5 · Conversational AI</h3>
+      <p>Customer-facing assistant on Claude (via Bedrock, UAE-region) with RAG over the customer's own data and tool-use for read actions (query transactions, generate reports, draft invoices). Write actions (transfers, invoice acceptance) always require explicit confirmation in the canonical UI; the LLM never holds a signing key.</p>
+
+      <div class="callout warn">
+        <b>What we don't use LLMs for</b>
+        Underwriting decisions, fraud denials, Sharia contract construction, or anything that creates a binding obligation. LLMs are excellent at explanation, retrieval, and routing — not at being the model of record for a regulated decision.
+      </div>
+    </section>
+
+
+    <!-- 7 · REGULATORY ─────────────────────────────── -->
+    <section class="s" id="regulatory">
+      <div class="kicker">§ 07 · Regulatory</div>
+      <h2>Regulatory &amp; compliance</h2>
+      <p class="lede">The CBUAE is the primary regulator. AECB, the FTA, and the UAE FIU (via goAML) are the operational counterparties Mal interacts with daily. ADGM and DIFC are alternative regimes for some specific entities.</p>
+
+      <h3>7.1 · Licensing path</h3>
+      <p>The realistic 24-month progression:</p>
+      <ol>
+        <li><b>Phase 0 (M1–M6)</b> · Finance Company licence — fastest to issue lending products against own balance sheet via a partner bank for deposits.</li>
+        <li><b>Phase 1 (M6–M12)</b> · Stored Value Facility (SVF) licence — enables Mal-branded multi-currency wallets and cards without a partner bank's IBAN.</li>
+        <li><b>Phase 2 (M18–M24)</b> · Specialised Bank licence (SME segment) — enables deposit-taking, native IBAN issuance, and balance-sheet products at scale.</li>
+      </ol>
+      <p>The architecture is designed so the same code base serves all three regulatory contexts; the difference is in product configuration, capital treatment, and reporting cadence.</p>
+
+      <h3>7.2 · Reporting obligations</h3>
+      <table class="t">
+        <thead><tr><th>Report</th><th>Frequency</th><th>To</th><th>Source system</th></tr></thead>
+        <tbody>
+          <tr><td>Liquidity Coverage Ratio</td><td>Daily</td><td>CBUAE</td><td>Treasury data mart + Mambu</td></tr>
+          <tr><td>Capital Adequacy</td><td>Monthly</td><td>CBUAE</td><td>Finance + risk data marts</td></tr>
+          <tr><td>Credit positions (AECB)</td><td>Monthly</td><td>AECB</td><td>Lending data mart</td></tr>
+          <tr><td>Suspicious transaction reports (STR)</td><td>Real-time</td><td>UAE FIU via goAML</td><td>AML alerts queue</td></tr>
+          <tr><td>FATCA / CRS</td><td>Annual</td><td>FTA</td><td>Customer + tax residency data</td></tr>
+          <tr><td>VAT returns</td><td>Quarterly</td><td>FTA</td><td>Finance ledger</td></tr>
+          <tr><td>E-invoicing (Peppol)</td><td>Real-time</td><td>FTA via accredited ASP</td><td>Invoice + accounting service</td></tr>
+          <tr><td>SSB report</td><td>Quarterly + Annual</td><td>Internal SSB + public</td><td>Sharia compliance engine</td></tr>
+        </tbody>
+      </table>
+
+      <h3>7.3 · Audit trail &amp; retention</h3>
+      <p>Every regulated event (KYC outcome, credit decision, money movement, Sharia approval, customer consent change) writes to an append-only event stream with WORM-immutable storage on S3 Object Lock. Retention floors:</p>
+      <ul>
+        <li>KYC artefacts &amp; CDD data — 10 years post-relationship end (CBUAE AML guidance).</li>
+        <li>Transaction journals — 5 years (CBUAE Banking Law).</li>
+        <li>Audit logs (system access, admin actions) — 7 years.</li>
+        <li>Sharia decisions and contracts — 10 years.</li>
+      </ul>
+
+      <p>The audit log is queryable through a read-only console used by Internal Audit, Regulator-Facing Compliance, and the Sharia Supervisory Board. External auditors get a time-boxed read-only role.</p>
+    </section>
+
+
+    <!-- 8 · SECURITY ─────────────────────────────── -->
+    <section class="s" id="security">
+      <div class="kicker">§ 08 · Security</div>
+      <h2>Security &amp; data residency</h2>
+      <p class="lede">Defence-in-depth, with the explicit assumption that any single layer can fail.</p>
+
+      <div class="cols-2">
+        <div class="card">
+          <h4>Data residency</h4>
+          <p>Customer PII, KYC artefacts, ledger journal, and audit logs live exclusively on AWS me-central-1 (Abu Dhabi). DR in me-south-1 (Bahrain) is a CBUAE-approved alternate. Cross-border egress to vendors requires CBUAE notification and explicit customer consent in the consent register.</p>
+        </div>
+        <div class="card">
+          <h4>Encryption</h4>
+          <p>TLS 1.3 in transit, AES-256-GCM at rest. Card PAN/CVV protected by a CloudHSM cluster with per-tenant data keys; root CMKs rotated quarterly. Field-level encryption for Emirates ID number, mobile, email.</p>
+        </div>
+        <div class="card">
+          <h4>Identity &amp; access</h4>
+          <p>Customer: OIDC via Auth0 with UAE Pass federation. Workforce: SSO + hardware-key MFA, time-bound break-glass procedures. Service-to-service: SPIFFE/SPIRE workload identities with rotating mTLS certs.</p>
+        </div>
+        <div class="card">
+          <h4>Detection &amp; response</h4>
+          <p>SIEM via Datadog Security; managed XDR through CrowdStrike Falcon. SOC operates 24×7 from M+9; on-call escalation paths for sev-1 incidents under 5-minute SLA.</p>
+        </div>
+        <div class="card">
+          <h4>Vulnerability mgmt</h4>
+          <p>Snyk + GitHub Advanced Security on all repos; container scans in CI; quarterly external pen tests; annual red-team. CVSS 9+ remediated within 7 days, 7+ within 30.</p>
+        </div>
+        <div class="card">
+          <h4>Customer protections</h4>
+          <p>Step-up auth (biometric or UAE Pass) for high-risk actions. Cooling-off period on new beneficiaries for the first 24 hours. Real-time alerts on every authorising payment.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- 9 · TEAM ───────────────────────────────────── -->
+    <section class="s" id="team">
+      <div class="kicker">§ 09 · Team</div>
+      <h2>Team structure &amp; headcount</h2>
+      <p class="lede">A pre-launch team of 55, growing to 120 in year two and roughly 200 by year three. Below is the steady-state Year 2 org and the phased hiring plan.</p>
+
+      <h3>9.1 · Org chart (Year 2 · ~120 FTE)</h3>
+
+      <div class="org">
+        <div class="row">
+          <div class="box exec"><div class="name">CEO</div><div class="role">Office of the CEO</div></div>
+        </div>
+        <div class="line"></div>
+        <div class="row">
+          <div class="box exec"><div class="name">CTO</div><div class="role">Engineering · 48 FTE</div></div>
+          <div class="box exec"><div class="name">CPO</div><div class="role">Product &amp; Design · 14 FTE</div></div>
+          <div class="box exec"><div class="name">CRO</div><div class="role">Risk · 9 FTE</div></div>
+          <div class="box exec"><div class="name">CCO</div><div class="role">Compliance · 12 FTE</div></div>
+          <div class="box exec"><div class="name">Head of Sharia</div><div class="role">Sharia · 4 FTE + 3 ext.</div></div>
+          <div class="box exec"><div class="name">COO</div><div class="role">Operations · 18 FTE</div></div>
+          <div class="box exec"><div class="name">CCO</div><div class="role">Commercial · 9 FTE</div></div>
+          <div class="box exec"><div class="name">CFO</div><div class="role">Finance · 6 FTE</div></div>
+        </div>
+      </div>
+
+      <h4 style="margin-top:32px;">Engineering (48)</h4>
+      <ul>
+        <li><b>Platform · 8</b> · Kubernetes, observability, CI/CD, developer experience.</li>
+        <li><b>Banking core · 10</b> · Payments orchestrator, Mambu integration, ledger services, card platform.</li>
+        <li><b>Lending engine · 6</b> · Murabaha contract engine, EMI, collections.</li>
+        <li><b>Customer apps · 12</b> · iOS, Android, Web (4 each).</li>
+        <li><b>Data &amp; AI · 8</b> · Data eng (4), ML eng (4); plus a Head of Data.</li>
+        <li><b>SRE · 3</b> · On-call rotation; chaos engineering.</li>
+        <li><b>Security · 3</b> · AppSec, infrastructure, IAM. Reports dotted-line to CCO.</li>
+      </ul>
+
+      <h4>Product &amp; Design (14)</h4>
+      <ul>
+        <li>1 CPO · 6 PMs (Banking, Lending, Sharia, AI/ML, Onboarding, Cards) · 5 designers · 2 user researchers.</li>
+      </ul>
+
+      <h4>Risk (9)</h4>
+      <ul>
+        <li>1 CRO · 3 Credit risk analysts · 2 Operational risk · 3 Fraud Ops.</li>
+      </ul>
+
+      <h4>Compliance (12)</h4>
+      <ul>
+        <li>1 CCO (regulator-facing) · 1 MLRO · 3 AML analysts · 2 KYC/KYB ops · 2 Regulatory reporting · 1 Internal Audit · 1 DPO · 1 SOC analyst.</li>
+      </ul>
+
+      <h4>Sharia (4 FTE + 3 external SSB scholars)</h4>
+      <ul>
+        <li>1 Head of Sharia · 1 SSB secretariat · 1 Sharia auditor · 1 Sharia product analyst.</li>
+        <li>External: 3 AAOIFI-certified scholars on retainer.</li>
+      </ul>
+
+      <h4>Operations (18)</h4>
+      <ul>
+        <li>1 COO · 8 Customer support (bilingual EN/AR, 12×7 coverage) · 3 Onboarding ops · 2 Reconciliation &amp; Treasury ops · 2 Vendor mgmt · 1 BCP/DR · 1 Workplace.</li>
+      </ul>
+
+      <h4>Commercial (9)</h4>
+      <ul>
+        <li>1 Chief Commercial Officer · 3 Sales (SME field, broker channel) · 2 Partnerships (accountants, ERP partners) · 2 Marketing · 1 Brand.</li>
+      </ul>
+
+      <h4>Finance (6)</h4>
+      <ul>
+        <li>1 CFO · 2 Treasury · 1 FP&amp;A · 1 Controller · 1 Investor Relations.</li>
+      </ul>
+
+      <h3>9.2 · Phased hiring</h3>
+      <table class="t">
+        <thead><tr><th>Phase</th><th>Timeline</th><th>Headcount</th><th>Key hires</th></tr></thead>
+        <tbody>
+          <tr><td>Founding</td><td>M0 · today</td><td>~6</td><td>CEO, CTO, CPO, CRO, CCO, Head of Sharia (interim)</td></tr>
+          <tr><td>Pre-launch build</td><td>M3 → M12</td><td>~55</td><td>Engineering 22, Product 8, Risk 4, Compliance 6, Ops 6, Commercial 5, Finance 3</td></tr>
+          <tr><td>Launch + early scale</td><td>M12 → M24</td><td>~120</td><td>~2× across functions; build CS to 8, Sales to 5</td></tr>
+          <tr><td>Scale</td><td>M24 → M36</td><td>~200</td><td>Specialisation: a separate Fraud team, a Treasury desk, GTM by sector</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <b>Bilingualism is non-negotiable</b>
+        Every customer-facing role (CS, Onboarding Ops, Sales, Marketing) and every public-output role (PMs, Designers, Brand) must operate fluently in Arabic and English. Hiring policy reflects this.
+      </div>
+    </section>
+
+
+    <!-- 10 · ADRs ───────────────────────────────────── -->
+    <section class="s" id="adrs">
+      <div class="kicker">§ 10 · ADRs</div>
+      <h2>Key architectural decisions</h2>
+      <p class="lede">Each entry: the decision, the alternatives considered, and what we'd revisit it on.</p>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-001</span><h4>Mambu over Thought Machine for core banking</h4></div>
+        <p>Mambu's SaaS posture, UAE-region availability, mature deposit + loan products, and proven integrations with Sumsub, Lean, and Nymcard get us to MVP roughly six months faster than Thought Machine's smart-contract DSL approach.</p>
+        <div class="vs"><span class="win">Mambu (SaaS · UAE)</span><span>Thought Machine</span><span>10x Banking</span><span>Build in-house</span></div>
+        <p class="muted"><b>Revisit on:</b> volume &gt; 50K active SMEs or a need for custom product types Mambu can't model.</p>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-002</span><h4>AWS me-central-1 over Azure UAE North</h4></div>
+        <p>AWS has the broader fintech ecosystem in the region, more managed services we'll actually use (MSK, Aurora Global, EKS, CloudHSM), and Mambu, Sumsub, and Lean all run on AWS in the region. CBUAE has approved both for production banking workloads.</p>
+        <div class="vs"><span class="win">AWS me-central-1</span><span>Azure UAE North</span><span>OCI UAE</span></div>
+        <p class="muted"><b>Revisit on:</b> a strategic partner mandates Azure or a sovereign cloud requirement emerges.</p>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-003</span><h4>Event-sourced ledger via Kafka + Postgres projections</h4></div>
+        <p>The ledger is the heart of the bank. Event-sourcing gives auditability, replayability, and clean projections for reporting. Pure double-entry on Postgres alone would force us to invent the audit log; Kafka gives it for free.</p>
+        <div class="vs"><span class="win">Event-sourced · Kafka</span><span>Postgres-only double entry</span><span>Custom ledger on KSQL</span></div>
+        <p class="muted"><b>Revisit on:</b> Kafka operational burden outweighs benefits (unlikely on MSK).</p>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-004</span><h4>Sharia compliance modelled as contract type, not a downstream filter</h4></div>
+        <p>Every money-moving record carries its <code class="k">contract_type</code> as a typed field, validated by a Sharia engine at write time. This is more invasive than a filter but removes whole classes of "compliance accidents" (booking interest as profit).</p>
+        <div class="vs"><span class="win">First-class contract type</span><span>Downstream filter</span><span>Manual review</span></div>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-005</span><h4>Build the underwriting model in-house</h4></div>
+        <p>Vendor scoring (Provenir, etc.) is generic. UAE SME credit risk is structurally different — high cash-flow volatility, opaque ownership, trade-credit dependencies. The model is a core differentiator, and the data is our moat.</p>
+        <div class="vs"><span class="win">Build in-house</span><span>Provenir</span><span>Experian DataX</span></div>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-006</span><h4>TypeScript + Go split, not polyglot for its own sake</h4></div>
+        <p>TypeScript on every customer-facing service, Go on every payment- and money-touching service. Two stacks, two CI pipelines, one shared talent pool. We say no to Python on the request path.</p>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-007</span><h4>Nymcard over Marqeta</h4></div>
+        <p>Nymcard is MENA-native, integrates with UAE BIN sponsors out of the box, and pricing is friendlier at our launch volume. Marqeta is excellent in the US; for the UAE its overhead doesn't pay off until much higher scale.</p>
+        <div class="vs"><span class="win">Nymcard</span><span>Marqeta</span><span>Galileo</span></div>
+        <p class="muted"><b>Revisit on:</b> expansion to KSA + a need for unified processing across markets.</p>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-008</span><h4>Lean over building open banking in-house</h4></div>
+        <p>Building bank-by-bank connectors in the UAE is a 12-month project we'd never recoup. Lean has the UAE coverage; we own the orchestration on top.</p>
+        <div class="vs"><span class="win">Lean</span><span>Tarabut Gateway</span><span>Build</span></div>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-009</span><h4>Sumsub primary, FOCAL fallback for KYC/KYB</h4></div>
+        <p>Sumsub has the most complete UAE document coverage and the best UBO graph builder. FOCAL is a strong UAE-native backup with local support. Both behind a Mal-owned adapter; we can flip primary in minutes.</p>
+      </div>
+
+      <div class="adr">
+        <div class="h"><span class="n">ADR-010</span><h4>Temporal for sagas, not Step Functions</h4></div>
+        <p>KYC, money movement, Murabaha lifecycle, dispute handling — all are multi-step, hours-to-days workflows with retries and compensation. Temporal's developer model (workflows as code) is dramatically more productive than Step Functions JSON.</p>
+      </div>
+    </section>
+
+
+    <!-- 11 · VENDORS ───────────────────────────────── -->
+    <section class="s" id="vendors">
+      <div class="kicker">§ 11 · Vendors</div>
+      <h2>Vendor matrix</h2>
+      <p class="lede">Every external service we depend on. Primary, backup, indicative annual cost at Year 1 scale, and why we chose them. The "build vs buy" column flags where we keep optionality.</p>
+
+      <table class="t">
+        <thead><tr>
+          <th>Function</th>
+          <th>Primary</th>
+          <th>Backup</th>
+          <th>Y1 cost (AED)</th>
+          <th>Build / buy</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>Core banking</td><td class="vendor">Mambu</td><td class="vendor">10x Banking</td><td>1.2M – 2.0M</td><td>Buy</td></tr>
+          <tr><td>Card issuance</td><td class="vendor">Nymcard</td><td class="vendor">Marqeta</td><td>0.6M – 1.2M</td><td>Buy</td></tr>
+          <tr><td>KYC / KYB</td><td class="vendor">Sumsub</td><td class="vendor">FOCAL · IDnow</td><td>0.5M – 0.8M</td><td>Buy</td></tr>
+          <tr><td>AML screening</td><td class="vendor">ComplyAdvantage</td><td class="vendor">Refinitiv World-Check</td><td>0.3M – 0.5M</td><td>Buy</td></tr>
+          <tr><td>Open banking</td><td class="vendor">Lean</td><td class="vendor">Tarabut Gateway</td><td>0.2M – 0.4M</td><td>Buy</td></tr>
+          <tr><td>Credit bureau</td><td class="vendor">AECB</td><td>—</td><td>0.4M – 0.6M</td><td>Buy (mandated)</td></tr>
+          <tr><td>FX &amp; multi-currency</td><td class="vendor">Currencycloud</td><td class="vendor">Wise Platform</td><td>0.3M – 0.6M</td><td>Buy</td></tr>
+          <tr><td>Accounting connectors</td><td class="vendor">Wafeq · Native</td><td class="vendor">Codat (long tail)</td><td>0.2M – 0.4M</td><td>Hybrid</td></tr>
+          <tr><td>E-invoicing (Peppol)</td><td class="vendor">Accredited ASP via Wafeq</td><td class="vendor">PwC Peppol AP</td><td>0.1M – 0.2M</td><td>Buy</td></tr>
+          <tr><td>Cloud (compute / storage)</td><td class="vendor">AWS me-central-1</td><td class="vendor">AWS me-south-1 (DR)</td><td>1.0M – 3.0M</td><td>Buy</td></tr>
+          <tr><td>Sharia ref data</td><td class="vendor">IdealRatings</td><td class="vendor">Path Solutions</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
+          <tr><td>Identity (IDP)</td><td class="vendor">Auth0 + UAE Pass</td><td class="vendor">Okta</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
+          <tr><td>Workflow / sagas</td><td class="vendor">Temporal Cloud</td><td class="vendor">Self-hosted Temporal</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
+          <tr><td>Observability</td><td class="vendor">Datadog</td><td class="vendor">Grafana Cloud</td><td>0.4M – 0.8M</td><td>Buy</td></tr>
+          <tr><td>Security · EDR</td><td class="vendor">CrowdStrike Falcon</td><td class="vendor">SentinelOne</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
+          <tr><td>Notifications · SMS</td><td class="vendor">Unifonic</td><td class="vendor">Twilio</td><td>0.1M – 0.3M</td><td>Buy</td></tr>
+          <tr><td>Foundation LLM</td><td class="vendor">Anthropic Claude (Bedrock)</td><td class="vendor">OpenAI · Cohere</td><td>0.2M – 0.5M</td><td>Buy</td></tr>
+          <tr><td>Onboarding orchestration</td><td>Mal-built on Temporal</td><td>—</td><td>—</td><td>Build</td></tr>
+          <tr><td>Murabaha contract engine</td><td>Mal-built</td><td>—</td><td>—</td><td>Build</td></tr>
+          <tr><td>Underwriting model</td><td>Mal-built (XGBoost + policy engine)</td><td>—</td><td>—</td><td>Build</td></tr>
+          <tr><td>Customer apps (iOS / Android / Web)</td><td>Mal-built</td><td>—</td><td>—</td><td>Build</td></tr>
+        </tbody>
+      </table>
+
+      <p class="muted" style="font-size:12.5px;"><b>Note on costs.</b> Ranges are indicative at Year 1 scale (~2,500 active SMEs, ~250K monthly transactions, ~AED 500M in financed receivables). Most contracts step up by ~50% in Year 2 and ~2× in Year 3 as volume grows.</p>
+    </section>
+
+
+    <!-- 12 · ROADMAP ──────────────────────────────── -->
+    <section class="s" id="roadmap">
+      <div class="kicker">§ 12 · Roadmap</div>
+      <h2>Phased roadmap &amp; cost envelope</h2>
+      <p class="lede">A 24-month plan tied to regulatory milestones. Each phase has a clear technical exit criterion and a cost band.</p>
+
+      <h3>Phase 0 · Foundations (M0 → M6)</h3>
+      <ul>
+        <li>CBUAE Finance Company application submitted; SSB onboarded; founding team hired.</li>
+        <li>Core selection (Mambu); cloud landing zone in AWS me-central-1; IaC baseline (Terraform + AWS Control Tower).</li>
+        <li>KYC/KYB integration; AECB connectivity; Sumsub live in staging.</li>
+        <li>Murabaha contract template approved by SSB.</li>
+      </ul>
+      <p><b>Exit:</b> happy-path Murabaha invoice finance demoable in staging, ledger journal correct end-to-end, no real money moved.</p>
+
+      <h3>Phase 1 · Closed beta (M6 → M12)</h3>
+      <ul>
+        <li>SVF licence granted; first 50 beta SMEs onboarded via private invite.</li>
+        <li>Multi-currency wallets (AED + USD) live; virtual cards (Nymcard); Aani + UAEFTS rails connected.</li>
+        <li>Invoice financing live with manual underwriting review on each application.</li>
+        <li>Accounting integrations: Wafeq, Zoho Books. Open banking via Lean.</li>
+      </ul>
+      <p><b>Exit:</b> 50 SMEs transacting, AED 50M financed cumulatively, &lt; 1 incident per 1,000 transactions.</p>
+
+      <h3>Phase 2 · Public launch (M12 → M18)</h3>
+      <ul>
+        <li>Open enrolment. Auto-underwriting at limit ≤ AED 1M, manual above. Physical cards.</li>
+        <li>Expense management features: receipt OCR, MCC controls, employee cards.</li>
+        <li>AI-driven cash-flow forecasting in customer dashboards (read-only).</li>
+        <li>Conversational AI assistant launches in private preview.</li>
+      </ul>
+      <p><b>Exit:</b> 2,500 SMEs onboarded, AED 250M financed quarterly run-rate, &lt; 5-minute median onboarding time.</p>
+
+      <h3>Phase 3 · Scale + cross-border (M18 → M24)</h3>
+      <ul>
+        <li>Specialised Bank licence granted (target). Native IBAN issuance live.</li>
+        <li>EUR + GBP wallets; Buna corridor for AED cross-border.</li>
+        <li>Treasury desk launches FX forwards for SME hedging.</li>
+        <li>AI assistant graduates from preview; tool-use for read actions.</li>
+        <li>Supplier-invited buyer journeys ship at scale (network effect).</li>
+      </ul>
+      <p><b>Exit:</b> 10,000 SMEs, AED 1B+ financed cumulatively, NPS &gt; 60, infrastructure cost per active SME &lt; AED 50/month.</p>
+
+      <h3>Cost envelope · steady state Year 2</h3>
+      <div class="stats">
+        <div class="stat"><div class="l">People</div><div class="v">~AED 70M</div><div class="s">120 FTE blended cost</div></div>
+        <div class="stat"><div class="l">Infra · vendors</div><div class="v">~AED 8M</div><div class="s">cloud + SaaS + rails</div></div>
+        <div class="stat"><div class="l">Reg + audit + legal</div><div class="v">~AED 5M</div><div class="s">CBUAE fees, external audit, legal</div></div>
+        <div class="stat"><div class="l">GTM</div><div class="v">~AED 10M</div><div class="s">marketing, sales, partnerships</div></div>
+      </div>
+
+      <p class="muted">Total Year 2 opex envelope ≈ AED 90M. Revenue at Year 2 target (12K SMEs) at conservative monetisation drives toward operating break-even at ~AED 1.2B in financed receivables outstanding.</p>
+
+      <div class="callout success">
+        <b>What this architecture is built to survive</b>
+        Adding a new payment rail (a quarter of work, one adapter). Switching KYC vendor (two weeks, no domain code changes). Onboarding a new Sharia product type (template approval + engine config, no infrastructure changes). Surviving an AZ failure (automatic, &lt; 1 minute). Surviving a full regional failure (DR plan, &lt; 15 minutes). A CBUAE audit (read-only console, audit log, signed receipts).
+      </div>
+    </section>
+
+
+    <footer class="footer">
+      <div class="display" style="margin-bottom:8px;">Mal · capital that moves with you.</div>
+      <div>Architecture documentation · v1.0 · 2026-05-13 · Companion to the visual architecture diagram</div>
+      <div style="margin-top:6px; font-size:11px; color:var(--mid-2);">Prepared for the executive team and the board. Distribute internally only.</div>
+    </footer>
+
+  </main>
+</div>
+
+</body>
+</html>

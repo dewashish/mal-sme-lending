@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Mal · SME Banking Architecture Diagram</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --surface:#FAF7EE; --paper:#FFFFFF; --paper-2:#FBF9F2;
+    --ink:#1A1A28; --mid:#6B6B7D; --mid-2:#9CA0AE;
+    --line:#E8E5D9; --line-2:#F2EFE6;
+    --primary:#2A1F6F; --primary-3:#5B3FB2; --primary-50:#EFEAFF;
+    --iri-1:#C9B7E8; --iri-2:#F0B7C2; --iri-3:#F4D38C; --iri-4:#B7D6C0;
+    --success:#2E8B57; --success-bg:#E6F7EC;
+    --warn:#B86F1A; --warn-bg:#FFF8E1;
+    --info:#2A6FB2; --info-bg:#E3EEFA;
+    --rose:#C1303C; --rose-bg:#FFEEEE;
+    --coral:#C84A2C; --coral-bg:#FDE7E0;
+    --teal:#0F766E; --teal-bg:#D7F0EC;
+
+    --client:#EFEAFF;   --client-st:#5B3FB2; --client-ink:#2A1F6F;
+    --gateway:#1A1A28;  --gateway-ink:#FFFFFF;
+    --domain:#FFF8E1;   --domain-st:#B86F1A; --domain-ink:#5C4310;
+    --core:#2A1F6F;     --core-ink:#FFFFFF;
+    --data:#E6F7EC;     --data-st:#2E8B57; --data-ink:#0E4F2E;
+    --external:#E3EEFA; --external-st:#2A6FB2; --external-ink:#143F70;
+    --ai:#FDE7E0;       --ai-st:#C84A2C; --ai-ink:#5A1F0E;
+    --sharia:#FFF1CE;   --sharia-st:#B86F1A; --sharia-ink:#5C4310;
+    --compliance:#FFEEEE; --compliance-st:#C1303C; --compliance-ink:#6B1822;
+    --ops:#D7F0EC;      --ops-st:#0F766E; --ops-ink:#0B433D;
+
+    --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
+    --sh-1: 0 1px 0 rgba(26,26,40,.04), 0 1px 2px rgba(26,26,40,.04);
+    --sh-2: 0 1px 0 rgba(26,26,40,.04), 0 4px 12px rgba(26,26,40,.06);
+    --sh-3: 0 18px 60px -24px rgba(26,26,40,.18), 0 4px 16px rgba(26,26,40,.06);
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; background:var(--surface); color:var(--ink); font-family:'Inter', system-ui, sans-serif; font-feature-settings:'ss01','cv11'; }
+  .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
+  .display{ font-family:'Playfair Display', 'Cormorant Garamond', Georgia, serif; font-style:italic; letter-spacing:-.012em; }
+  .iri-text{
+    background: linear-gradient(110deg, var(--primary-3) 0%, var(--iri-1) 35%, var(--iri-2) 55%, var(--iri-3) 75%, var(--primary-3) 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip:text; color:transparent;
+    animation: shimmer 9s linear infinite;
+  }
+  @keyframes shimmer{ to { background-position:-200% 0; } }
+
+  /* ─── Page chrome ─── */
+  .page{ max-width:1760px; margin:0 auto; padding:64px 56px 96px; }
+  @media (max-width: 860px){ .page{ padding:36px 20px 64px; } }
+
+  header.hero{
+    display:flex; flex-direction:column; gap:18px;
+    padding:48px 56px; border-radius:var(--r-xl);
+    background:
+      radial-gradient(900px 320px at 12% -10%, var(--iri-1) 0%, transparent 55%),
+      radial-gradient(700px 280px at 88% 120%, var(--iri-2) 0%, transparent 55%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+    border:1px solid var(--line);
+    position:relative; overflow:hidden;
+  }
+  .crest{
+    width:44px; height:44px; border-radius:14px;
+    background: conic-gradient(from 90deg, var(--iri-1), var(--iri-2), var(--iri-3), var(--iri-4), var(--iri-1));
+    display:inline-flex; align-items:center; justify-content:center;
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:600; color:var(--primary); font-size:22px;
+    box-shadow: 0 6px 24px -8px rgba(91,63,178,.45), inset 0 0 0 4px var(--paper);
+  }
+  .tag{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px;
+    background:var(--paper); border:1px solid var(--line); border-radius:999px;
+    font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--mid); }
+  .tag .dot{ width:6px; height:6px; border-radius:999px; background:var(--success); }
+  h1.title{
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:500;
+    font-size: clamp(40px, 5vw, 64px); line-height:1.02; letter-spacing:-.022em;
+    margin:0; max-width: 1100px;
+  }
+  .subtitle{ color:var(--mid); font-size:15px; max-width:780px; line-height:1.6; margin:0; }
+  .meta{ display:flex; gap:24px; flex-wrap:wrap; font-size:12px; color:var(--mid); margin-top:8px; }
+  .meta b{ color:var(--ink); font-weight:600; }
+
+  /* ─── Section headings ─── */
+  section.block{ margin-top:56px; padding:36px 40px; background:var(--paper); border:1px solid var(--line); border-radius:var(--r-xl); box-shadow:var(--sh-2); }
+  section.block > header{
+    display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:24px;
+    padding-bottom:18px; border-bottom:1px solid var(--line-2);
+  }
+  section.block > header .num{
+    font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--mid-2);
+    letter-spacing:.08em; text-transform:uppercase;
+  }
+  section.block > header h2{
+    font-family:'Playfair Display', serif; font-style:italic; font-weight:500;
+    font-size:34px; letter-spacing:-.018em; margin:0;
+  }
+  section.block > header p{ margin:0; color:var(--mid); font-size:13.5px; max-width:680px; }
+
+  /* ─── Legend ─── */
+  .legend{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:12px;
+  }
+  .legend .item{
+    display:flex; gap:10px; align-items:center; padding:10px 12px;
+    border:1px solid var(--line); border-radius:var(--r-md); background:var(--paper-2);
+  }
+  .legend .chip{ width:14px; height:14px; border-radius:5px; flex-shrink:0; border:1px solid rgba(0,0,0,.06); }
+  .legend .lbl{ font-size:12.5px; }
+  .legend .lbl b{ display:block; color:var(--ink); font-weight:600; }
+  .legend .lbl span{ color:var(--mid); font-size:11px; }
+
+  /* ─── Diagram primitives ─── */
+  .diagram{ position:relative; }
+  .grid{
+    display:grid; gap:14px;
+  }
+  .node{
+    border-radius:var(--r-md);
+    padding:14px 14px;
+    box-shadow:var(--sh-1);
+    border:1px solid var(--line);
+    background:var(--paper);
+    display:flex; flex-direction:column; gap:6px;
+    min-height: 86px;
+    position:relative;
+  }
+  .node .head{ display:flex; align-items:center; gap:8px; }
+  .node .ico{
+    width:24px; height:24px; border-radius:7px; display:inline-flex; align-items:center; justify-content:center;
+    font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600;
+    flex-shrink:0;
+  }
+  .node h4{ margin:0; font-size:13.5px; font-weight:600; letter-spacing:-.005em; }
+  .node .desc{ font-size:11.5px; color:var(--mid); line-height:1.45; }
+  .node .tags{ display:flex; flex-wrap:wrap; gap:4px; margin-top:auto; padding-top:4px; }
+  .node .tag-sm{
+    font-size:10px; padding:2px 7px; border-radius:999px; background:var(--line-2); color:var(--mid);
+    font-family:'JetBrains Mono', monospace; letter-spacing:.02em;
+  }
+
+  /* Variants */
+  .node.client{ background:var(--client); border-color:var(--client-st); color:var(--client-ink); }
+  .node.client .desc{ color: color-mix(in srgb, var(--client-ink) 75%, transparent); }
+  .node.client .ico{ background: color-mix(in srgb, var(--client-st) 18%, white); color:var(--client-st); }
+
+  .node.gateway{ background:var(--gateway); border-color:#000; color:var(--gateway-ink); }
+  .node.gateway .desc{ color: rgba(255,255,255,.78); }
+  .node.gateway .ico{ background: rgba(255,255,255,.15); color:#fff; }
+
+  .node.domain{ background:var(--domain); border-color:var(--domain-st); color:var(--domain-ink); }
+  .node.domain .desc{ color: color-mix(in srgb, var(--domain-ink) 75%, transparent); }
+  .node.domain .ico{ background: color-mix(in srgb, var(--domain-st) 22%, white); color:var(--domain-st); }
+
+  .node.core{ background:var(--core); border-color:#000; color:var(--core-ink); }
+  .node.core .desc{ color: rgba(255,255,255,.82); }
+  .node.core .ico{ background: rgba(255,255,255,.18); color:#fff; }
+
+  .node.data{ background:var(--data); border-color:var(--data-st); color:var(--data-ink); }
+  .node.data .desc{ color: color-mix(in srgb, var(--data-ink) 78%, transparent); }
+  .node.data .ico{ background: color-mix(in srgb, var(--data-st) 20%, white); color:var(--data-st); }
+
+  .node.external{ background:var(--external); border-color:var(--external-st); color:var(--external-ink); }
+  .node.external .desc{ color: color-mix(in srgb, var(--external-ink) 78%, transparent); }
+  .node.external .ico{ background: color-mix(in srgb, var(--external-st) 20%, white); color:var(--external-st); }
+
+  .node.ai{ background:var(--ai); border-color:var(--ai-st); color:var(--ai-ink); }
+  .node.ai .desc{ color: color-mix(in srgb, var(--ai-ink) 78%, transparent); }
+  .node.ai .ico{ background: color-mix(in srgb, var(--ai-st) 20%, white); color:var(--ai-st); }
+
+  .node.sharia{ background:var(--sharia); border-color:var(--sharia-st); color:var(--sharia-ink); }
+  .node.sharia .desc{ color: color-mix(in srgb, var(--sharia-ink) 78%, transparent); }
+  .node.sharia .ico{ background: color-mix(in srgb, var(--sharia-st) 24%, white); color:var(--sharia-st); }
+
+  .node.compliance{ background:var(--compliance); border-color:var(--compliance-st); color:var(--compliance-ink); }
+  .node.compliance .desc{ color: color-mix(in srgb, var(--compliance-ink) 78%, transparent); }
+  .node.compliance .ico{ background: color-mix(in srgb, var(--compliance-st) 20%, white); color:var(--compliance-st); }
+
+  .node.ops{ background:var(--ops); border-color:var(--ops-st); color:var(--ops-ink); }
+  .node.ops .desc{ color: color-mix(in srgb, var(--ops-ink) 78%, transparent); }
+  .node.ops .ico{ background: color-mix(in srgb, var(--ops-st) 22%, white); color:var(--ops-st); }
+
+  /* Layer wrappers */
+  .layer{ position:relative; padding:16px 16px 16px; border-radius:var(--r-lg); background: rgba(0,0,0,.02); border:1px dashed rgba(0,0,0,.08); }
+  .layer .lh{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .layer .lh .pill{
+    font-family:'JetBrains Mono', monospace; font-size:10.5px; padding:3px 9px; border-radius:999px;
+    background:var(--paper); border:1px solid var(--line); color:var(--mid); text-transform:uppercase; letter-spacing:.08em;
+  }
+  .layer .lh .lbl{ font-family:'Playfair Display', serif; font-style:italic; font-size:18px; color:var(--ink); }
+  .layer .lh .sub{ color:var(--mid); font-size:12px; }
+
+  /* Specific grid configurations */
+  .grid-4{ grid-template-columns: repeat(4, 1fr); }
+  .grid-3{ grid-template-columns: repeat(3, 1fr); }
+  .grid-2{ grid-template-columns: repeat(2, 1fr); }
+  .grid-5{ grid-template-columns: repeat(5, 1fr); }
+  .grid-6{ grid-template-columns: repeat(6, 1fr); }
+  .grid-8{ grid-template-columns: repeat(8, 1fr); }
+  @media (max-width: 1280px){
+    .grid-8{ grid-template-columns: repeat(4, 1fr); }
+    .grid-6{ grid-template-columns: repeat(3, 1fr); }
+    .grid-5{ grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 860px){
+    .grid-8, .grid-6, .grid-5, .grid-4, .grid-3{ grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 600px){
+    .grid-8, .grid-6, .grid-5, .grid-4, .grid-3, .grid-2{ grid-template-columns: 1fr; }
+  }
+
+  /* Two-column splits */
+  .split-main{
+    display:grid; grid-template-columns: minmax(0, 1fr) 380px; gap:18px;
+  }
+  @media (max-width: 1280px){ .split-main{ grid-template-columns: 1fr; } }
+
+  /* Sidecar */
+  .sidecar{ display:flex; flex-direction:column; gap:14px; }
+  .sidecar .layer{ background: var(--paper-2); }
+
+  /* Connectors (downward) */
+  .conn{
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:6px 0;
+  }
+  .conn .line{ width:2px; height:18px; background: linear-gradient(180deg, var(--mid-2), transparent); }
+  .conn .label{
+    margin-top:4px; padding:4px 12px; border-radius:999px;
+    background: var(--paper); border:1px solid var(--line); font-size:11px; color:var(--mid);
+    font-family:'JetBrains Mono', monospace; letter-spacing:.04em;
+    box-shadow: var(--sh-1);
+  }
+  .conn .down-arrow{
+    width: 0; height: 0; border-left:5px solid transparent; border-right:5px solid transparent; border-top:6px solid var(--mid-2);
+    margin-top:6px;
+  }
+
+  /* Money flow sequence */
+  .flow{
+    display:flex; flex-direction:column; gap:0;
+  }
+  .actor-row{ display:grid; grid-template-columns: 130px repeat(5, 1fr); gap:0; align-items:stretch; }
+  .actor-row .actor{
+    padding:10px 12px; font-size:12.5px; font-weight:600; color:var(--primary); display:flex; align-items:center; gap:8px;
+    border-right:1px solid var(--line-2);
+  }
+  .actor .av{ width:26px; height:26px; border-radius:8px; background:var(--primary-50); color:var(--primary-3); display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+  .step{
+    border-left:1px dashed var(--line); padding:10px 12px; font-size:11.5px; color:var(--mid); position:relative;
+    min-height:46px;
+  }
+  .step.has{ background: linear-gradient(180deg, var(--paper-2), var(--paper)); border-left:1px solid var(--line-2); }
+  .step .pill{
+    display:inline-block; padding:3px 8px; border-radius:999px; font-size:10.5px; font-family:'JetBrains Mono', monospace;
+    background: var(--paper); border:1px solid var(--line); color:var(--ink);
+  }
+  .step.pos{ background: var(--success-bg); color:var(--success); }
+  .step.neg{ background: var(--rose-bg); color:var(--rose); }
+  .step.info{ background: var(--info-bg); color:var(--info); }
+  .step strong{ display:block; color:var(--ink); font-weight:600; font-size:12px; margin-bottom:2px; }
+  .step small{ display:block; font-size:10.5px; color:var(--mid); margin-top:2px; }
+
+  /* Sharia lifecycle steps */
+  .lifecycle{
+    display:grid; grid-template-columns: repeat(8, 1fr); gap:6px;
+  }
+  .lcs{
+    background:var(--paper); border:1px solid var(--line); border-radius:var(--r-md);
+    padding:12px 12px; display:flex; flex-direction:column; gap:6px; position:relative; overflow:hidden;
+    min-height: 140px;
+  }
+  .lcs .n{
+    font-family:'JetBrains Mono', monospace; font-size:10px;
+    color:var(--mid-2); text-transform:uppercase; letter-spacing:.1em;
+  }
+  .lcs h4{ margin:0; font-size:13px; font-weight:600; }
+  .lcs .body{ font-size:11px; color:var(--mid); line-height:1.45; }
+  .lcs .tag-sm{
+    align-self:flex-start; font-size:9.5px; padding:2px 7px; border-radius:999px; background:var(--sharia); color:var(--sharia-ink);
+    font-family:'JetBrains Mono', monospace; letter-spacing:.04em; margin-top:auto;
+  }
+  .lcs.is-decision{ border-top:3px solid var(--warn); }
+  .lcs.is-action{ border-top:3px solid var(--info); }
+  .lcs.is-asset{ border-top:3px solid var(--success); }
+  @media (max-width: 1100px){ .lifecycle{ grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 640px){  .lifecycle{ grid-template-columns: repeat(2, 1fr); } }
+
+  /* Deployment topology cards */
+  .topology{ display:grid; grid-template-columns: 1.4fr 1fr; gap:18px; }
+  @media (max-width: 980px){ .topology{ grid-template-columns:1fr; } }
+  .region{
+    border:1px solid var(--line); border-radius:var(--r-lg); padding:18px; background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%); position:relative;
+  }
+  .region h3{
+    margin:0 0 4px; font-family:'Playfair Display', serif; font-style:italic; font-weight:500; font-size:20px;
+  }
+  .region .rsub{ font-size:12px; color:var(--mid); }
+  .azs{ display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:14px; }
+  .az{
+    border:1px solid var(--line); border-radius:var(--r-md); padding:10px 10px;
+    background: var(--paper); display:flex; flex-direction:column; gap:6px;
+  }
+  .az h5{ margin:0; font-size:11px; color:var(--mid); font-family:'JetBrains Mono', monospace; letter-spacing:.08em; text-transform:uppercase; }
+  .az ul{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:4px; }
+  .az ul li{
+    background:var(--paper-2); border:1px solid var(--line-2); border-radius:6px;
+    padding:5px 8px; font-size:11px; display:flex; gap:6px; align-items:center;
+  }
+  .az ul li .d{ width:8px; height:8px; border-radius:999px; flex-shrink:0; }
+  .d.app{ background:var(--primary-3); }
+  .d.db{ background:var(--success); }
+  .d.cache{ background:var(--info); }
+  .d.queue{ background:var(--warn); }
+
+  /* Generic helpers */
+  .center{ text-align:center; }
+  hr.soft{ border:none; border-top:1px dashed var(--line); margin:32px 0; }
+  .badge-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .vendor{
+    font-family:'JetBrains Mono', monospace; font-size:10.5px;
+    background: var(--paper-2); border:1px solid var(--line); border-radius:6px;
+    padding:3px 8px; color:var(--mid);
+  }
+  .vendor.gold{ background: var(--sharia); color:var(--sharia-ink); border-color:var(--sharia-st); }
+  .vendor.purple{ background: var(--primary-50); color:var(--primary); border-color: color-mix(in srgb, var(--primary-3) 40%, white); }
+
+  footer.footer{
+    margin-top:64px; padding:28px 40px; text-align:center; color:var(--mid); font-size:12px;
+    border-top:1px solid var(--line);
+  }
+  footer .display{ font-size:18px; color:var(--ink); }
+
+  /* SVG arrows overlay for the main map */
+  .map-svg{ position:absolute; inset:0; pointer-events:none; width:100%; height:100%; }
+  .arrow path{ fill:none; stroke: var(--mid-2); stroke-width:1.4; stroke-dasharray: 4 4; }
+</style>
+</head>
+<body>
+<main class="page">
+
+  <header class="hero">
+    <div style="display:flex; align-items:center; gap:14px;">
+      <span class="crest">m</span>
+      <span class="tag"><span class="dot"></span> v1.0 · 2026-05-13 · Confidential</span>
+    </div>
+    <div>
+      <div class="mono" style="font-size:11px; color:var(--mid); letter-spacing:.16em; text-transform:uppercase; margin-bottom:10px;">Architecture diagram</div>
+      <h1 class="title">Mal · SME Banking <span class="iri-text">for the UAE</span></h1>
+    </div>
+    <p class="subtitle">A logical reference architecture for a Sharia-native, cloud-resident, real-time SME bank serving UAE businesses of 5–50 employees. Four views: the big logical map, money flow on a Murabaha-funded invoice, the Sharia lifecycle decision tree, and the deployment topology.</p>
+    <div class="meta">
+      <div><b>Target customer</b> · UAE SMEs (5–50 FTE) · mainland + free-zone</div>
+      <div><b>Primary licence</b> · CBUAE Finance Company → SVF → Specialised Bank</div>
+      <div><b>Sharia governance</b> · AAOIFI · Internal SSB · Quarterly audit</div>
+      <div><b>Cloud</b> · AWS Middle East (UAE) · primary · MZ-DR to Bahrain</div>
+    </div>
+  </header>
+
+  <!-- ================================================================== -->
+  <!-- LEGEND                                                                -->
+  <!-- ================================================================== -->
+  <section class="block">
+    <header>
+      <div>
+        <div class="num">§ 01</div>
+        <h2>Legend</h2>
+      </div>
+      <p>Layer colours used across every diagram on this page. Each layer has its own ownership, deployment cadence, and SLO.</p>
+    </header>
+    <div class="legend">
+      <div class="item"><div class="chip" style="background:var(--client); border-color:var(--client-st);"></div><div class="lbl"><b>Client experience</b><span>iOS · Android · Web · Ops Console</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--gateway); border-color:#000;"></div><div class="lbl"><b>Edge & API gateway</b><span>CDN · WAF · OIDC · Rate limit</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--domain); border-color:var(--domain-st);"></div><div class="lbl"><b>Domain services</b><span>Customer · Cards · Pay · Lend · FX · …</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--core); border-color:#000;"></div><div class="lbl"><b>Core banking platform</b><span>Mambu · IBAN issuer · Ledger</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--data); border-color:var(--data-st);"></div><div class="lbl"><b>Data platform</b><span>OLTP · Streaming · Lakehouse · Feature store</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--external); border-color:var(--external-st);"></div><div class="lbl"><b>External integrations</b><span>Rails · KYC · Bureau · Accounting · FX</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--ai); border-color:var(--ai-st);"></div><div class="lbl"><b>AI / ML platform</b><span>Fraud · Forecast · Underwriting · LLM</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--sharia); border-color:var(--sharia-st);"></div><div class="lbl"><b>Sharia compliance</b><span>SSB · Murabaha · Halal screen · Zakat</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--compliance); border-color:var(--compliance-st);"></div><div class="lbl"><b>Regulatory & compliance</b><span>CBUAE reporting · goAML · audit log</span></div></div>
+      <div class="item"><div class="chip" style="background:var(--ops); border-color:var(--ops-st);"></div><div class="lbl"><b>Operations & observability</b><span>SRE · CS · Treasury ops · DataDog</span></div></div>
+    </div>
+  </section>
+
+  <!-- ================================================================== -->
+  <!-- MAIN LOGICAL MAP                                                      -->
+  <!-- ================================================================== -->
+  <section class="block">
+    <header>
+      <div>
+        <div class="num">§ 02 · Primary view</div>
+        <h2>Logical reference architecture</h2>
+      </div>
+      <p>Top-down stack: customer apps flow through an API gateway into domain microservices on Kubernetes, which call the Mambu-based core banking platform. Side panels hold external integrations, the Sharia compliance engine, the AI/ML platform, and the compliance & audit subsystem. Everything lives on AWS Middle East (UAE).</p>
+    </header>
+
+    <div class="split-main">
+      <!-- MAIN COLUMN ─────────────────────────────────────────────── -->
+      <div>
+        <!-- 1 · Client experience ─────────────────────────────────── -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">L1</span>
+            <span class="lbl">Client experience</span>
+            <span class="sub">EN + AR · WCAG AA · biometric · offline-tolerant</span>
+          </div>
+          <div class="grid grid-4">
+            <div class="node client">
+              <div class="head"><span class="ico">iOS</span><h4>Mal iOS</h4></div>
+              <div class="desc">Native Swift. Face ID. UAE Pass deep-link. Push to wake.</div>
+              <div class="tags"><span class="tag-sm">Swift</span><span class="tag-sm">SwiftUI</span><span class="tag-sm">SPM</span></div>
+            </div>
+            <div class="node client">
+              <div class="head"><span class="ico">A</span><h4>Mal Android</h4></div>
+              <div class="desc">Kotlin / Jetpack Compose. BiometricPrompt. UAE Pass.</div>
+              <div class="tags"><span class="tag-sm">Kotlin</span><span class="tag-sm">Compose</span></div>
+            </div>
+            <div class="node client">
+              <div class="head"><span class="ico">W</span><h4>Mal Web app</h4></div>
+              <div class="desc">React + TS. Sub-3s LCP. PWA install. RTL-ready.</div>
+              <div class="tags"><span class="tag-sm">Next.js</span><span class="tag-sm">React</span></div>
+            </div>
+            <div class="node client">
+              <div class="head"><span class="ico">Op</span><h4>Ops Console</h4></div>
+              <div class="desc">CS, Ops, Treasury, Risk, Sharia review queues.</div>
+              <div class="tags"><span class="tag-sm">Retool</span><span class="tag-sm">Auth0</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="conn"><div class="line"></div><div class="label">mTLS · OAuth 2.1 PKCE · device attestation</div><div class="down-arrow"></div></div>
+
+        <!-- 2 · Edge ──────────────────────────────────────────────── -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">L2</span>
+            <span class="lbl">Edge · CDN · Security</span>
+            <span class="sub">CloudFront UAE PoPs · global WAF · bot mgmt</span>
+          </div>
+          <div class="grid grid-4">
+            <div class="node gateway">
+              <div class="head"><span class="ico">▲</span><h4>CloudFront</h4></div>
+              <div class="desc">CDN, TLS 1.3, regional edge cache for static assets.</div>
+              <div class="tags"><span class="tag-sm">AWS</span></div>
+            </div>
+            <div class="node gateway">
+              <div class="head"><span class="ico">⌘</span><h4>WAF + Shield Advanced</h4></div>
+              <div class="desc">OWASP top-10 · L7 DDoS mitigation · IP rep lists.</div>
+              <div class="tags"><span class="tag-sm">AWS</span><span class="tag-sm">Cloudflare Bot Mgmt</span></div>
+            </div>
+            <div class="node gateway">
+              <div class="head"><span class="ico">∞</span><h4>API gateway</h4></div>
+              <div class="desc">Envoy + Istio. mTLS, rate limit, schema enforcement.</div>
+              <div class="tags"><span class="tag-sm">Istio</span><span class="tag-sm">Envoy</span></div>
+            </div>
+            <div class="node gateway">
+              <div class="head"><span class="ico">id</span><h4>Identity (OIDC)</h4></div>
+              <div class="desc">Auth0 + UAE Pass federation. Step-up auth for risk events.</div>
+              <div class="tags"><span class="tag-sm">Auth0</span><span class="tag-sm">UAE Pass</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="conn"><div class="line"></div><div class="label">REST · gRPC · async events</div><div class="down-arrow"></div></div>
+
+        <!-- 3 · BFF + Domain Services ─────────────────────────────── -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">L3</span>
+            <span class="lbl">Backend-for-frontend &amp; domain services</span>
+            <span class="sub">Kubernetes (EKS) · 3 AZ · 99.95% SLO · TypeScript + Go</span>
+          </div>
+          <div class="grid grid-4">
+            <div class="node domain"><div class="head"><span class="ico">CX</span><h4>Customer</h4></div><div class="desc">Onboarding, KYC orchestration, UBO graph, consent.</div><div class="tags"><span class="tag-sm">Go</span><span class="tag-sm">Temporal</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">$</span><h4>Account &amp; balance</h4></div><div class="desc">Multi-currency wallets, IBAN map, holds, sweeps.</div><div class="tags"><span class="tag-sm">Go</span><span class="tag-sm">Postgres</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">▣</span><h4>Cards</h4></div><div class="desc">Virtual + physical issuance, controls, 3DS, tokenisation.</div><div class="tags"><span class="tag-sm">Nymcard</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">→</span><h4>Payments orchestrator</h4></div><div class="desc">Rail selection, idempotency, retries, compensation.</div><div class="tags"><span class="tag-sm">Temporal</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">Lo</span><h4>Lending engine</h4></div><div class="desc">Invoice financing, Murabaha contract lifecycle, EMIs.</div><div class="tags"><span class="tag-sm">TypeScript</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">FX</span><h4>Foreign exchange</h4></div><div class="desc">Multi-currency book, hedging policy, sub-ledger.</div><div class="tags"><span class="tag-sm">Currencycloud</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">Ex</span><h4>Expense &amp; AP</h4></div><div class="desc">Categorisation, receipts, policy enforcement, approvals.</div><div class="tags"><span class="tag-sm">Go</span><span class="tag-sm">ML</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">∇</span><h4>Notifications</h4></div><div class="desc">SMS · push · email · WhatsApp · in-app · in-tab streams.</div><div class="tags"><span class="tag-sm">SNS</span><span class="tag-sm">Unifonic</span></div></div>
+          </div>
+        </div>
+
+        <div class="conn"><div class="line"></div><div class="label">events · CDC · sagas</div><div class="down-arrow"></div></div>
+
+        <!-- 4 · Platform plumbing ─────────────────────────────────── -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">L4</span>
+            <span class="lbl">Platform plumbing</span>
+            <span class="sub">Event-sourced, workflow-orchestrated, traced end-to-end</span>
+          </div>
+          <div class="grid grid-4">
+            <div class="node ops"><div class="head"><span class="ico">⚡</span><h4>Event bus</h4></div><div class="desc">Kafka (MSK). 7-day hot, 365-day cold replay. AVRO + Schema Registry.</div><div class="tags"><span class="tag-sm">MSK</span><span class="tag-sm">Avro</span></div></div>
+            <div class="node ops"><div class="head"><span class="ico">⊕</span><h4>Workflow engine</h4></div><div class="desc">Temporal for sagas: KYC, money movement, Murabaha lifecycle.</div><div class="tags"><span class="tag-sm">Temporal</span></div></div>
+            <div class="node ops"><div class="head"><span class="ico">⌬</span><h4>Feature flags</h4></div><div class="desc">LaunchDarkly. Per-emirate, per-product, per-customer-segment rollouts.</div><div class="tags"><span class="tag-sm">LaunchDarkly</span></div></div>
+            <div class="node ops"><div class="head"><span class="ico">📦</span><h4>Object store</h4></div><div class="desc">S3 with Object Lock for documents, contracts, statements, e-invoices.</div><div class="tags"><span class="tag-sm">S3</span><span class="tag-sm">WORM</span></div></div>
+          </div>
+        </div>
+
+        <div class="conn"><div class="line"></div><div class="label">double-entry journal · webhooks</div><div class="down-arrow"></div></div>
+
+        <!-- 5 · Core banking ──────────────────────────────────────── -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">L5</span>
+            <span class="lbl">Core banking platform</span>
+            <span class="sub">Mambu SaaS · multi-tenant on UAE region · 99.99% uptime SLA</span>
+          </div>
+          <div class="grid grid-3">
+            <div class="node core"><div class="head"><span class="ico">⊞</span><h4>Mambu Core</h4></div><div class="desc">Accounts, deposit products, loan accounts, lifecycle hooks.</div><div class="tags"><span class="tag-sm">SaaS</span></div></div>
+            <div class="node core"><div class="head"><span class="ico">≡</span><h4>Double-entry ledger</h4></div><div class="desc">Append-only journal. Sub-ledger per product. Real-time GL roll-up.</div><div class="tags"><span class="tag-sm">Mambu</span><span class="tag-sm">Custom GL</span></div></div>
+            <div class="node core"><div class="head"><span class="ico">IB</span><h4>IBAN issuer</h4></div><div class="desc">Partner bank (Wio / RAKBank). Virtual IBAN per SME account.</div><div class="tags"><span class="tag-sm">Wio · partner</span></div></div>
+          </div>
+        </div>
+
+        <div class="conn"><div class="line"></div><div class="label">CDC streams · daily snapshots</div><div class="down-arrow"></div></div>
+
+        <!-- 6 · Data platform ─────────────────────────────────────── -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">L6</span>
+            <span class="lbl">Data platform</span>
+            <span class="sub">Polyglot persistence · OLTP + streaming + lakehouse · feature store</span>
+          </div>
+          <div class="grid grid-5">
+            <div class="node data"><div class="head"><span class="ico">PG</span><h4>PostgreSQL</h4></div><div class="desc">Per-service OLTP. Aurora MZ. PITR + 90-day point-in-time.</div><div class="tags"><span class="tag-sm">Aurora</span></div></div>
+            <div class="node data"><div class="head"><span class="ico">RD</span><h4>Redis / Valkey</h4></div><div class="desc">Session, rate-limit, idempotency, hot feature cache.</div><div class="tags"><span class="tag-sm">Elasticache</span></div></div>
+            <div class="node data"><div class="head"><span class="ico">CH</span><h4>ClickHouse</h4></div><div class="desc">Analytics OLAP. Real-time merchant insights &amp; dashboards.</div><div class="tags"><span class="tag-sm">CH Cloud</span></div></div>
+            <div class="node data"><div class="head"><span class="ico">∆</span><h4>Lakehouse</h4></div><div class="desc">Iceberg on S3, dbt models, Airflow, served via Trino.</div><div class="tags"><span class="tag-sm">Iceberg</span><span class="tag-sm">dbt</span></div></div>
+            <div class="node data"><div class="head"><span class="ico">FS</span><h4>Feature store</h4></div><div class="desc">Feast (offline+online). Versioned features for fraud + credit.</div><div class="tags"><span class="tag-sm">Feast</span></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIDECAR COLUMN ─────────────────────────────────────────── -->
+      <aside class="sidecar">
+        <!-- External integrations -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">EXT</span>
+            <span class="lbl">External integrations</span>
+            <span class="sub">Pluggable adapters, schema-versioned</span>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;">
+            <div class="node external"><div class="head"><span class="ico">A</span><h4>Aani · UAEFTS</h4></div><div class="desc">CBUAE instant + RTGS rails. Domestic AED in seconds.</div></div>
+            <div class="node external"><div class="head"><span class="ico">B</span><h4>Buna · SWIFT</h4></div><div class="desc">Arab Monetary Fund + global wires.</div></div>
+            <div class="node external"><div class="head"><span class="ico">V</span><h4>Visa / Mastercard</h4></div><div class="desc">Card schemes for SME spend cards.</div></div>
+            <div class="node external"><div class="head"><span class="ico">N</span><h4>Nymcard</h4></div><div class="desc">MENA-native issuer processor. BIN sponsorship via partner.</div></div>
+            <div class="node external"><div class="head"><span class="ico">K</span><h4>Sumsub · FOCAL</h4></div><div class="desc">KYB &amp; UBO graphs. UAE Pass cross-check.</div></div>
+            <div class="node external"><div class="head"><span class="ico">C</span><h4>ComplyAdvantage</h4></div><div class="desc">Sanctions, PEP, adverse media; perpetual screening.</div></div>
+            <div class="node external"><div class="head"><span class="ico">E</span><h4>AECB</h4></div><div class="desc">UAE credit bureau. Mandatory for SME credit decisions.</div></div>
+            <div class="node external"><div class="head"><span class="ico">L</span><h4>Lean Tech</h4></div><div class="desc">UAE open banking. 12-mo statements, balances.</div></div>
+            <div class="node external"><div class="head"><span class="ico">W</span><h4>Wafeq · Zoho · Xero</h4></div><div class="desc">Accounting integrations + Peppol e-invoicing.</div></div>
+            <div class="node external"><div class="head"><span class="ico">CC</span><h4>Currencycloud</h4></div><div class="desc">FX, multi-currency holding, hedging.</div></div>
+          </div>
+        </div>
+
+        <!-- Sharia compliance -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">SCH</span>
+            <span class="lbl">Sharia compliance engine</span>
+            <span class="sub">AAOIFI standards · in-flow, not bolt-on</span>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;">
+            <div class="node sharia"><div class="head"><span class="ico">⚖</span><h4>SSB Console</h4></div><div class="desc">Scholar review queue, product certificates, fatwa register.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">µ</span><h4>Murabaha engine</h4></div><div class="desc">Cost+markup contracts, asset purchase, deferred receivable.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">τ</span><h4>Tawarruq broker</h4></div><div class="desc">Commodity trade for cash-equivalent liquidity events.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">Ω</span><h4>Halal screening</h4></div><div class="desc">Counterparty industry codes blocked at txn-time.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">∑</span><h4>Zakat calculator</h4></div><div class="desc">Hawl tracking, nisab thresholds, payable amount.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">★</span><h4>IdealRatings feed</h4></div><div class="desc">Securities &amp; counterparty Sharia compliance ref data.</div></div>
+          </div>
+        </div>
+
+        <!-- AI/ML platform -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">AI</span>
+            <span class="lbl">AI / ML platform</span>
+            <span class="sub">SageMaker · Bedrock · Triton · LangSmith</span>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;">
+            <div class="node ai"><div class="head"><span class="ico">🛡</span><h4>Fraud (real-time)</h4></div><div class="desc">Sub-100ms scoring. GBM + GNN. Triton on GPU pool.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">📈</span><h4>Cash-flow forecast</h4></div><div class="desc">13-week SME forecast, Transformer + GBM blend.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">🎯</span><h4>Underwriting</h4></div><div class="desc">Limit + tier model. AECB + Lean + invoice data.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">💡</span><h4>Insights</h4></div><div class="desc">Personalised expense + cash-out anomalies.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">🗣</span><h4>Conversational AI</h4></div><div class="desc">Claude / Bedrock + RAG over user's own data + tool-use.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">🔬</span><h4>ML observability</h4></div><div class="desc">Drift, performance, fairness; Arize + custom dashboards.</div></div>
+          </div>
+        </div>
+
+        <!-- Regulatory & compliance -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">REG</span>
+            <span class="lbl">Regulatory &amp; compliance</span>
+            <span class="sub">CBUAE · FTA · UAE FIU · ADGM/DIFC</span>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;">
+            <div class="node compliance"><div class="head"><span class="ico">REP</span><h4>Reg reporting</h4></div><div class="desc">CBUAE daily/weekly returns. AECB monthly positions.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">!</span><h4>goAML</h4></div><div class="desc">STR &amp; SAR filings to UAE FIU. Real-time AML alerts.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">📒</span><h4>Audit log</h4></div><div class="desc">Append-only, 10-yr retention, S3 Object Lock.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">$</span><h4>FATCA / CRS</h4></div><div class="desc">US persons + tax residency reporting.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">¶</span><h4>Peppol</h4></div><div class="desc">FTA e-invoicing 5-corner via accredited ASP.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">🔒</span><h4>Data residency</h4></div><div class="desc">UAE-only PII; explicit consent for any cross-border.</div></div>
+          </div>
+        </div>
+
+        <!-- Observability -->
+        <div class="layer">
+          <div class="lh">
+            <span class="pill">OPS</span>
+            <span class="lbl">Observability &amp; SRE</span>
+            <span class="sub">Three pillars + business SLOs</span>
+          </div>
+          <div class="grid" style="grid-template-columns:1fr 1fr;">
+            <div class="node ops"><div class="head"><span class="ico">📊</span><h4>Datadog</h4></div><div class="desc">Metrics, APM, logs, RUM, synthetics.</div></div>
+            <div class="node ops"><div class="head"><span class="ico">⤳</span><h4>Tracing</h4></div><div class="desc">OpenTelemetry, sampled at 1% + 100% on errors.</div></div>
+            <div class="node ops"><div class="head"><span class="ico">🔔</span><h4>PagerDuty</h4></div><div class="desc">On-call rotations, follow-the-sun, sev runbooks.</div></div>
+            <div class="node ops"><div class="head"><span class="ico">🧪</span><h4>Chaos &amp; DR</h4></div><div class="desc">Quarterly game-days; warm DR to Bahrain region.</div></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================================================================== -->
+  <!-- MONEY FLOW                                                            -->
+  <!-- ================================================================== -->
+  <section class="block">
+    <header>
+      <div>
+        <div class="num">§ 03 · Money flow</div>
+        <h2>Invoice financing under Murabaha</h2>
+      </div>
+      <p>How AED moves when an SME buyer accepts a 60-day invoice using Mal's Sharia-compliant invoice finance. Each column is one timeline step. Read left-to-right per actor row.</p>
+    </header>
+
+    <div class="flow">
+      <!-- Header row with time markers -->
+      <div class="actor-row" style="border-bottom:1px solid var(--line); margin-bottom:6px;">
+        <div class="actor" style="background:transparent; border-right:1px solid var(--line-2);"><span style="color:var(--mid); font-weight:500; font-size:11px; letter-spacing:.1em; text-transform:uppercase;">Actor / Time</span></div>
+        <div class="step has center mono"><span class="pill">t₀</span><small>Invoice issued</small></div>
+        <div class="step has center mono"><span class="pill">t₀+4h</span><small>Buyer accepts</small></div>
+        <div class="step has center mono"><span class="pill">t₀+4h</span><small>Mal funds supplier</small></div>
+        <div class="step has center mono"><span class="pill">t₀+30d</span><small>Buyer EMI 1</small></div>
+        <div class="step has center mono"><span class="pill">t₀+60d</span><small>Buyer EMI 2 + close</small></div>
+      </div>
+
+      <!-- Buyer SME -->
+      <div class="actor-row">
+        <div class="actor"><span class="av">B</span><div>Buyer SME<br><small style="font-weight:400; color:var(--mid); font-size:10.5px;">Crescent Trading FZE</small></div></div>
+        <div class="step has"><strong>Receives invoice</strong>Push from Atlas Packaging<br>AED 250,000</div>
+        <div class="step pos"><strong>Picks plan</strong>2-EMI · AED 256,500<br>UAE Pass sign + 3DS</div>
+        <div class="step has"><strong>Limit reserved</strong>AED 250,000 hold on credit line</div>
+        <div class="step neg"><strong>EMI 1 — AED 128,250</strong>Auto-debit AED account<br>Aani settlement</div>
+        <div class="step neg"><strong>EMI 2 — AED 128,250</strong>Receivable extinguished<br>Contract closes</div>
+      </div>
+
+      <!-- Mal -->
+      <div class="actor-row" style="background: var(--paper-2);">
+        <div class="actor" style="background: var(--paper-2);"><span class="av" style="background:var(--primary); color:white;">M</span><div>Mal<br><small style="font-weight:400; color:var(--mid); font-size:10.5px;">As principal</small></div></div>
+        <div class="step has"><strong>Pre-scores buyer</strong>Cached underwriting tier · A</div>
+        <div class="step info"><strong>Buys the receivable</strong>From Atlas at AED 232,500<br>(93% advance)</div>
+        <div class="step pos"><strong>Murabaha contract</strong>Sells to buyer<br>Cost AED 250K + AED 6,500 markup</div>
+        <div class="step info"><strong>Receives EMI 1</strong>AED 128,250 GL credit · sub-ledger</div>
+        <div class="step pos"><strong>Receives EMI 2 · profit</strong>Net markup AED 6,500 booked</div>
+      </div>
+
+      <!-- Mambu ledger -->
+      <div class="actor-row">
+        <div class="actor"><span class="av" style="background:var(--data); color:var(--data-st);">L</span><div>Mambu ledger<br><small style="font-weight:400; color:var(--mid); font-size:10.5px;">Double-entry</small></div></div>
+        <div class="step has"><strong>JE-0</strong>No movement; offer queued</div>
+        <div class="step info"><strong>JE-1</strong>Dr Suspense · Cr Supplier IBAN<br>AED 232,500</div>
+        <div class="step info"><strong>JE-2</strong>Dr Murabaha Receivable · Cr Suspense<br>AED 250,000 + AED 6,500 markup acc.</div>
+        <div class="step info"><strong>JE-3</strong>Dr Customer AED · Cr Receivable<br>AED 128,250</div>
+        <div class="step pos"><strong>JE-4 · close</strong>Receivable = 0<br>Profit recognised AED 6,500</div>
+      </div>
+
+      <!-- Rails / Banking partner -->
+      <div class="actor-row" style="background: var(--paper-2);">
+        <div class="actor" style="background: var(--paper-2);"><span class="av" style="background:var(--info-bg); color:var(--info);">R</span><div>Rails<br><small style="font-weight:400; color:var(--mid); font-size:10.5px;">Aani · UAEFTS</small></div></div>
+        <div class="step has"><strong>—</strong></div>
+        <div class="step info"><strong>Aani instant</strong>Mal partner IBAN → Atlas IBAN<br>AED 232,500 · &lt;10s</div>
+        <div class="step has"><strong>—</strong></div>
+        <div class="step info"><strong>Aani Direct Debit</strong>Buyer IBAN → Mal IBAN</div>
+        <div class="step info"><strong>Aani Direct Debit</strong>Final settlement</div>
+      </div>
+
+      <!-- Supplier SME -->
+      <div class="actor-row">
+        <div class="actor"><span class="av" style="background:var(--success-bg); color:var(--success);">S</span><div>Supplier SME<br><small style="font-weight:400; color:var(--mid); font-size:10.5px;">Atlas Packaging FZ-LLC</small></div></div>
+        <div class="step has"><strong>Issues invoice</strong>Peppol e-invoice via Wafeq</div>
+        <div class="step has"><strong>Awaits offer</strong>Mal status: accepted</div>
+        <div class="step pos"><strong>Wire received</strong>AED 232,500 · 4h SLA<br>Holdback AED 17,500</div>
+        <div class="step has"><strong>—</strong></div>
+        <div class="step pos"><strong>Holdback released</strong>AED 17,500 · receivable cleared</div>
+      </div>
+    </div>
+
+    <p style="font-size:12px; color:var(--mid); margin-top:18px; max-width:900px; line-height:1.6;">
+      <b style="color:var(--ink);">Note on Sharia structure.</b> Mal does not lend cash at interest. It buys the receivable from the supplier and sells the underlying obligation to the buyer at a disclosed cost-plus markup with deferred settlement (<em>Murabaha</em>). The Sharia Supervisory Board's standing fatwa governs the contract template; each transaction's structure is logged and re-affirmed quarterly.
+    </p>
+  </section>
+
+  <!-- ================================================================== -->
+  <!-- SHARIA LIFECYCLE                                                      -->
+  <!-- ================================================================== -->
+  <section class="block">
+    <header>
+      <div>
+        <div class="num">§ 04 · Sharia lifecycle</div>
+        <h2>Murabaha decision flow</h2>
+      </div>
+      <p>The eight-stage gate that every invoice-finance request walks through. Yellow gates are decisions; blue gates are actions; green gates create or extinguish an asset.</p>
+    </header>
+
+    <div class="lifecycle">
+      <div class="lcs is-decision"><span class="n">01 · decision</span><h4>Halal screening</h4><div class="body">Industry-code check on supplier &amp; buyer. Block alcohol, gambling, conventional finance, adult, weapons.</div><span class="tag-sm">SCH · screen</span></div>
+      <div class="lcs is-decision"><span class="n">02 · decision</span><h4>Asset existence</h4><div class="body">Invoice references a real, deliverable good or service. Reject services that are pure money-for-money.</div><span class="tag-sm">SCH · asset</span></div>
+      <div class="lcs is-action"><span class="n">03 · action</span><h4>Offer to buyer</h4><div class="body">Cost-plus quote. Discloses Mal's purchase cost, profit margin (markup), tenor, EMI schedule.</div><span class="tag-sm">SCH · disclosure</span></div>
+      <div class="lcs is-action"><span class="n">04 · action</span><h4>Promise to purchase</h4><div class="body">Buyer's binding promise (wa'd). UAE Pass signed. Mal commits to buy from supplier first.</div><span class="tag-sm">SCH · wa'd</span></div>
+      <div class="lcs is-asset"><span class="n">05 · asset</span><h4>Mal acquires receivable</h4><div class="body">Mal pays the supplier (Aani). Ownership of the receivable transfers to Mal. JE-1 posted.</div><span class="tag-sm">SCH · own</span></div>
+      <div class="lcs is-asset"><span class="n">06 · asset</span><h4>Murabaha sale</h4><div class="body">Mal sells the underlying obligation to the buyer at cost + markup. JE-2 posted.</div><span class="tag-sm">SCH · sell</span></div>
+      <div class="lcs is-action"><span class="n">07 · action</span><h4>EMI collection</h4><div class="body">Deferred-payment instalments. Late fees go to charity (not Mal income). Restructure available.</div><span class="tag-sm">SCH · service</span></div>
+      <div class="lcs is-asset"><span class="n">08 · asset</span><h4>Contract closure</h4><div class="body">Receivable extinguished. Profit recognised. Records archived for 10 years; quarterly Sharia audit picks 5% sample.</div><span class="tag-sm">SCH · close</span></div>
+    </div>
+
+    <hr class="soft"/>
+
+    <div class="grid grid-3" style="margin-top: 4px;">
+      <div class="node sharia">
+        <div class="head"><span class="ico">⚖</span><h4>Sharia Supervisory Board</h4></div>
+        <div class="desc">Three external scholars (AAOIFI-certified) + an internal head. Quarterly fatwa review, annual product certification, sample audit on 5% of executed Murabaha contracts.</div>
+        <div class="tags"><span class="tag-sm">AAOIFI</span><span class="tag-sm">Quarterly</span></div>
+      </div>
+      <div class="node sharia">
+        <div class="head"><span class="ico">μ</span><h4>Product templates</h4></div>
+        <div class="desc">Each product (Murabaha invoice finance, Tawarruq cash advance, Wakala investment account) has a Sharia-approved contract template + automated checks at runtime.</div>
+        <div class="tags"><span class="tag-sm">Templates</span></div>
+      </div>
+      <div class="node sharia">
+        <div class="head"><span class="ico">!</span><h4>Late fees → charity</h4></div>
+        <div class="desc">Penalty income cannot accrue to Mal. Late fees are diverted into a registered charitable account; SMEs see the destination in their statement.</div>
+        <div class="tags"><span class="tag-sm">Audit-checked</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================== -->
+  <!-- DEPLOYMENT TOPOLOGY                                                   -->
+  <!-- ================================================================== -->
+  <section class="block">
+    <header>
+      <div>
+        <div class="num">§ 05 · Deployment</div>
+        <h2>UAE region topology</h2>
+      </div>
+      <p>Primary region: AWS Middle East (UAE) in Abu Dhabi. Three AZs run identical stacks (active-active for stateless, active-passive for stateful with synchronous replication). A warm DR site in AWS Middle East (Bahrain) takes over within a 15-minute RTO and 0-second RPO for journal data.</p>
+    </header>
+
+    <div class="topology">
+      <!-- Primary region -->
+      <div class="region">
+        <div style="display:flex; align-items:baseline; gap:10px;">
+          <h3>AWS me-central-1 · Abu Dhabi</h3>
+          <span style="font-size:11px; color:var(--mid);" class="mono">PRIMARY · ACTIVE</span>
+        </div>
+        <p class="rsub">All customer PII, ledger, journal events, KYC artefacts. CBUAE-compliant data residency.</p>
+
+        <div class="azs">
+          <div class="az">
+            <h5>az-1a</h5>
+            <ul>
+              <li><span class="d app"></span>EKS workers · APIs</li>
+              <li><span class="d app"></span>Temporal workers</li>
+              <li><span class="d db"></span>Aurora writer</li>
+              <li><span class="d cache"></span>Redis primary</li>
+              <li><span class="d queue"></span>MSK broker 1</li>
+            </ul>
+          </div>
+          <div class="az">
+            <h5>az-1b</h5>
+            <ul>
+              <li><span class="d app"></span>EKS workers · APIs</li>
+              <li><span class="d app"></span>Temporal workers</li>
+              <li><span class="d db"></span>Aurora reader</li>
+              <li><span class="d cache"></span>Redis replica</li>
+              <li><span class="d queue"></span>MSK broker 2</li>
+            </ul>
+          </div>
+          <div class="az">
+            <h5>az-1c</h5>
+            <ul>
+              <li><span class="d app"></span>EKS workers · APIs</li>
+              <li><span class="d app"></span>Temporal workers</li>
+              <li><span class="d db"></span>Aurora reader</li>
+              <li><span class="d cache"></span>Redis replica</li>
+              <li><span class="d queue"></span>MSK broker 3</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--line); display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <div><b style="font-size:12px;">Shared regional services</b><div style="font-size:11px; color:var(--mid);">S3 · Glacier · KMS · CloudFront UAE PoPs · Direct Connect (Equinix DX1)</div></div>
+          <div><b style="font-size:12px;">External egress</b><div style="font-size:11px; color:var(--mid);">CBUAE EFTS · Aani · AECB · Sumsub · Mambu API · all via PrivateLink or IPSec where supported</div></div>
+        </div>
+      </div>
+
+      <!-- DR region -->
+      <div class="region" style="background: linear-gradient(180deg, var(--paper-2) 0%, var(--surface-2, var(--paper-2)) 100%);">
+        <div style="display:flex; align-items:baseline; gap:10px;">
+          <h3>AWS me-south-1 · Bahrain</h3>
+          <span style="font-size:11px; color:var(--mid);" class="mono">WARM DR</span>
+        </div>
+        <p class="rsub">Synchronous Aurora Global, cross-region MSK mirror, EKS clusters at minimum capacity. CBUAE-approved DR location; failover under 15 minutes.</p>
+
+        <div class="azs" style="grid-template-columns:1fr 1fr;">
+          <div class="az">
+            <h5>az-1a</h5>
+            <ul>
+              <li><span class="d app"></span>EKS · scaled to 30%</li>
+              <li><span class="d db"></span>Aurora Global · reader</li>
+              <li><span class="d queue"></span>MSK mirror brokers</li>
+            </ul>
+          </div>
+          <div class="az">
+            <h5>az-1b</h5>
+            <ul>
+              <li><span class="d app"></span>EKS · scaled to 30%</li>
+              <li><span class="d db"></span>Aurora Global · reader</li>
+              <li><span class="d queue"></span>MSK mirror brokers</li>
+            </ul>
+          </div>
+        </div>
+
+        <div style="margin-top:14px; padding:10px 12px; background:var(--success-bg); border-radius:8px; font-size:11.5px; color:var(--success);">
+          <b>RTO 15 min · RPO 0 (for ledger journal) · RPO 30s (for analytics)</b><br>
+          <span style="color:var(--ink); opacity:.7;">Quarterly DR game-day required. CBUAE annual attestation.</span>
+        </div>
+      </div>
+    </div>
+
+    <hr class="soft"/>
+
+    <div class="grid grid-4">
+      <div class="node ops">
+        <div class="head"><span class="ico">🔐</span><h4>KMS · HSM</h4></div>
+        <div class="desc">CloudHSM cluster for card PAN/CVV, signing keys, root CMK; quarterly key rotation.</div>
+      </div>
+      <div class="node ops">
+        <div class="head"><span class="ico">📤</span><h4>Egress</h4></div>
+        <div class="desc">All third-party traffic via PrivateLink, VPC endpoints, or IPSec; full TLS 1.3.</div>
+      </div>
+      <div class="node ops">
+        <div class="head"><span class="ico">📜</span><h4>Audit replication</h4></div>
+        <div class="desc">All audit logs replicate to Object Lock S3 in both regions; immutable for 10 years.</div>
+      </div>
+      <div class="node ops">
+        <div class="head"><span class="ico">🛂</span><h4>Cross-border policy</h4></div>
+        <div class="desc">No PII leaves UAE without explicit consent + CBUAE notification; vendor SaaS terms enforced.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================================== -->
+  <!-- FOOTER                                                                -->
+  <!-- ================================================================== -->
+  <footer class="footer">
+    <div class="display" style="margin-bottom:8px;">Mal · capital that moves with you.</div>
+    <div>Architecture diagram · v1.0 · 2026-05-13 · Companion to the architecture documentation</div>
+    <div style="margin-top:6px; font-size:11px; color:var(--mid-2);">Diagrams are normative for system shape, not for vendor SKUs. Replaceable components are explicitly flagged in the documentation.</div>
+  </footer>
+
+</main>
+</body>
+</html>
