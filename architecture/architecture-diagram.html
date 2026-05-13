@@ -550,11 +550,13 @@
             <div class="node external"><div class="head"><span class="ico">B</span><h4>Buna · SWIFT</h4></div><div class="desc">Arab Monetary Fund + global wires.</div></div>
             <div class="node external"><div class="head"><span class="ico">V</span><h4>Visa / Mastercard</h4></div><div class="desc">Card schemes for SME spend cards.</div></div>
             <div class="node external"><div class="head"><span class="ico">N</span><h4>Nymcard</h4></div><div class="desc">MENA-native issuer processor. BIN sponsorship via partner.</div></div>
-            <div class="node external"><div class="head"><span class="ico">K</span><h4>Sumsub · FOCAL</h4></div><div class="desc">KYB &amp; UBO graphs. UAE Pass cross-check.</div></div>
-            <div class="node external"><div class="head"><span class="ico">C</span><h4>ComplyAdvantage</h4></div><div class="desc">Sanctions, PEP, adverse media; perpetual screening.</div></div>
-            <div class="node external"><div class="head"><span class="ico">E</span><h4>AECB</h4></div><div class="desc">UAE credit bureau. Mandatory for SME credit decisions.</div></div>
-            <div class="node external"><div class="head"><span class="ico">L</span><h4>Lean Tech</h4></div><div class="desc">UAE open banking. 12-mo statements, balances.</div></div>
-            <div class="node external"><div class="head"><span class="ico">W</span><h4>Wafeq · Zoho · Xero</h4></div><div class="desc">Accounting integrations + Peppol e-invoicing.</div></div>
+            <div class="node external"><div class="head"><span class="ico">K</span><h4>UAE Pass + Sumsub</h4></div><div class="desc">UAE Pass federation; Sumsub for KYB + UBO graphs + liveness.</div></div>
+            <div class="node external"><div class="head"><span class="ico">C</span><h4>Refinitiv · Dow Jones</h4></div><div class="desc">Sanctions · PEP · adverse media · perpetual screening.</div></div>
+            <div class="node external"><div class="head"><span class="ico">E</span><h4>AECB</h4></div><div class="desc">Etihad Bureau API. Mandatory for SME credit decisions.</div></div>
+            <div class="node external"><div class="head"><span class="ico">L</span><h4>Lean Tech</h4></div><div class="desc">First CBUAE IPA holder. 12-mo statements, balances, PIS.</div></div>
+            <div class="node external"><div class="head"><span class="ico">P</span><h4>Network + Magnati</h4></div><div class="desc">POS data feed · daily revenue signal for pre-approved offers.</div></div>
+            <div class="node external"><div class="head"><span class="ico">W</span><h4>Wafeq · Zoho · Xero · Tally</h4></div><div class="desc">Accounting native connectors + Codat for long tail.</div></div>
+            <div class="node external"><div class="head"><span class="ico">¶</span><h4>Avalara · RTC Suite</h4></div><div class="desc">FTA-accredited Peppol ASPs. Dual integration · no SPOF.</div></div>
             <div class="node external"><div class="head"><span class="ico">CC</span><h4>Currencycloud</h4></div><div class="desc">FX, multi-currency holding, hedging.</div></div>
           </div>
         </div>
@@ -564,15 +566,15 @@
           <div class="lh">
             <span class="pill">SCH</span>
             <span class="lbl">Sharia compliance engine</span>
-            <span class="sub">AAOIFI standards · in-flow, not bolt-on</span>
+            <span class="sub">AAOIFI · UAE Higher Sharia Authority · Dar Al Sharia SSB</span>
           </div>
           <div class="grid" style="grid-template-columns:1fr 1fr;">
-            <div class="node sharia"><div class="head"><span class="ico">⚖</span><h4>SSB Console</h4></div><div class="desc">Scholar review queue, product certificates, fatwa register.</div></div>
-            <div class="node sharia"><div class="head"><span class="ico">µ</span><h4>Murabaha engine</h4></div><div class="desc">Cost+markup contracts, asset purchase, deferred receivable.</div></div>
-            <div class="node sharia"><div class="head"><span class="ico">τ</span><h4>Tawarruq broker</h4></div><div class="desc">Commodity trade for cash-equivalent liquidity events.</div></div>
-            <div class="node sharia"><div class="head"><span class="ico">Ω</span><h4>Halal screening</h4></div><div class="desc">Counterparty industry codes blocked at txn-time.</div></div>
-            <div class="node sharia"><div class="head"><span class="ico">∑</span><h4>Zakat calculator</h4></div><div class="desc">Hawl tracking, nisab thresholds, payable amount.</div></div>
-            <div class="node sharia"><div class="head"><span class="ico">★</span><h4>IdealRatings feed</h4></div><div class="desc">Securities &amp; counterparty Sharia compliance ref data.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">⚖</span><h4>SSB Console</h4></div><div class="desc">Dar Al Sharia / Shariyah Review Bureau · fatwa register · quarterly audit.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">µ</span><h4>Murabaha engine</h4></div><div class="desc">Invoice finance: cost + markup, deferred payment, asset-backed.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">Ω</span><h4>Halal screening</h4></div><div class="desc">Counterparty industry codes blocked at txn-time (IdealRatings).</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">!</span><h4>Late fee → charity</h4></div><div class="desc">Ta'widh diverted to registered charity. No income to Mal.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">∑</span><h4>Zakat calculator</h4></div><div class="desc">Hawl tracking, nisab thresholds, payable amount per SME.</div></div>
+            <div class="node sharia"><div class="head"><span class="ico">📜</span><h4>UAE HSA submission</h4></div><div class="desc">Every product structure submitted to Higher Sharia Authority pre-launch.</div></div>
           </div>
         </div>
 
@@ -580,16 +582,22 @@
         <div class="layer">
           <div class="lh">
             <span class="pill">AI</span>
-            <span class="lbl">AI / ML platform</span>
-            <span class="sub">SageMaker · Bedrock · Triton · LangSmith</span>
+            <span class="lbl">20-agent specialist swarm</span>
+            <span class="sub">Temporal + LangGraph · Claude on Bedrock · Cohere Arabic</span>
           </div>
           <div class="grid" style="grid-template-columns:1fr 1fr;">
-            <div class="node ai"><div class="head"><span class="ico">🛡</span><h4>Fraud (real-time)</h4></div><div class="desc">Sub-100ms scoring. GBM + GNN. Triton on GPU pool.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">📈</span><h4>Cash-flow forecast</h4></div><div class="desc">13-week SME forecast, Transformer + GBM blend.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">🎯</span><h4>Underwriting</h4></div><div class="desc">Limit + tier model. AECB + Lean + invoice data.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">💡</span><h4>Insights</h4></div><div class="desc">Personalised expense + cash-out anomalies.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">🗣</span><h4>Conversational AI</h4></div><div class="desc">Claude / Bedrock + RAG over user's own data + tool-use.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">🔬</span><h4>ML observability</h4></div><div class="desc">Drift, performance, fairness; Arize + custom dashboards.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">⊕</span><h4>Orchestrator</h4></div><div class="desc">Temporal (durability) + LangGraph (agent graph). Deterministic.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">🛡</span><h4>Fraud Sentinel</h4></div><div class="desc">Real-time &lt; 100ms. GBM + GNN on counterparty graph.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">🔍</span><h4>KYB Orchestrator</h4></div><div class="desc">UAE Pass + MOET + AECB + Sumsub + Refinitiv chain.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">📄</span><h4>Document Parser</h4></div><div class="desc">AWS Textract + LayoutLMv3 fine-tune (Arabic-English VAT).</div></div>
+            <div class="node ai"><div class="head"><span class="ico">📈</span><h4>Cash-flow Forecaster</h4></div><div class="desc">13-week SME forecast. Transformer + GBM blend.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">🎯</span><h4>Underwriting (XGBoost)</h4></div><div class="desc">Tier + limit. SHAP-explainable. Policy engine on top.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">⚖</span><h4>Reconciliation</h4></div><div class="desc">Fuzzy match TRN + amount + remittance. &gt; 90% auto-post.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">📝</span><h4>Credit Memo Writer</h4></div><div class="desc">Claude Opus. Fine-tuned on house memos. HITL always.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">⚠</span><h4>Early Warning</h4></div><div class="desc">5-category signal model. Weekly. Pre-default outreach.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">🗣</span><h4>CS Tier 1 (Arabic)</h4></div><div class="desc">Cohere Command-R fine-tune. 70–80% query auto-resolve.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">💬</span><h4>Settlement Negotiator</h4></div><div class="desc">Concession matrix. Real-time schedule recompute. HITL.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">🔬</span><h4>ML observability</h4></div><div class="desc">Langfuse. Drift, fairness, hallucination, PSI &lt; 0.25.</div></div>
           </div>
         </div>
 
@@ -598,15 +606,15 @@
           <div class="lh">
             <span class="pill">REG</span>
             <span class="lbl">Regulatory &amp; compliance</span>
-            <span class="sub">CBUAE · FTA · UAE FIU · ADGM/DIFC</span>
+            <span class="sub">ADGM FSP Cat 2+4 · CBUAE · FTA · UAE FIU</span>
           </div>
           <div class="grid" style="grid-template-columns:1fr 1fr;">
-            <div class="node compliance"><div class="head"><span class="ico">REP</span><h4>Reg reporting</h4></div><div class="desc">CBUAE daily/weekly returns. AECB monthly positions.</div></div>
-            <div class="node compliance"><div class="head"><span class="ico">!</span><h4>goAML</h4></div><div class="desc">STR &amp; SAR filings to UAE FIU. Real-time AML alerts.</div></div>
-            <div class="node compliance"><div class="head"><span class="ico">📒</span><h4>Audit log</h4></div><div class="desc">Append-only, 10-yr retention, S3 Object Lock.</div></div>
-            <div class="node compliance"><div class="head"><span class="ico">$</span><h4>FATCA / CRS</h4></div><div class="desc">US persons + tax residency reporting.</div></div>
-            <div class="node compliance"><div class="head"><span class="ico">¶</span><h4>Peppol</h4></div><div class="desc">FTA e-invoicing 5-corner via accredited ASP.</div></div>
-            <div class="node compliance"><div class="head"><span class="ico">🔒</span><h4>Data residency</h4></div><div class="desc">UAE-only PII; explicit consent for any cross-border.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">📋</span><h4>ADGM FSP</h4></div><div class="desc">Cat 2 (Providing Credit) + Cat 4 (Operating PFP). RegLab opt.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">CB</span><h4>CBUAE supervision</h4></div><div class="desc">Open Finance Circular 3/2025 · Customer Protection (13 Sep 2026).</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">!</span><h4>goAML · SAR</h4></div><div class="desc">STR + SAR filings to UAE FIU. Real-time AML alerts.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">📒</span><h4>Audit log</h4></div><div class="desc">Append-only · 10-yr retention · S3 Object Lock.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">¶</span><h4>FTA Peppol</h4></div><div class="desc">5-corner e-invoice. SME mandate from July 2027 · ready by Q3 2026.</div></div>
+            <div class="node compliance"><div class="head"><span class="ico">🔒</span><h4>Data residency</h4></div><div class="desc">UAE-only PII · UAE HSA submission for Sharia products.</div></div>
           </div>
         </div>
 
@@ -740,7 +748,7 @@
       </div>
       <div class="node sharia">
         <div class="head"><span class="ico">μ</span><h4>Product templates</h4></div>
-        <div class="desc">Each product (Murabaha invoice finance, Tawarruq cash advance, Wakala investment account) has a Sharia-approved contract template + automated checks at runtime.</div>
+        <div class="desc">Murabaha invoice-finance template is pre-approved by the SSB · the engine refuses to render a contract outside that template · every clause logged for audit.</div>
         <div class="tags"><span class="tag-sm">Templates</span></div>
       </div>
       <div class="node sharia">
