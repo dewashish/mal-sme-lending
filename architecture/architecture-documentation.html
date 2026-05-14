@@ -110,14 +110,12 @@
     letter-spacing: 0; text-transform: none;
   }
   header.hero h1{
-    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
-    font-size: clamp(48px, 6vw, 76px);
-    line-height: 0.98; letter-spacing: -.02em;
-    margin: 0 0 28px;
+    font-family:'Fraunces', serif; font-style: normal; font-weight:500;
+    font-size: clamp(40px, 4.8vw, 60px);
+    line-height: 1.0; letter-spacing: -.01em;
+    margin: 0 0 24px;
     color: var(--ink);
-    max-width: 11ch;
   }
-  header.hero h1 .em{ font-style:italic; }
   header.hero p.lede{
     font-family:'Inter', sans-serif; font-weight: 400;
     color:var(--ink); font-size: 19px; line-height: 1.55;
@@ -388,6 +386,57 @@
 
   /* Anchor offset */
   section.s, header.hero{ scroll-margin-top: 24px; }
+
+  /* ==================== PRINT (PDF) ==================== */
+  @media print{
+    @page{ size: A4; margin: 18mm 16mm 18mm 16mm; }
+    @page :first{ margin-top: 12mm; }
+    html, body{
+      background: var(--paper) !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      font-size: 10.5pt; line-height: 1.5;
+    }
+    .iri-text{ animation: none !important; }
+    a{ color: var(--ink); border-bottom: none; }
+    .shell{
+      display: block; grid-template-columns: none;
+      max-width: none; padding: 0; gap: 0;
+    }
+    aside.toc{
+      position: static; max-height: none; overflow: visible;
+      width: 100%; padding: 0 0 24px;
+      page-break-after: always;
+    }
+    aside.toc ol{ display: block; }
+    aside.toc ol li a{ padding: 6px 0; font-size: 10.5pt; }
+    header.hero{
+      padding: 0 0 28px; margin-bottom: 0;
+      page-break-after: always;
+      border-bottom: 1px solid var(--rule);
+    }
+    header.hero h1{ font-size: 38pt; }
+    header.hero p.lede{ font-size: 13pt; }
+    section.s{
+      page-break-before: always;
+      border-top: none;
+      padding: 18mm 0 0;
+      margin: 0;
+    }
+    section.s > h2{ font-size: 28pt; max-width: none; }
+    section.s > .lede{ font-size: 12pt; max-width: none; }
+    section.s > .lede::first-letter{ font-size: 2.6em; padding: 2px 8px 0 0; }
+    section.s h3{ font-size: 16pt; }
+    section.s h4{ font-size: 13pt; }
+    section.s p, section.s li{ font-size: 10.5pt; line-height: 1.55; }
+    h2, h3, h4{ page-break-after: avoid; break-after: avoid; }
+    table.t, .callout, .card, .adr, .stats, .org{
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    table.t{ font-size: 9.5pt; }
+    .cols-2, .cols-3{ gap: 18px; }
+    pre{ background: #15151E !important; color: #ECE6D6 !important; }
+    footer.footer{ page-break-before: avoid; margin-top: 28px; }
+  }
 </style>
 </head>
 <body>
@@ -440,10 +489,9 @@
         <span style="flex:1; height:1px; background:var(--rule-soft);"></span>
         <span class="tag"><span class="dot"></span> Architecture, v1.0</span>
       </div>
-      <div class="pretitle">Architecture documentation, for exec review</div>
-      <h1>An SME bank, <span class="em iri-text">built for the UAE</span></h1>
+      <h1>MAL-SME-Banking</h1>
       <p class="lede">
-        A reference architecture, a vendor stance, a team model, and a build sequence for launching Mal. The launch surface is four things: multi-currency accounts, Murabaha-compliant invoice financing, expense management, and integrated accounting. Around them sits an AI-native decisioning platform, a Sharia compliance engine, and a regulator-aligned audit fabric.
+        Architecture documentation. A reference architecture, a vendor stance, a team model, and a build sequence for launching Mal. The launch surface is four things: multi-currency accounts, Murabaha-compliant invoice financing, expense management, and integrated accounting. Around them sits an AI-native decisioning platform, a Sharia compliance engine, and a regulator-aligned audit fabric.
       </p>
       <div class="meta">
         <div><b>Customer</b>UAE SMEs of 5 to 50 employees, mainland and free zone.</div>
@@ -457,7 +505,7 @@
     <!-- 1 · EXECUTIVE SUMMARY ───────────────────────── -->
     <section class="s" id="summary">
       <div class="kicker">§ 01 · Executive summary</div>
-      <h2>What we're building</h2>
+      <h2>Executive summary</h2>
       <p class="lede">Mal is an SME bank for the UAE, serving businesses of 5 to 50 employees. The launch surface is four things. Multi-currency accounts. Invoice financing structured as Murabaha. Expense management. Integrated accounting with native connectors for the tools UAE SMEs already use. Around those four sits an AI-native decisioning platform, a Sharia compliance engine, and a regulator-aligned audit fabric.</p>
 
       <h3>The principles</h3>
@@ -654,7 +702,7 @@
     <!-- 6 · AI/ML ──────────────────────────────────── -->
     <section class="s" id="ai">
       <div class="kicker">§ 06 · AI / ML</div>
-      <h2>The AI-native decisioning platform</h2>
+      <h2>AI / ML components</h2>
       <p class="lede">Decisioning at Mal is a mix, not a model. Every decision we make about a customer, whether it's underwriting, pricing, EWS, fraud, collections, or pre-approval, runs through the same platform. The platform composes deterministic rules, written policies, manual workflows, referrals, and models. The model class varies by problem. The platform stays the same.</p>
 
       <h3>6.1 · The five-layer AI architecture</h3>
@@ -1131,7 +1179,7 @@
         </div>
         <div class="card">
           <h4>Minimal bureaucracy</h4>
-          <p>Approval chains and multi-week sprint ceremonies kill velocity. The companies winning right now have stripped out unnecessary process and given individual contributors real ownership. Anthropic is a useful reference. Lean teams, high-paced releases, complex systems shipping quickly.</p>
+          <p>Approval chains and multi-week sprint ceremonies kill velocity. The companies winning right now have stripped out unnecessary process and given individual contributors real ownership. Small teams. Daily decisions made by the person closest to the problem.</p>
         </div>
       </div>
 
