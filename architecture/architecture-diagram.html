@@ -94,9 +94,9 @@
   }
   .tag .dot{ width:5px; height:5px; border-radius:999px; background:var(--green); }
   h1.title{
-    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
-    font-size: clamp(48px, 6vw, 76px); line-height:0.98; letter-spacing:-.02em;
-    margin:0; max-width: 16ch; color: var(--ink);
+    font-family:'Fraunces', serif; font-style: normal; font-weight:500;
+    font-size: clamp(40px, 4.8vw, 60px); line-height: 1.0; letter-spacing:-.01em;
+    margin:0; color: var(--ink);
   }
   .subtitle{
     color:var(--ink); font-size:18px; max-width:64ch;
@@ -452,6 +452,73 @@
   /* SVG arrows overlay */
   .map-svg{ position:absolute; inset:0; pointer-events:none; width:100%; height:100%; }
   .arrow path{ fill:none; stroke: var(--mid-2); stroke-width:1; stroke-dasharray: 3 4; }
+
+  /* ==================== PRINT (PDF) ==================== */
+  @media print{
+    @page{ size: A4 landscape; margin: 14mm 16mm 14mm 16mm; }
+    @page :first{ margin-top: 10mm; }
+    html, body{
+      background: var(--paper) !important;
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      font-size: 9.5pt; line-height: 1.45;
+    }
+    .iri-text{ animation: none !important; }
+    a{ color: var(--ink); border-bottom: none; }
+    .page{ max-width: none; padding: 0; }
+    header.hero{
+      padding: 0 0 24px; margin-bottom: 0;
+      page-break-after: always;
+      border-bottom: 1px solid var(--rule);
+    }
+    h1.title{ font-size: 36pt; }
+    .subtitle{ font-size: 12pt; }
+    .meta{ font-size: 10pt; }
+    section.block{
+      page-break-before: always;
+      border-top: none;
+      padding: 12mm 0 0;
+      margin: 0;
+    }
+    section.block > header h2{ font-size: 26pt; }
+    section.block > header p{ font-size: 11pt; }
+    .split-main{
+      grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px;
+    }
+    .layer{ padding: 8px 0 12px 12px; }
+    .layer .lh .lbl{ font-size: 16pt; }
+    .node{ min-height: auto; padding: 10px 11px; }
+    .node h4{ font-size: 11pt; }
+    .node .desc{ font-size: 9pt; line-height: 1.4; }
+    .node .tag-sm{ font-size: 8.5pt; }
+    .legend{ grid-template-columns: repeat(2, 1fr); }
+    .legend .item{ padding: 10px 12px 10px 0; }
+    .conn{ padding: 4px 0; margin: 0; }
+    .conn .line{ height: 12px; }
+    .conn .label{ font-size: 8.5pt; padding: 1px 8px; }
+    .flow{ font-size: 8.5pt; }
+    .actor-row .actor{ font-size: 10pt; padding: 8px 10px 8px 0; }
+    .step{ padding: 8px 10px; font-size: 8.5pt; min-height: 40px; }
+    .step strong{ font-size: 10pt; }
+    .step small{ font-size: 8pt; }
+    .lifecycle{ font-size: 8.5pt; }
+    .lifecycle .lcs{ padding: 10px 12px; min-height: auto; }
+    .lifecycle .lcs h4{ font-size: 11pt; }
+    .lifecycle .lcs .body{ font-size: 8.5pt; line-height: 1.4; }
+    .topology{ gap: 16px; }
+    .region{ padding: 14px 16px; }
+    .region h3{ font-size: 14pt; }
+    .azs{ gap: 8px; }
+    .az{ padding: 8px 10px; }
+    .az ul li{ font-size: 8.5pt; padding: 3px 0; }
+    h2, h3, h4{ page-break-after: avoid; break-after: avoid; }
+    section.block, .layer, .lifecycle, .flow, .topology, .legend{
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    .node, .lcs, .az, .region, table.t{
+      page-break-inside: avoid; break-inside: avoid;
+    }
+    footer.footer{ margin-top: 24px; }
+  }
 </style>
 </head>
 <body>
@@ -464,9 +531,8 @@
       <span style="flex:1; height:1px; background:var(--rule-soft);"></span>
       <span class="tag"><span class="dot"></span> Architecture diagram, v1.0</span>
     </div>
-    <div style="font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:13px; color:var(--mid); margin-bottom:8px;">Architecture diagram, for exec review</div>
-    <h1 class="title">An SME bank, <span class="iri-text">built for the UAE</span></h1>
-    <p class="subtitle">A reference architecture for an SME bank that builds in-house where it differentiates and buys only where the regulator mandates the counterparty or where the value is genuinely ecosystem-wide. Seven views: the legend, the logical reference architecture, the Decision Engine, Build versus Buy, money flow on a Murabaha-funded invoice, the Sharia lifecycle, and the deployment topology.</p>
+    <h1 class="title">MAL-SME-Banking</h1>
+    <p class="subtitle">Architecture diagram. Seven views: the legend, the logical reference architecture, the Decision Engine, Build versus Buy, money flow on a Murabaha-funded invoice, the Sharia lifecycle, and the deployment topology.</p>
     <div class="meta">
       <div><b>Customer</b>UAE SMEs of 5 to 50 employees, mainland and free zone.</div>
       <div><b>Licensing path</b>ADGM FSP Category 2 plus Category 4, with optional RegLab sandbox.</div>
@@ -757,7 +823,7 @@
     <header>
       <div>
         <div class="num">§ 03 · Decision Engine</div>
-        <h2>The Decision Engine</h2>
+        <h2>Decision Engine</h2>
       </div>
       <p>This is the heart of the platform. Underwriting, pricing, EWS, fraud, collections routing, pre-approval all run through the same five steps. Each step composes some mix of rules, policies, manual workflow, referrals, and models. The model class depends on the question.</p>
     </header>
@@ -854,7 +920,7 @@
     <header>
       <div>
         <div class="num">§ 05 · Money flow</div>
-        <h2>Invoice financing under Murabaha</h2>
+        <h2>Money flow</h2>
       </div>
       <p>How AED moves when an SME buyer accepts a 60-day invoice using Mal's Sharia-compliant invoice finance. Each column is one timeline step. Read left-to-right per actor row.</p>
     </header>
@@ -933,7 +999,7 @@
     <header>
       <div>
         <div class="num">§ 06 · Sharia lifecycle</div>
-        <h2>Murabaha decision flow</h2>
+        <h2>Sharia lifecycle</h2>
       </div>
       <p>The eight-stage gate that every invoice-finance request walks through. Yellow gates are decisions; blue gates are actions; green gates create or extinguish an asset.</p>
     </header>
@@ -977,7 +1043,7 @@
     <header>
       <div>
         <div class="num">§ 07 · Deployment</div>
-        <h2>UAE region topology</h2>
+        <h2>Deployment topology</h2>
       </div>
       <p>Primary region: AWS Middle East (UAE) in Abu Dhabi. Three AZs run identical stacks (active-active for stateless, active-passive for stateful with synchronous replication). A warm DR site in AWS Middle East (Bahrain) takes over within a 15-minute RTO and 0-second RPO for journal data.</p>
     </header>
