@@ -473,14 +473,18 @@
             <span class="sub">Kubernetes (EKS) · 3 AZ · 99.95% SLO · TypeScript + Go</span>
           </div>
           <div class="grid grid-4">
-            <div class="node domain"><div class="head"><span class="ico">CX</span><h4>Customer</h4></div><div class="desc">Onboarding, KYC orchestration, UBO graph, consent.</div><div class="tags"><span class="tag-sm">Go</span><span class="tag-sm">Temporal</span></div></div>
-            <div class="node domain"><div class="head"><span class="ico">$</span><h4>Account &amp; balance</h4></div><div class="desc">Multi-currency wallets, IBAN map, holds, sweeps.</div><div class="tags"><span class="tag-sm">Go</span><span class="tag-sm">Postgres</span></div></div>
-            <div class="node domain"><div class="head"><span class="ico">▣</span><h4>Cards</h4></div><div class="desc">Virtual + physical issuance, controls, 3DS, tokenisation.</div><div class="tags"><span class="tag-sm">Nymcard</span></div></div>
-            <div class="node domain"><div class="head"><span class="ico">→</span><h4>Payments orchestrator</h4></div><div class="desc">Rail selection, idempotency, retries, compensation.</div><div class="tags"><span class="tag-sm">Temporal</span></div></div>
-            <div class="node domain"><div class="head"><span class="ico">Lo</span><h4>Lending engine</h4></div><div class="desc">Invoice financing, Murabaha contract lifecycle, EMIs.</div><div class="tags"><span class="tag-sm">TypeScript</span></div></div>
-            <div class="node domain"><div class="head"><span class="ico">FX</span><h4>Foreign exchange</h4></div><div class="desc">Multi-currency book, hedging policy, sub-ledger.</div><div class="tags"><span class="tag-sm">Currencycloud</span></div></div>
-            <div class="node domain"><div class="head"><span class="ico">Ex</span><h4>Expense &amp; AP</h4></div><div class="desc">Categorisation, receipts, policy enforcement, approvals.</div><div class="tags"><span class="tag-sm">Go</span><span class="tag-sm">ML</span></div></div>
-            <div class="node domain"><div class="head"><span class="ico">∇</span><h4>Notifications</h4></div><div class="desc">SMS · push · email · WhatsApp · in-app · in-tab streams.</div><div class="tags"><span class="tag-sm">SNS</span><span class="tag-sm">Unifonic</span></div></div>
+            <div class="node domain" style="border-width:2px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--domain-st) 16%, transparent);"><div class="head"><span class="ico">DE</span><h4>Decision Engine</h4></div><div class="desc">The brain. One engine for underwriting, pricing, EWS, fraud, collections routing, pre-approval. Composes rules, policies, manual steps, referrals, and models. Built in-house.</div><div class="tags"><span class="tag-sm">Build · Day 1</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">LO</span><h4>LOS</h4></div><div class="desc">Loan Origination. Workflow IP, configurable by Risk without engineering. Built in-house.</div><div class="tags"><span class="tag-sm">Build · Day 1</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">Pr</span><h4>Pricing Engine</h4></div><div class="desc">Risk-tier pricing, dynamic on supply / demand. Tightly coupled with Decision Engine. Built in-house.</div><div class="tags"><span class="tag-sm">Build · Day 1</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">CX</span><h4>Customer graph</h4></div><div class="desc">Onboarding, KYC orchestration, UBO graph, consent, signatories. Canonical record.</div><div class="tags"><span class="tag-sm">Build</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">$</span><h4>Account &amp; balance</h4></div><div class="desc">Multi-currency wallets, IBAN map, holds, sweeps.</div><div class="tags"><span class="tag-sm">Build</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">▣</span><h4>Cards &amp; expense</h4></div><div class="desc">Card issuance via Nymcard. Per-employee controls, receipt OCR, policy engine: built.</div><div class="tags"><span class="tag-sm">Hybrid</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">→</span><h4>Payments orchestrator</h4></div><div class="desc">Rail selection, idempotency, retries, sagas. Money-movement IP.</div><div class="tags"><span class="tag-sm">Build</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">Lo</span><h4>Murabaha engine</h4></div><div class="desc">Invoice financing contract lifecycle. SSB-template-driven, EMIs.</div><div class="tags"><span class="tag-sm">Build</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">FX</span><h4>FX sub-ledger</h4></div><div class="desc">Multi-currency book. FX engine sits behind a vendor; hedging policy is ours.</div><div class="tags"><span class="tag-sm">Hybrid</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">Pm</span><h4>Portfolio monitor</h4></div><div class="desc">Real-time book health, EWS dashboards, cohort vintage, regulatory reporting.</div><div class="tags"><span class="tag-sm">Build</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">Co</span><h4>Collections platform</h4></div><div class="desc">Manual at launch. Built in-house as NPL volume scales. EWS is the priority investment.</div><div class="tags"><span class="tag-sm">Build (phased)</span></div></div>
+            <div class="node domain"><div class="head"><span class="ico">∇</span><h4>Notifications</h4></div><div class="desc">SMS, push, email, WhatsApp, in-app streams.</div><div class="tags"><span class="tag-sm">Buy</span></div></div>
           </div>
         </div>
 
@@ -582,22 +586,16 @@
         <div class="layer">
           <div class="lh">
             <span class="pill">AI</span>
-            <span class="lbl">20-agent specialist swarm</span>
-            <span class="sub">Temporal + LangGraph · Claude on Bedrock · Cohere Arabic</span>
+            <span class="lbl">AI-native decisioning platform</span>
+            <span class="sub">Five layers. One Decision Engine. ~20 agents.</span>
           </div>
           <div class="grid" style="grid-template-columns:1fr 1fr;">
-            <div class="node ai"><div class="head"><span class="ico">⊕</span><h4>Orchestrator</h4></div><div class="desc">Temporal (durability) + LangGraph (agent graph). Deterministic.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">🛡</span><h4>Fraud Sentinel</h4></div><div class="desc">Real-time &lt; 100ms. GBM + GNN on counterparty graph.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">🔍</span><h4>KYB Orchestrator</h4></div><div class="desc">UAE Pass + MOET + AECB + Sumsub + Refinitiv chain.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">📄</span><h4>Document Parser</h4></div><div class="desc">AWS Textract + LayoutLMv3 fine-tune (Arabic-English VAT).</div></div>
-            <div class="node ai"><div class="head"><span class="ico">📈</span><h4>Cash-flow Forecaster</h4></div><div class="desc">13-week SME forecast. Transformer + GBM blend.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">🎯</span><h4>Underwriting (XGBoost)</h4></div><div class="desc">Tier + limit. SHAP-explainable. Policy engine on top.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">⚖</span><h4>Reconciliation</h4></div><div class="desc">Fuzzy match TRN + amount + remittance. &gt; 90% auto-post.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">📝</span><h4>Credit Memo Writer</h4></div><div class="desc">Claude Opus. Fine-tuned on house memos. HITL always.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">⚠</span><h4>Early Warning</h4></div><div class="desc">5-category signal model. Weekly. Pre-default outreach.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">🗣</span><h4>CS Tier 1 (Arabic)</h4></div><div class="desc">Cohere Command-R fine-tune. 70–80% query auto-resolve.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">💬</span><h4>Settlement Negotiator</h4></div><div class="desc">Concession matrix. Real-time schedule recompute. HITL.</div></div>
-            <div class="node ai"><div class="head"><span class="ico">🔬</span><h4>ML observability</h4></div><div class="desc">Langfuse. Drift, fairness, hallucination, PSI &lt; 0.25.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">1</span><h4>Customer surfaces</h4></div><div class="desc">Buyer app, supplier app, anchor portal, ops console.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">2</span><h4>Agent orchestration</h4></div><div class="desc">Tool router, replay log, eval harness, human-override. Temporal + LangGraph.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">3</span><h4>Agent fleet (~20)</h4></div><div class="desc">Origination, underwriting, servicing, ops, risk and CX. Each agent has one job and a HITL trigger.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">4</span><h4>Models &amp; features</h4></div><div class="desc">Feature store, embedding store, managed LLM serving. Model class varies by task.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">5</span><h4>Data foundations</h4></div><div class="desc">AECB · EmaraTax · Open Finance (Lean) · POS (Network + Magnati) · internal events.</div></div>
+            <div class="node ai"><div class="head"><span class="ico">DE</span><h4>Decision Engine</h4></div><div class="desc">The brain. Mix of rules, policies, manual, referrals, models. Same engine for every customer-decision the bank makes.</div></div>
           </div>
         </div>
 
@@ -637,12 +635,109 @@
   </section>
 
   <!-- ================================================================== -->
+  <!-- DECISION ENGINE                                                       -->
+  <!-- ================================================================== -->
+  <section class="block">
+    <header>
+      <div>
+        <div class="num">§ 03 · Decision Engine</div>
+        <h2>One engine. Every decision.</h2>
+      </div>
+      <p>This is the heart of the platform. Underwriting, pricing, EWS, fraud, collections routing, pre-approval all run through the same five steps. Each step composes some mix of rules, policies, manual workflow, referrals, and models. The model class depends on the question.</p>
+    </header>
+
+    <div class="lifecycle">
+      <div class="lcs is-action" style="grid-column: span 1;"><span class="n">step 01</span><h4>Data pull</h4><div class="body">AECB, e-invoice match, bank feed, KYC docs, POS, prior platform footprint. Parallel where possible, cached behind the feature store.</div><span class="tag-sm">data</span></div>
+      <div class="lcs is-action" style="grid-column: span 1;"><span class="n">step 02</span><h4>Feature build</h4><div class="body">Canonical features: cashflow ratios, exposure, sector, seasonality, behaviour. Versioned, lineage-tracked.</div><span class="tag-sm">features</span></div>
+      <div class="lcs is-action" style="grid-column: span 1;"><span class="n">step 03</span><h4>Score</h4><div class="body">Whatever model class fits the question. Behavioural and deep models for acquisition. Scoring families for underwriting. Survival for EWS. Output is a signal, not a decision.</div><span class="tag-sm">models</span></div>
+      <div class="lcs is-decision" style="grid-column: span 1;"><span class="n">step 04</span><h4>Policy gate</h4><div class="body">Deterministic rules. Sharia, sanctions, exposure caps, DSCR floors, KYC pass / fail. Binary, auditable. Overrides the model in either direction.</div><span class="tag-sm">rules</span></div>
+      <div class="lcs is-asset" style="grid-column: span 1;"><span class="n">step 05</span><h4>Price + decide</h4><div class="body">Risk-tier price, limit, plan ladder, customer-facing reason codes (SHAP for the regulator, plain language for the customer).</div><span class="tag-sm">decide</span></div>
+      <div class="lcs" style="grid-column: span 3; background: var(--paper-2); border-top:3px solid var(--mid-2);"><span class="n">applies to</span><h4>Same engine, many questions</h4><div class="body">Acquisition · onboarding · underwriting · pricing · in-life limit review · EWS · fraud · collections routing. One engine, one trace log, one audit pack. Built in-house from day one. Risk team configures rules without engineering lift.</div><span class="tag-sm">build · day 1</span></div>
+    </div>
+
+    <hr class="soft"/>
+
+    <div class="grid grid-3">
+      <div class="node domain">
+        <div class="head"><span class="ico">R</span><h4>Rules</h4></div>
+        <div class="desc">Sanctions, blacklist, minimum eligibility, exposure caps, DSCR floors, sector concentration. Binary. Regulator-defensible.</div>
+      </div>
+      <div class="node domain">
+        <div class="head"><span class="ico">P</span><h4>Policies</h4></div>
+        <div class="desc">Risk-team-owned, configurable in the engine without engineering lift. Versioned. Approved by the Credit Forum.</div>
+      </div>
+      <div class="node ai">
+        <div class="head"><span class="ico">M</span><h4>Models</h4></div>
+        <div class="desc">PD, LGD, EWS, fraud, doc verification, propensity, look-alike. Model class chosen by task. SHAP for every decision.</div>
+      </div>
+      <div class="node compliance">
+        <div class="head"><span class="ico">Mn</span><h4>Manual</h4></div>
+        <div class="desc">Any case the AI scores below threshold, any ticket above Express ceiling, any first-time pair above policy, any sector flagged by the SSB.</div>
+      </div>
+      <div class="node compliance">
+        <div class="head"><span class="ico">Rf</span><h4>Referrals</h4></div>
+        <div class="desc">Out-of-policy cases route to named committees with SLAs. Sharia structure to SSB. Cross-product to Credit Forum. Nothing falls through.</div>
+      </div>
+      <div class="node ops">
+        <div class="head"><span class="ico">⚙</span><h4>Always on</h4></div>
+        <div class="desc">Every decision logs input snapshot, model version, policy hash, manual overrides. Queryable by the regulator on request.</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ================================================================== -->
+  <!-- BUILD vs BUY                                                          -->
+  <!-- ================================================================== -->
+  <section class="block">
+    <header>
+      <div>
+        <div class="num">§ 04 · Build vs Buy</div>
+        <h2>Build over buy. Two real exceptions.</h2>
+      </div>
+      <p>The cost of building software has collapsed. The cost of being locked into someone else's product roadmap has not. We build the parts of the stack that touch our customers, our policy, or our IP. We buy where the regulator mandates the counterparty, where the value is genuinely ecosystem-wide (fraud, sanctions), or where the system is a true commodity.</p>
+    </header>
+
+    <div class="grid grid-3">
+      <div class="node domain">
+        <div class="head"><span class="ico">B+</span><h4>Build, Day 1</h4></div>
+        <div class="desc">Decision Engine · LOS · Pricing Engine · Murabaha contract engine · Customer graph · Payments orchestrator · Customer apps · Accounting connectors (5 core) · Onboarding orchestration · Conversational AI (built on managed LLMs) · Portfolio monitoring · EWS · Expense policy engine</div>
+        <div class="tags"><span class="tag-sm">core IP</span></div>
+      </div>
+      <div class="node ops">
+        <div class="head"><span class="ico">B*</span><h4>License, then migrate</h4></div>
+        <div class="desc">LMS (Mambu at launch, then in-house) · Collections platform (manual at launch, then in-house once NPL volume justifies) · FX engine (vendor liquidity, hedging policy ours)</div>
+        <div class="tags"><span class="tag-sm">de-risk launch</span></div>
+      </div>
+      <div class="node external">
+        <div class="head"><span class="ico">Bu</span><h4>Buy</h4></div>
+        <div class="desc">AECB (mandated) · KYC (Sumsub) · Sanctions / PEP (Refinitiv + Dow Jones) · Fraud intelligence (vendor, hub and spoke) · Commodity broker (DMCC / Bursa) · Card rails (Nymcard) · Open banking (Lean) · Peppol ASP (Avalara + RTC Suite) · Cloud (AWS UAE) · LLM serving (Bedrock) · Observability · EDR</div>
+        <div class="tags"><span class="tag-sm">commodity or mandated</span></div>
+      </div>
+    </div>
+
+    <hr class="soft"/>
+
+    <div class="cols-2" style="display:grid; grid-template-columns: 1fr 1fr; gap:18px;">
+      <div class="node ops" style="min-height:auto;">
+        <div class="head"><span class="ico">⚖</span><h4>Why buy fraud, even though we are build-first</h4></div>
+        <div class="desc">Fraud is hub-and-spoke. A vendor integrated across hundreds of institutions sees a compromised IP, a synthetic identity, or a spoofed device days before any individual lender catches it. That network effect cannot be replicated by building. The vendor sits next to our own fraud signals, not in place of them.</div>
+      </div>
+      <div class="node ops" style="min-height:auto;">
+        <div class="head"><span class="ico">✱</span><h4>The composability commitment</h4></div>
+        <div class="desc">Every vendor module sits behind a clean API contract from day one. The migration to an in-house module is a backend switch, not a re-architecture. Vendor and in-house can run side by side in shadow mode before cut-over. This is what makes the licence-then-migrate pattern safe.</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ================================================================== -->
   <!-- MONEY FLOW                                                            -->
   <!-- ================================================================== -->
   <section class="block">
     <header>
       <div>
-        <div class="num">§ 03 · Money flow</div>
+        <div class="num">§ 05 · Money flow</div>
         <h2>Invoice financing under Murabaha</h2>
       </div>
       <p>How AED moves when an SME buyer accepts a 60-day invoice using Mal's Sharia-compliant invoice finance. Each column is one timeline step. Read left-to-right per actor row.</p>
@@ -665,8 +760,8 @@
         <div class="step has"><strong>Receives invoice</strong>Push from Atlas Packaging<br>AED 250,000</div>
         <div class="step pos"><strong>Picks plan</strong>2-EMI · AED 256,500<br>UAE Pass sign + 3DS</div>
         <div class="step has"><strong>Limit reserved</strong>AED 250,000 hold on credit line</div>
-        <div class="step neg"><strong>EMI 1 — AED 128,250</strong>Auto-debit AED account<br>Aani settlement</div>
-        <div class="step neg"><strong>EMI 2 — AED 128,250</strong>Receivable extinguished<br>Contract closes</div>
+        <div class="step neg"><strong>EMI 1, AED 128,250</strong>Auto-debit AED account<br>Aani settlement</div>
+        <div class="step neg"><strong>EMI 2, AED 128,250</strong>Receivable extinguished<br>Contract closes</div>
       </div>
 
       <!-- Mal -->
@@ -692,9 +787,9 @@
       <!-- Rails / Banking partner -->
       <div class="actor-row" style="background: var(--paper-2);">
         <div class="actor" style="background: var(--paper-2);"><span class="av" style="background:var(--info-bg); color:var(--info);">R</span><div>Rails<br><small style="font-weight:400; color:var(--mid); font-size:10.5px;">Aani · UAEFTS</small></div></div>
-        <div class="step has"><strong>—</strong></div>
+        <div class="step has"><strong>·</strong></div>
         <div class="step info"><strong>Aani instant</strong>Mal partner IBAN → Atlas IBAN<br>AED 232,500 · &lt;10s</div>
-        <div class="step has"><strong>—</strong></div>
+        <div class="step has"><strong>·</strong></div>
         <div class="step info"><strong>Aani Direct Debit</strong>Buyer IBAN → Mal IBAN</div>
         <div class="step info"><strong>Aani Direct Debit</strong>Final settlement</div>
       </div>
@@ -705,7 +800,7 @@
         <div class="step has"><strong>Issues invoice</strong>Peppol e-invoice via Wafeq</div>
         <div class="step has"><strong>Awaits offer</strong>Mal status: accepted</div>
         <div class="step pos"><strong>Wire received</strong>AED 232,500 · 4h SLA<br>Holdback AED 17,500</div>
-        <div class="step has"><strong>—</strong></div>
+        <div class="step has"><strong>·</strong></div>
         <div class="step pos"><strong>Holdback released</strong>AED 17,500 · receivable cleared</div>
       </div>
     </div>
@@ -721,7 +816,7 @@
   <section class="block">
     <header>
       <div>
-        <div class="num">§ 04 · Sharia lifecycle</div>
+        <div class="num">§ 06 · Sharia lifecycle</div>
         <h2>Murabaha decision flow</h2>
       </div>
       <p>The eight-stage gate that every invoice-finance request walks through. Yellow gates are decisions; blue gates are actions; green gates create or extinguish an asset.</p>
@@ -765,7 +860,7 @@
   <section class="block">
     <header>
       <div>
-        <div class="num">§ 05 · Deployment</div>
+        <div class="num">§ 07 · Deployment</div>
         <h2>UAE region topology</h2>
       </div>
       <p>Primary region: AWS Middle East (UAE) in Abu Dhabi. Three AZs run identical stacks (active-active for stateless, active-passive for stateful with synchronous replication). A warm DR site in AWS Middle East (Bahrain) takes over within a 15-minute RTO and 0-second RPO for journal data.</p>

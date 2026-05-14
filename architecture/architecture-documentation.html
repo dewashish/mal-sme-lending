@@ -257,7 +257,7 @@
     <h6 style="margin-top: 28px;">Document</h6>
     <div style="font-size: 11.5px; color: var(--mid);">
       v1.0 · 2026-05-13<br>
-      Confidential — Mal exec + board
+      Confidential, for Mal exec and board
     </div>
   </aside>
 
@@ -285,25 +285,25 @@
     <section class="s" id="summary">
       <div class="kicker">§ 01 · Executive summary</div>
       <h2>What we're building</h2>
-      <p class="lede">Mal is an SME-only bank for the UAE, targeting businesses of 5–50 employees. Four feature pillars at launch: <b>multi-currency accounts</b> (AED primary, USD/EUR/GBP), <b>invoice financing structured as Murabaha</b>, <b>expense management</b> (per-employee cards + receipt OCR + policy controls), and <b>integrated accounting</b> (Wafeq, Zoho Books, QuickBooks, Xero, Tally — plus Codat for the long tail). Around those four, an AI-augmented underwriting and servicing layer, a Sharia compliance engine, and a regulator-aligned audit fabric.</p>
+      <p class="lede">Mal is an SME-only bank for the UAE, targeting businesses of 5 to 50 employees. The launch surface is four features. <b>Multi-currency accounts</b> (AED primary, USD/EUR/GBP). <b>Invoice financing structured as Murabaha</b>. <b>Expense management</b> (per-employee cards, receipt OCR, policy controls). <b>Integrated accounting</b>, with native connectors for Wafeq, Zoho Books, QuickBooks, Xero, Tally, and Codat for the long tail. Around those four sits an AI-native decisioning platform, a Sharia compliance engine, and a regulator-aligned audit fabric.</p>
 
       <div class="stats">
         <div class="stat"><div class="l">Y1 target</div><div class="v">2,500</div><div class="s">active SME accounts</div></div>
         <div class="stat"><div class="l">Y2 target</div><div class="v">12,000</div><div class="s">active SME accounts</div></div>
-        <div class="stat"><div class="l">Time to fund</div><div class="v">&lt; 4h</div><div class="s">invoice → supplier wire</div></div>
-        <div class="stat"><div class="l">Express decision</div><div class="v">&lt; 4 hours</div><div class="s">tickets ≤ AED 250K · fully automated</div></div>
+        <div class="stat"><div class="l">Time to fund</div><div class="v">&lt; 4h</div><div class="s">invoice to supplier wire</div></div>
+        <div class="stat"><div class="l">Express decision</div><div class="v">&lt; 4 hours</div><div class="s">tickets ≤ AED 250K, fully automated</div></div>
       </div>
 
-      <h3>Why this architecture, in three sentences</h3>
-      <p><b>Buy where it commoditises, build where it differentiates.</b> Core banking (Mambu), card issuance (Nymcard), KYC/KYB (Sumsub + FOCAL + Refinitiv + Dow Jones), open banking (Lean Technologies, first CBUAE IPA holder), credit bureau (AECB), accounting connectors (Wafeq / Zoho / QuickBooks / Xero / Tally; Codat for the long tail), Peppol e-invoicing (Avalara / RTC Suite), and FX (Currencycloud) are bought. The onboarding orchestration, the Murabaha contract engine, the Decision Engine, the Pricing Engine, the AI agent swarm, and the SME-facing apps are <em>built</em>. That split is what makes Mal feel native rather than a re-skin.</p>
+      <h3>The three things that shape every other choice</h3>
+      <p><b>Build over buy.</b> Software is cheaper to build than it has been at any point in our careers. With a tight, AI-native engineering team and modern tooling, the parts of the stack that touch our customers, our policy, or our IP are faster to build than to integrate, and we end up owning the product. We buy where the value is genuinely ecosystem-wide (fraud signal sharing, sanctions watch-lists), where the regulator mandates the counterparty (AECB), or where the system is a commodity (cards, identity rails). Everything else is built in-house from day one.</p>
 
-      <p><b>Sharia by design, not bolt-on.</b> Every product is contract-typed in the data model. Invoice finance is a true-sale <b>Murabaha</b> (cost-plus, deferred payment) under a Sharia Supervisory Board fatwa from Dar Al Sharia or Shariyah Review Bureau, complying with AAOIFI standards and submitted to the UAE Higher Sharia Authority (HSA) before launch. Late fees never accrue to Mal income — they are donated to charity (Ta'widh).</p>
+      <p><b>Sharia by design, not bolt-on.</b> Every product is contract-typed in the data model. Invoice finance is a true-sale Murabaha, with cost plus profit and deferred payment, under a fatwa from Dar Al Sharia or Shariyah Review Bureau. It complies with AAOIFI standards and is submitted to the UAE Higher Sharia Authority (HSA) before launch. Late fees never accrue to Mal income; they go to charity (Ta'widh) and the customer sees the destination on their statement.</p>
 
-      <p><b>UAE-resident and CBUAE-aligned.</b> Primary licence is <b>ADGM FSP Category 2 (Providing Credit) + Category 4 (Operating a Private Financing Platform)</b>, with optional ADGM RegLab sandbox for the BNPL instalment feature in invoice finance. CBUAE Customer Protection Regulation for SMEs (effective 13 Sep 2026) is designed into product disclosures from day one. All customer PII and ledger journal data live on AWS me-central-1 (Abu Dhabi). DR warm in me-south-1 (Bahrain). Audit trails are immutable for 10 years.</p>
+      <p><b>UAE-resident and CBUAE-aligned.</b> The primary licence is <b>ADGM FSP Category 2 (Providing Credit) plus Category 4 (Operating a Private Financing Platform)</b>, with the option to use ADGM RegLab as a sandbox for the BNPL instalment feature inside invoice finance. The CBUAE Customer Protection Regulation for SMEs (effective 13 Sep 2026) is designed into product disclosures from day one. All customer PII and ledger journal data lives on AWS me-central-1 (Abu Dhabi), with warm DR in me-south-1 (Bahrain). Audit trails are immutable for 10 years.</p>
 
       <div class="callout">
         <b>The single business question this architecture optimises for</b>
-        How quickly can a UAE SME — that we don't yet know — go from "I have an invoice my buyer wants to pay over 60 days" to "my supplier's bank account just received the wire," with the contract structured halal under Murabaha, the credit decision SHAP-explainable, and a regulator-ready audit trail captured end-to-end? Target: under 4 hours.
+        How quickly does a UAE SME, one we don't yet know, get from "I have an invoice my buyer wants to pay over 60 days" to "my supplier's account just received the wire", with the contract structured halal under Murabaha, the credit decision explainable, and a regulator-ready audit trail captured end-to-end? The target is under four hours.
       </div>
     </section>
 
@@ -312,17 +312,17 @@
     <section class="s" id="principles">
       <div class="kicker">§ 02 · Principles</div>
       <h2>Architectural principles</h2>
-      <p class="lede">Eight tenets that decide every design trade-off. When a vendor pitches, when a team debates monolith versus services, when the SSB asks for a contract change — these are the rules we go back to.</p>
+      <p class="lede">Eight tenets that decide every design trade-off. When a vendor pitches, when a team debates monolith versus services, when the SSB asks for a contract change, these are the rules we go back to.</p>
 
       <div class="cols-2">
-        <div class="card"><h4>1 · API-first, headless core</h4><p>The product surface is one of many clients. Every domain capability is a versioned API before it is a UI. This is what lets us ship an iOS app, a web app, and a partner API on the same primitives.</p></div>
-        <div class="card"><h4>2 · Event-sourced ledger</h4><p>The ledger is the source of truth, and the ledger is a stream. Balances are a projection; statements are a projection; analytics are a projection. We can rebuild any view of money by replaying journal events.</p></div>
-        <div class="card"><h4>3 · Cloud-native, multi-AZ, UAE-resident</h4><p>Everything stateful runs on managed AWS services in me-central-1, replicated across three AZs. Nothing customer-identifying leaves UAE without explicit consent and a CBUAE notification.</p></div>
-        <div class="card"><h4>4 · Sharia by design</h4><p>Contract type is a first-class field on every money-moving record. The system refuses to construct a transaction that hasn't been approved in template by the SSB.</p></div>
-        <div class="card"><h4>5 · Zero-trust by default</h4><p>No service trusts another by network position. mTLS between services, OIDC for users, signed receipts on every state transition. Step-up auth for risk events.</p></div>
-        <div class="card"><h4>6 · Polyglot persistence</h4><p>OLTP on Postgres, sessions and idempotency on Redis, analytics on ClickHouse, lakehouse on Iceberg, features on Feast. Each store has a job; none do two.</p></div>
-        <div class="card"><h4>7 · Composable &amp; vendor-replaceable</h4><p>Every vendor is behind an adapter. We can swap KYC providers without touching domain code; we can change card processors without re-issuing BINs (we can't, but the architecture pretends we could).</p></div>
-        <div class="card"><h4>8 · Audit-first</h4><p>If it can't be audited, we don't ship it. Every record carries provenance: who decided, when, on what model version, with what input snapshot.</p></div>
+        <div class="card"><h4>1 · Build over buy, with a tight AI-native team</h4><p>Software is cheaper to build than at any point in our careers. We staff small, senior, AI-native engineering pods and let them own the parts of the stack that touch the customer, the policy, or the IP. We buy only where the value is genuinely ecosystem-wide, where the regulator mandates the counterparty, or where the system is pure commodity.</p></div>
+        <div class="card"><h4>2 · API-first, headless core</h4><p>The product surface is one of many clients. Every domain capability is a versioned API before it is a UI. That is what lets us ship an iOS app, a web app, and a partner API on the same primitives.</p></div>
+        <div class="card"><h4>3 · Event-sourced ledger</h4><p>The ledger is the source of truth, and the ledger is a stream. Balances are a projection. Statements are a projection. Analytics are a projection. We can rebuild any view of money by replaying journal events.</p></div>
+        <div class="card"><h4>4 · Cloud-native, multi-AZ, UAE-resident</h4><p>Everything stateful runs on managed AWS services in me-central-1, replicated across three AZs. Nothing customer-identifying leaves the UAE without explicit consent and a CBUAE notification.</p></div>
+        <div class="card"><h4>5 · Sharia by design</h4><p>Contract type is a first-class field on every money-moving record. The system refuses to construct a transaction that has not been approved in template by the SSB.</p></div>
+        <div class="card"><h4>6 · Zero-trust by default</h4><p>No service trusts another by network position. mTLS between services, OIDC for users, signed receipts on every state transition. Step-up auth for risk events.</p></div>
+        <div class="card"><h4>7 · Decisioning is a mix, not a model</h4><p>Underwriting, fraud, EWS, pricing, collections. Each is some combination of deterministic rules, written policies, manual workflows, referrals, and models. The model class varies by problem. We do not commit to one algorithm family across the platform.</p></div>
+        <div class="card"><h4>8 · Audit-first</h4><p>If it cannot be audited, we do not ship it. Every record carries provenance: who decided, when, on what model version, with what input snapshot. Every AI decision logs SHAP contributions for the regulator and a plain-language reason for the customer.</p></div>
       </div>
     </section>
 
@@ -334,13 +334,14 @@
       <p class="lede">Three sub-systems: account management (who the customer is, what wallets they hold), transaction processing (how money moves in and out), and the ledger (the canonical record of every cent).</p>
 
       <h3>3.1 · Account management</h3>
-      <p>Mambu Cloud is the SaaS core (also Wio Bank's choice — proven UAE deployment). Around it we layer:</p>
+      <p>The LMS is licensed from Mambu Cloud on day one (the same core Wio Bank runs in the UAE), and the plan is to migrate to an in-house LMS once we understand our exact requirements at scale. Licensing first means we ship without inventing a deposit and loan engine from scratch; migrating later means we keep the option open to specialise the ledger for Sharia-typed contracts and to control the cost curve.</p>
+      <p>Around the LMS we build:</p>
       <ul>
-        <li><b>Customer service</b> · holds the canonical KYB record: trade licence (DET / DED / ADGM / DIFC live pull), UBO graph (≥25% per UBO per CBUAE Rulebook §3.1, ≥80% aggregate coverage), authorised signatories, employees with delegated authority. The graph is versioned; every change generates an event. UBO pull is automatic via the Ministry of Economy register.</li>
-        <li><b>Multi-currency accounts</b> · AED is primary; USD, EUR, GBP are sub-ledgers held with Currencycloud as the FX counterparty. Virtual IBANs are issued through a partner bank (e.g., Wio, RAKBank) under a BIN-sponsorship arrangement.</li>
-        <li><b>Expense management &amp; cards</b> · virtual + physical issuance via Nymcard. Per-employee spend controls (MCC blocks, daily/monthly caps, single-merchant locks). 3DS via Visa Token Service. Receipt OCR (AWS Textract + LayoutLMv3 fine-tune for Arabic-English VAT invoices) auto-categorises spend; policy engine enforces approval workflows.</li>
-        <li><b>Integrated accounting</b> · native connectors for <b>Wafeq</b> (UAE-native, Peppol-ready), <b>Zoho Books</b>, <b>QuickBooks Online</b>, <b>Xero</b>, <b>Tally Prime</b>; <b>Codat</b> as the meta-integrator for the long tail. Every Mal transaction posts to the customer's GL within 60 seconds.</li>
-        <li><b>Consent &amp; delegation</b> · explicit, time-bound, revocable. Every API call carries the consent scope it was issued under, validated at the gateway.</li>
+        <li><b>Customer service</b>. Holds the canonical KYB record: trade licence (DET, DED, ADGM, DIFC live pull), UBO graph (≥25% per UBO per CBUAE Rulebook §3.1, ≥80% aggregate coverage), authorised signatories, employees with delegated authority. The graph is versioned and every change generates an event. UBO pull is automatic via the Ministry of Economy register.</li>
+        <li><b>Multi-currency accounts</b>. AED is primary. USD, EUR, GBP are sub-ledgers held with Currencycloud as the FX counterparty. Virtual IBANs are issued through a partner bank (Wio or RAKBank under a BIN-sponsorship arrangement).</li>
+        <li><b>Expense management and cards</b>. Virtual and physical issuance via Nymcard. Per-employee spend controls (MCC blocks, daily and monthly caps, single-merchant locks). 3DS via Visa Token Service. Receipt OCR for Arabic-English VAT invoices auto-categorises spend, and a policy engine enforces approval workflows.</li>
+        <li><b>Integrated accounting</b>. Native connectors for Wafeq (UAE-native, Peppol-ready), Zoho Books, QuickBooks Online, Xero, and Tally Prime; Codat as the meta-integrator for the long tail. Every Mal transaction posts to the customer's GL within 60 seconds.</li>
+        <li><b>Consent and delegation</b>. Explicit, time-bound, revocable. Every API call carries the consent scope it was issued under, validated at the gateway.</li>
       </ul>
 
       <h4>Three delivery variants for invoice finance</h4>
@@ -383,15 +384,15 @@
 
       <p>Each journal record carries:</p>
       <ul>
-        <li><b>Contract type</b> — Murabaha, Wakala, Mudaraba, Qard Hasan, FX spot, etc. This is what makes Sharia review tractable at scale.</li>
-        <li><b>Tenant chain</b> — the source SME, the counterparty, the product, the underlying invoice or asset.</li>
-        <li><b>Provenance</b> — service, version, decision model + version (if any), input hash.</li>
-        <li><b>Reversibility window</b> — until what timestamp can this entry be reversed without dual approval.</li>
+        <li><b>Contract type</b>. Murabaha for invoice finance, plus the typed contract for any other product. This is what makes Sharia review tractable at scale.</li>
+        <li><b>Tenant chain</b>. The source SME, the counterparty, the product, the underlying invoice or asset.</li>
+        <li><b>Provenance</b>. Service, version, decision model, input hash.</li>
+        <li><b>Reversibility window</b>. Until what timestamp can this entry be reversed without dual approval.</li>
       </ul>
 
       <div class="callout success">
-        <b>Why we don't build our own core</b>
-        At Mal's stage, building a core banking system is a category error. Mambu gives us deposit and loan products, regulator-friendly defaults, and integrations that already pass UAE bank audit. What we <em>do</em> build is the orchestration around it — Payments Orchestrator, Murabaha contract engine, Customer graph — because these are where our product-market fit lives.
+        <b>Why we license the LMS at launch and migrate later</b>
+        Ledger accuracy is non-negotiable, and getting it wrong on day one is not something we want to debug under production pressure. Mambu gives us deposit and loan products, regulator-friendly defaults, and integrations that already pass UAE bank audit. We license at launch and build the in-house replacement once we know exact requirements from live operations. The orchestration around it (Payments Orchestrator, Murabaha contract engine, Customer graph) is ours from day one, because that is where the product lives.
       </div>
     </section>
 
@@ -455,7 +456,7 @@
       <h2>Sharia compliance layer</h2>
       <p class="lede">Five integrated mechanisms: governance, contract engine, real-time screening, charitable purification, and audit trail. AAOIFI standards are the baseline; CBUAE's Higher Sharia Authority circulars are the local overlay.</p>
 
-      <h3>5.1 · Governance — the Sharia Supervisory Board</h3>
+      <h3>5.1 · Governance and the Sharia Supervisory Board</h3>
       <p>Three external scholars (AAOIFI-certified, at least one with UAE Higher Sharia Authority recognition) and an internal Head of Sharia who is full-time staff. The SSB meets monthly. Its outputs:</p>
       <ul>
         <li><b>Standing fatwa</b> for the Murabaha invoice-finance template, refreshed quarterly and at every material change.</li>
@@ -469,17 +470,17 @@
 
       <p>What the engine enforces at runtime:</p>
       <ul>
-        <li>Asset existence — there is a real, deliverable good or service backing the invoice.</li>
-        <li>Pre-purchase — Mal must own the asset (briefly) before selling it to the buyer; the time gap is logged.</li>
-        <li>Disclosure — the buyer sees Mal's cost, profit margin, and tenor before signing the binding promise (<em>wa'd</em>).</li>
-        <li>No re-pricing — the markup is fixed at signing. Roll-overs are new contracts, not amendments.</li>
+        <li>Asset existence. There is a real, deliverable good or service backing the invoice.</li>
+        <li>Pre-purchase. Mal must own the asset (briefly) before selling it to the buyer. The time gap is logged.</li>
+        <li>Disclosure. The buyer sees Mal's cost, profit margin, and tenor before signing the binding promise (<em>wa'd</em>).</li>
+        <li>No re-pricing. The markup is fixed at signing. Roll-overs are new contracts, not amendments.</li>
       </ul>
 
       <h3>5.3 · Halal screening</h3>
       <p>Every counterparty (supplier or buyer) is screened at onboarding and at every transaction. We block industries deemed haram by AAOIFI: alcohol, gambling, conventional financial services, adult entertainment, pork, weapons, tobacco. Industry classification uses NAICS / ISIC mapped to AAOIFI's exclusions; <b>IdealRatings</b> provides the ongoing reference data.</p>
 
       <h3>5.4 · Late fees → charity</h3>
-      <p>If an SME pays late, a small penalty is charged — but it cannot accrue to Mal income. Penalty amounts are diverted into a registered UAE charity (e.g., Emirates Red Crescent), and the SME sees the destination on their statement. This is a structural choice, not an opt-in; the ledger refuses to credit penalty income to Mal's P&amp;L accounts.</p>
+      <p>If an SME pays late, a small penalty is charged, but it cannot accrue to Mal income. Penalty amounts are diverted into a registered UAE charity (for example Emirates Red Crescent), and the SME sees the destination on their statement. This is a structural choice, not an opt-in. The ledger refuses to credit penalty income to Mal's P&amp;L accounts.</p>
 
       <h3>5.5 · Zakat calculation</h3>
       <p>For Sharia-electing SMEs, Mal calculates the annual Zakat due on net business assets. The tool tracks <em>hawl</em> (one lunar year ownership) per asset class, applies the 2.5% rate on the net <em>nisab</em>-eligible amount, and surfaces the calculation in the customer's home dashboard. Mal does not collect or remit Zakat; the SME pays directly to the charity of their choice.</p>
@@ -492,114 +493,122 @@
     <!-- 6 · AI/ML ──────────────────────────────────── -->
     <section class="s" id="ai">
       <div class="kicker">§ 06 · AI / ML</div>
-      <h2>AI / ML components: a 20-agent specialist swarm</h2>
-      <p class="lede">Not one big chatbot. A directed graph of small specialist agents — each with a clear contract, a bounded toolset, and a human-in-the-loop checkpoint — orchestrated by a durable workflow engine. The four required capabilities (fraud detection, cash-flow forecasting, personalised financial insights, plus underwriting and servicing) come out of this structure naturally, with explicit explainability and auditability.</p>
+      <h2>The AI-native decisioning platform</h2>
+      <p class="lede">Decisioning at Mal is a mix, not a model. Every decision we make about a customer, whether it's underwriting, pricing, EWS, fraud, collections, or pre-approval, runs through the same platform. The platform composes deterministic rules, written policies, manual workflows, referrals, and models. The model class varies by problem. The platform stays the same.</p>
 
-      <h3>6.1 · Architecture: orchestrator + specialists + tools + memory</h3>
-      <div class="cols-2">
-        <div class="card"><h4>Orchestrator</h4><p>Temporal + LangGraph. Temporal gives durability, retries, and timers. LangGraph gives the agent-graph semantics on top. The orchestrator is not an LLM; it's deterministic state machinery that calls LLM agents as steps.</p></div>
-        <div class="card"><h4>Specialist agents</h4><p>Each agent is one program (often a single LLM call with tools) doing one thing well. Each carries its own system prompt, tool list, golden-set evaluation suite, and HITL trigger.</p></div>
-        <div class="card"><h4>Tool layer</h4><p>APIs to UAE Pass, Lean, AECB, FTA, Peppol ASP, Sumsub, Refinitiv, Dow Jones, internal LMS and warehouse — wrapped behind permissioned interfaces. Each agent has only the tools it needs.</p></div>
-        <div class="card"><h4>Memory &amp; observability</h4><p>Postgres for canonical entities, Redis for session state, Pinecone (or pgvector) for retrieval, Langfuse for full trace + replay. Every agent action — input, output, tool calls — is queryable by regulators on request.</p></div>
+      <h3>6.1 · The five-layer AI architecture</h3>
+      <p>This mirrors how the AI section is laid out in the Mal prototype, so that the architecture and the working app stay in sync.</p>
+
+      <table class="t">
+        <thead><tr><th>Layer</th><th>What it contains</th></tr></thead>
+        <tbody>
+          <tr><td>1 · Customer surfaces</td><td>Buyer app, supplier app, anchor portal, ops console. Every surface routes intent through the same platform.</td></tr>
+          <tr><td>2 · Agent orchestration</td><td>Tool router, replay log, eval harness, human-override. Deterministic state machinery (Temporal + LangGraph) that calls model-backed agents as steps. Not an LLM itself.</td></tr>
+          <tr><td>3 · Agent fleet</td><td>~20 specialist agents grouped by lifecycle stage (origination, underwriting, servicing, ops, risk and CX). Each agent has one job, one toolset, a golden eval set, and a human-in-the-loop trigger.</td></tr>
+          <tr><td>4 · Models and features</td><td>A feature store that holds the canonical inputs (cashflow, bureau, exposure, sector, behaviour). A model registry that holds the model class best suited for each task. An embedding store for retrieval. A small set of LLMs routed by job.</td></tr>
+          <tr><td>5 · Data foundations</td><td>AECB, EmaraTax e-invoice, UAE Open Finance, POS feeds (Network + Magnati), internal events. Cleaned, versioned, lineage-tracked.</td></tr>
+        </tbody>
+      </table>
+
+      <p>A loan request descends from a customer surface through the orchestrator, fans out to the agents the request graph requires, reaches into the models and the feature store and the bureau and e-invoice and Open-Finance pulls, and returns with an explainable decision, a price, and a digital contract. Every action is hashed into the audit ledger.</p>
+
+      <h3>6.2 · The Decision Engine, in five steps</h3>
+      <p>This is the operational heart of the platform. It runs the same way for every decision the bank makes about a customer, whether the answer is "approve and price", "decline with a reason", or "escalate to a human". A risk manager can pause at any step, replay the trace, override a feature, and re-run.</p>
+
+      <table class="t">
+        <thead><tr><th>Step</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>1 · Data pull</td><td>Bureau, e-invoice match, bank feed, KYC docs, POS data, prior platform footprint. Pulled in parallel where possible; cached behind the feature store.</td></tr>
+          <tr><td>2 · Feature build</td><td>The feature store builds the canonical inputs the model and rule layers need. Cashflow ratios, exposure, sector, seasonality, behaviour. Versioned, with lineage.</td></tr>
+          <tr><td>3 · Score</td><td>One or more models run, depending on the question. The class of model is chosen for the task: behaviour and deep-learning approaches in acquisition, gradient-boosted trees or survival models in underwriting and EWS, simpler classifiers in routing. The output of this step is a probabilistic signal, not a decision.</td></tr>
+          <tr><td>4 · Policy gate</td><td>Deterministic rules. Sharia, sanctions, exposure caps, DSCR floors, KYC pass/fail. The gate is binary and auditable. It overrides the model in either direction.</td></tr>
+          <tr><td>5 · Price and decide</td><td>Risk-tier pricing, limit, repayment plan ladder, customer-facing reasons. SHAP attribution for the regulator. Plain language for the customer.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <b>This same engine runs for everything</b>
+        Acquisition (who do we proactively target?), onboarding (do we approve this KYB?), underwriting (limit and price), in-life servicing (limit review, EWS), collections (intent-to-pay routing), fraud (real-time scoring). Same plumbing, different mix of rules, policies, manual workflows, referrals, and model classes. There is one engine, not seven.
       </div>
 
-      <h3>6.2 · Model routing</h3>
-      <p>Reasoning-heavy work (credit memos, settlement negotiation, regulatory horizon scanning) sits on <b>Claude Opus / Sonnet</b> via AWS Bedrock. Routine work (categorisation, summary, classification) sits on <b>Claude Haiku</b> or <b>Llama 3.1 70B</b> on Bedrock for cost-sensitive batch. Arabic customer support sits on <b>Cohere Command-R</b> or a Qwen / Llama fine-tune for first-language conversation. Embeddings: <b>Voyage AI</b> or Cohere Embed v3 multilingual.</p>
+      <h3>6.3 · The 20-agent fleet, by lifecycle stage</h3>
+      <p>Each agent owns one job. The grouping mirrors the customer lifecycle, so a risk owner or an ops lead can find every agent that touches their stage in one place.</p>
 
-      <h3>6.3 · The 20 agents</h3>
       <table class="t">
-        <thead><tr><th>#</th><th>Agent</th><th>Function</th><th>HITL trigger</th></tr></thead>
+        <thead><tr><th>Stage</th><th>Agents</th></tr></thead>
         <tbody>
-          <tr><td>1</td><td>KYB Orchestrator</td><td>Onboarding</td><td>Sanctions hit · UBO mismatch · watchlist</td></tr>
-          <tr><td>2</td><td>Document Parser</td><td>Onboarding · invoice</td><td>OCR confidence &lt; 92%</td></tr>
-          <tr><td>3</td><td>Bank Statement Analyst</td><td>Underwriting</td><td>Categorisation confidence &lt; 90%</td></tr>
-          <tr><td>4</td><td>Credit Memo Writer</td><td>Underwriting</td><td>Always · human credit officer signs</td></tr>
-          <tr><td>5</td><td>Invoice Verifier</td><td>Origination</td><td>≥ 2 fraud signals</td></tr>
-          <tr><td>6</td><td>Reconciliation Agent</td><td>Servicing</td><td>Match confidence &lt; 85%</td></tr>
-          <tr><td>7</td><td>Customer Support Tier 1</td><td>Servicing</td><td>Negative sentiment · AED &gt; 100K · policy edge</td></tr>
-          <tr><td>8</td><td>Early Warning Agent</td><td>Servicing</td><td>Customer flagged for watch</td></tr>
-          <tr><td>9</td><td>Cash-flow Forecaster</td><td>Servicing · insights</td><td>None (read-only)</td></tr>
-          <tr><td>10</td><td>Anomaly Detector (Expense)</td><td>Insights</td><td>Above-threshold deviation flagged to user</td></tr>
-          <tr><td>11</td><td>Collections Conductor</td><td>Collections</td><td>Day 5 handoff to human</td></tr>
-          <tr><td>12</td><td>Settlement Negotiator</td><td>Collections</td><td>Always · human approves new schedule</td></tr>
-          <tr><td>13</td><td>AML Transaction Monitor</td><td>Risk &amp; Compliance</td><td>Always · MLRO reviews SAR</td></tr>
-          <tr><td>14</td><td>Sanctions Screener</td><td>Risk &amp; Compliance</td><td>Any positive hit</td></tr>
-          <tr><td>15</td><td>Regulatory Horizon Scanner</td><td>Risk &amp; Compliance</td><td>Material rule change</td></tr>
-          <tr><td>16</td><td>Fraud Sentinel (real-time)</td><td>Origination · servicing</td><td>Score above step-up threshold</td></tr>
-          <tr><td>17</td><td>Cohort Analyst</td><td>Risk &amp; Product analytics</td><td>Cohort breaches threshold</td></tr>
-          <tr><td>18</td><td>Pricing Optimizer</td><td>Product analytics</td><td>Always · Pricing Committee approves change</td></tr>
-          <tr><td>19</td><td>Murabaha Drafting Agent</td><td>Sharia</td><td>Template deviation</td></tr>
-          <tr><td>20</td><td>Knowledge Base Curator</td><td>Platform</td><td>Quality drop in retrieval evals</td></tr>
+          <tr><td><b>Origination &amp; onboarding</b></td><td>KYC Verifier, AECB Bureau Puller, Document Extractor, Cashflow Analyser</td></tr>
+          <tr><td><b>Underwriting &amp; decisioning</b></td><td>Fraud Sentinel, Invoice Validator, Decision Engine, Pricing Optimiser</td></tr>
+          <tr><td><b>Servicing &amp; collections</b></td><td>Schedule Builder, Dunning Orchestrator, Extension Recommender, AI Collections Voice (bilingual)</td></tr>
+          <tr><td><b>Operations &amp; finance</b></td><td>Reconciliation Agent, Settlement Router, Audit Trail Composer, Anomaly Detector</td></tr>
+          <tr><td><b>Risk · compliance · CX</b></td><td>Sanctions Screener, Early-Warning Sentinel, Sharia Validator, Bilingual CX Co-pilot</td></tr>
         </tbody>
       </table>
 
-      <h3>6.4 · Five highest-value agents in detail</h3>
+      <h3>6.4 · Where the model classes vary</h3>
+      <p>We do not commit to one model family across the platform. The right model depends on the question.</p>
 
-      <h4>Agent 1 · KYB Orchestrator</h4>
-      <p>Collapses 24–72 hour onboarding to under 5 minutes for clean files. Orchestrates trade-licence pull (DET / DED / ADGM / DIFC), UBO pull (MOET), AECB Commercial Score, Sumsub liveness + ID match, Refinitiv + Dow Jones sanctions + PEP + adverse media, FATCA / CRS, prior-platform footprint. Output: canonical SME identity record with confidence score and onboarding decision. Evaluation: golden set of 500 known-good and known-bad onboardings; weekly precision/recall review on sanctions hits.</p>
-
-      <h4>Agent 4 · Credit Memo Writer</h4>
-      <p>For tickets above AED 1M, regulators and senior credit officers expect a memo, not a number. Composes a 2–3 page structured memo from scorecard outputs, bank-statement-analyst narrative, sector commentary, and a peer comparator (10 closest customers in the book). Fine-tuned on sample memos from the existing credit team. Always human-signed. Saves ~40–60 minutes per memo; at 200 memos/month in Year 2 that's ~130 hours/month of senior credit time freed.</p>
-
-      <h4>Agent 6 · Reconciliation Agent</h4>
-      <p>The single largest operational pain in any lending platform. Matches inbound cash (Open Finance polling every 15 minutes) to invoice IDs using fuzzy matching on TRN, amount, and remittance reference. Auto-posts above 85% confidence; routes to ops with top-3 candidate matches and reasoning below. Within 6 months expected to clear &gt; 90% of inbound cash autonomously vs ~60% baseline for rules-only matching.</p>
-
-      <h4>Agent 7 · Customer Support Tier 1 (Arabic-first)</h4>
-      <p>Arabic chat that handles 70–80% of tier-1 queries autonomously is a customer-acquisition lever in MENA, not just a cost-saver. Tools: knowledge base retrieval, payment lookup, statement retrieval, ticket creation, escalation to human. HITL on negative sentiment, AED &gt; 100K, or topics outside policy. Cohere Command-R fine-tune; Qwen 2.5 fallback.</p>
-
-      <h4>Agent 16 · Fraud Sentinel (real-time)</h4>
-      <p>Two-stage system on every authorising payment. <b>Stage 1</b> (&lt; 100ms p99): GBM on transactional features (amount, hour, MCC, device, geo, velocity) + a graph-neural-network on the counterparty graph. Output: <code class="k">approve | step_up | decline</code>. <b>Stage 2</b>: async ensemble routes borderline cases to Fraud Ops with device-fingerprint history + behavioural biometrics. Models retrain weekly; if PSI &gt; 0.2 on any input feature, training is paused and the model owner is paged.</p>
-
-      <h3>6.5 · Where AI sits vs where rules sit</h3>
       <table class="t">
-        <thead><tr><th>Domain</th><th>Approach</th><th>Examples</th></tr></thead>
+        <thead><tr><th>Use case</th><th>Model class</th></tr></thead>
         <tbody>
-          <tr><td>Deterministic rules</td><td>Binary, auditable</td><td>Sanctions screening · minimum-eligibility thresholds · concentration caps · DSCR floors · KYC pass/fail</td></tr>
-          <tr><td>AI-driven (predictive)</td><td>Pattern-based with SHAP</td><td>PD modelling · LGD · cash-flow forecast · EWS · dynamic limit · alternative-data scoring · document verification</td></tr>
-          <tr><td>Latency</td><td>Real-time (sub-second)</td><td>Fraud at origination · sanctions · drawdown approval · repayment processing</td></tr>
-          <tr><td>Latency</td><td>Near-real-time (&lt; 4h)</td><td>Express full application · dynamic limit booster</td></tr>
-          <tr><td>Latency</td><td>Async (batch)</td><td>Portfolio + EWS scoring (daily) · limit reviews (quarterly) · model retraining (quarterly)</td></tr>
+          <tr><td>Acquisition, propensity, look-alike, channel attribution</td><td>Behavioural and deep-learning approaches over transaction sequences and embedded representations of customer features</td></tr>
+          <tr><td>Underwriting (PD, LGD, affordability, limit sizing)</td><td>Gradient-boosted scoring families with monotonic constraints, SHAP attribution, and a parallel rules layer for adverse-action reasons</td></tr>
+          <tr><td>Early warning and hardship</td><td>Survival models for time-to-event, classifier ensembles for risk banding, change-point detection for behaviour shifts</td></tr>
+          <tr><td>Document understanding (OCR, layout, table extraction)</td><td>Layout-aware document models with ground-truth feedback loops</td></tr>
+          <tr><td>Identity, fraud, anomaly</td><td>Streaming feature pipelines with anomaly-detection baselines plus supervised classifiers ensembled on top</td></tr>
+          <tr><td>Conversational (CX, credit memo drafting, retrieval)</td><td>Retrieval-augmented LLM with structured-output enforcement and policy grounding. LLMs draft and explain. They never sign.</td></tr>
+          <tr><td>Optimisation (limit sizing, settlement routing, pricing)</td><td>Constrained optimisation with governance floors and caps; Bayesian search for combinatorial choices</td></tr>
         </tbody>
       </table>
 
-      <h3>6.6 · Explainability &amp; right to human review</h3>
-      <p>Every AI decision carries SHAP feature contributions. Top 3–5 features are translated into customer-facing reason codes via a mapping layer. Decline messages are specific and actionable:</p>
+      <p>Within each row, the specific algorithm choice is the team's. The architecture commits to the platform that lets them choose, version, evaluate, and replace algorithms on demand. It does not commit to one algorithm.</p>
+
+      <h3>6.5 · Rules, AI, and the manual escape hatch</h3>
+
+      <table class="t">
+        <thead><tr><th>Layer</th><th>What it handles</th></tr></thead>
+        <tbody>
+          <tr><td><b>Deterministic rules</b></td><td>Sanctions, blacklist, minimum eligibility, exposure caps, DSCR floors, sector concentration, KYC pass/fail. Binary, auditable, regulator-defensible.</td></tr>
+          <tr><td><b>Policies</b></td><td>Risk-team-owned, configurable in the Decision Engine without engineering lift. Changes are versioned and approved by the Credit Forum.</td></tr>
+          <tr><td><b>AI</b></td><td>Probability of default, affordability, dynamic pricing, EWS, document verification, fraud, alt-data scoring, conversational support.</td></tr>
+          <tr><td><b>Manual review</b></td><td>Any case the AI scores below a confidence threshold, any ticket above the Express ceiling, any first-time pair above policy, any sector flagged by the SSB. A credit officer reviews the model-generated memo, modifies limit or price, or declines with documented reason.</td></tr>
+          <tr><td><b>Referrals</b></td><td>Out-of-policy cases route to a named committee with a clear SLA. Cross-product referrals go to the Credit Forum. Sharia structure questions route to the SSB. Nothing falls through.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.6 · Latency tiers</h3>
+      <table class="t">
+        <thead><tr><th>Latency</th><th>What runs here</th></tr></thead>
+        <tbody>
+          <tr><td>Real-time (sub-second)</td><td>Fraud at origination, sanctions, drawdown approval, repayment processing</td></tr>
+          <tr><td>Near-real-time (under 4 hours)</td><td>Express full application, dynamic limit booster, supplier wire</td></tr>
+          <tr><td>Asynchronous (batch)</td><td>Portfolio and EWS scoring, limit reviews, bureau refresh, model retraining</td></tr>
+        </tbody>
+      </table>
+
+      <h3>6.7 · Explainability and right to human review</h3>
+      <p>Every AI decision carries SHAP feature contributions. The top three to five features are translated into customer-facing reason codes through a mapping layer. Decline messages are specific and actionable:</p>
       <div class="callout">
         <b>Sample decline message</b>
-        "At this time we are unable to approve a facility. The primary reasons are: your business has been operating for 9 months (we look for 12+); a dishonoured cheque of AED 18,000 is reported on your bureau in August 2025. We will re-evaluate automatically in 3 months. You can also request a human review now."
+        At this time we are unable to approve a facility. The primary reasons are: your business has been operating for 9 months (we look for 12 or more), and a dishonoured cheque of AED 18,000 is reported on your bureau in August 2025. We will re-evaluate automatically in 3 months. You can also request a human review now.
       </div>
-      <p>The <b>right to human review</b> is mandatory under CBUAE Customer Protection Regulation (effective 13 Sep 2026) and is visible on every decline screen — not buried in T&amp;Cs. Declined customers also feed a <b>Credit Builder</b> programme: each gets a specific, achievable improvement target, weekly progress in-app, and automatic re-evaluation at 90 days. In Year 2–3 we expect 15–25% of new credit customers to come from the Credit Builder pool — a structural advantage over fintechs with no operating-account base.</p>
+      <p>The right to human review is mandatory under the CBUAE Customer Protection Regulation (effective 13 Sep 2026) and is visible on every decline screen, not buried in T&amp;Cs. Declined customers also feed a Credit Builder programme. Each gets a specific, achievable improvement target, weekly progress in-app, and automatic re-evaluation at 90 days. In Year 2 to 3 we expect 15 to 25 percent of new credit customers to come from the Credit Builder pool, which is a structural advantage over fintechs with no operating-account base.</p>
 
-      <h3>6.7 · Fail-safe and fallback</h3>
+      <h3>6.8 · Fail-safe and fallback</h3>
       <table class="t">
         <thead><tr><th>Component</th><th>Failure scenario</th><th>Fallback</th></tr></thead>
         <tbody>
-          <tr><td>Credit scoring model</td><td>Model server down or low confidence</td><td>Queue for next run (max 4h); rules-only simplified scoring</td></tr>
-          <tr><td>AECB API</td><td>Bureau unavailable</td><td>Retry 3× over 2h; escalate to manual review</td></tr>
-          <tr><td>Open Finance (Lean)</td><td>Bank not connected</td><td>Fall back to uploaded statements; secondary post-dated cheque</td></tr>
-          <tr><td>Fraud detection</td><td>Model unavailable</td><td>Conservative rules + human review for any drawdown &gt; AED 100K</td></tr>
-          <tr><td>Conversational AI (LLM)</td><td>Provider outage</td><td>Route to human; pre-canned FAQ flows; no service-disruption</td></tr>
+          <tr><td>Credit scoring model</td><td>Model server down or low confidence</td><td>Queue for next run (max 4 hours), rules-only simplified scoring</td></tr>
+          <tr><td>AECB API</td><td>Bureau unavailable</td><td>Retry three times over two hours, escalate to manual review</td></tr>
+          <tr><td>Open Finance</td><td>Bank not connected via Lean</td><td>Fall back to uploaded statements, secondary post-dated cheque</td></tr>
+          <tr><td>Fraud detection</td><td>Model unavailable</td><td>Conservative rules plus human review for any drawdown above AED 100K</td></tr>
+          <tr><td>Conversational AI (LLM)</td><td>Provider outage</td><td>Route to human, pre-canned FAQ flows, no service disruption</td></tr>
         </tbody>
       </table>
-
-      <h3>6.8 · Cost &amp; ROI of the agent stack</h3>
-      <table class="t">
-        <thead><tr><th>Item</th><th>Y1</th><th>Y2</th><th>Y3</th></tr></thead>
-        <tbody>
-          <tr><td>LLM API (Anthropic + Bedrock)</td><td>USD 250K</td><td>USD 1.2M</td><td>USD 3.5M</td></tr>
-          <tr><td>Vector store + infra</td><td>USD 50K</td><td>USD 180K</td><td>USD 450K</td></tr>
-          <tr><td>Observability + evals</td><td>USD 80K</td><td>USD 250K</td><td>USD 500K</td></tr>
-          <tr><td>Agent engineering team (4 → 12 staff)</td><td>USD 800K</td><td>USD 1.8M</td><td>USD 3.0M</td></tr>
-          <tr><td><b>Total run-rate</b></td><td><b>USD 1.18M</b></td><td><b>USD 3.43M</b></td><td><b>USD 7.45M</b></td></tr>
-          <tr><td>Headcount avoided (Ops + Servicing)</td><td>10</td><td>40</td><td>90</td></tr>
-          <tr><td>Payroll cost avoided</td><td>USD 0.6M</td><td>USD 2.8M</td><td>USD 7.5M</td></tr>
-        </tbody>
-      </table>
-      <p class="muted">On a pure payroll-substitution view the agent stack pays for itself by Year 3. The real economic case is upstream — faster onboarding lifts conversion, better reconciliation lifts cash velocity, Arabic-first support lifts NPS — putting aggregate value uplift at AED 25–40M by Year 3 on top of payroll substitution.</p>
 
       <div class="callout warn">
-        <b>What we don't use LLMs for</b>
-        Underwriting decisions, fraud denials, Sharia contract construction, or anything that creates a binding obligation. LLMs are excellent at explanation, retrieval, drafting, and routing — not at being the model of record for a regulated decision. Customer-facing AI is always disclosed; opt-out to a human is always available within two clicks.
+        <b>What we do not use LLMs for</b>
+        Underwriting decisions, fraud denials, Sharia contract construction, or anything that creates a binding obligation. LLMs are excellent at explanation, retrieval, drafting, and routing. They are not the model of record for a regulated decision. Customer-facing AI is always disclosed, and opt-out to a human is always available within two clicks.
       </div>
     </section>
 
@@ -614,8 +623,8 @@
       <p>The realistic 24-month progression:</p>
       <ol>
         <li><b>Phase 0 (M1–M6)</b> · <b>ADGM FSP Category 2 (Providing Credit) + Category 4 (Operating a Private Financing Platform)</b>. Optionally apply for <b>ADGM RegLab</b> sandbox for the BNPL instalment feature inside invoice financing (12–18 month sandbox period). CBUAE compliance for cross-border payments via partner bank.</li>
-        <li><b>Phase 1 (M6–M12)</b> · CBUAE Stored Value Facility (SVF) supervision via partner bank — enables Mal-branded multi-currency wallets and cards.</li>
-        <li><b>Phase 2 (M18–M24)</b> · Specialised Bank licence consideration (SME segment) — enables deposit-taking and native IBAN issuance at scale.</li>
+        <li><b>Phase 1 (M6 to M12)</b>. CBUAE Stored Value Facility (SVF) supervision via partner bank, which enables Mal-branded multi-currency wallets and cards.</li>
+        <li><b>Phase 2 (M18 to M24)</b>. Specialised Bank licence consideration for the SME segment, which enables deposit-taking and native IBAN issuance at scale.</li>
       </ol>
       <p>The architecture is designed so the same code base serves all three regulatory contexts; the difference is in product configuration, capital treatment, and reporting cadence.</p>
 
@@ -653,10 +662,10 @@
       <h3>7.3 · Audit trail &amp; retention</h3>
       <p>Every regulated event (KYC outcome, credit decision, money movement, Sharia approval, customer consent change) writes to an append-only event stream with WORM-immutable storage on S3 Object Lock. Retention floors:</p>
       <ul>
-        <li>KYC artefacts &amp; CDD data — 10 years post-relationship end (CBUAE AML guidance).</li>
-        <li>Transaction journals — 5 years (CBUAE Banking Law).</li>
-        <li>Audit logs (system access, admin actions) — 7 years.</li>
-        <li>Sharia decisions and contracts — 10 years.</li>
+        <li>KYC artefacts and CDD data: 10 years post-relationship end (CBUAE AML guidance).</li>
+        <li>Transaction journals: 5 years (CBUAE Banking Law).</li>
+        <li>Audit logs (system access, admin actions): 7 years.</li>
+        <li>Sharia decisions and contracts: 10 years.</li>
       </ul>
 
       <p>The audit log is queryable through a read-only console used by Internal Audit, Regulator-Facing Compliance, and the Sharia Supervisory Board. External auditors get a time-boxed read-only role.</p>
@@ -802,15 +811,15 @@
 
       <div class="adr">
         <div class="h"><span class="n">ADR-001</span><h4>Mambu over Thought Machine for core banking</h4></div>
-        <p>Mambu's SaaS posture, UAE-region availability, mature deposit + loan products, and proven integrations with Sumsub, Lean, and Nymcard get us to MVP roughly six months faster than Thought Machine's smart-contract DSL approach. It is also Wio Bank's choice — proven at UAE production scale.</p>
+        <p>Mambu's SaaS posture, UAE-region availability, mature deposit and loan products, and proven integrations with Sumsub, Lean, and Nymcard get us to MVP roughly six months faster than Thought Machine's smart-contract DSL approach. It is also Wio Bank's choice, which is a working reference at UAE production scale. We license at launch and migrate to an in-house replacement once we understand exact requirements from live operations.</p>
         <div class="vs"><span class="win">Mambu (SaaS · UAE)</span><span>Thought Machine</span><span>10x Banking</span><span>Finflux</span><span>Build in-house</span></div>
         <p class="muted"><b>Revisit on:</b> volume &gt; 50K active SMEs or a need for custom product types Mambu can't model.</p>
       </div>
 
       <div class="adr">
         <div class="h"><span class="n">ADR-001a</span><h4>Decision Engine in-house, not vendor</h4></div>
-        <p>The decision engine is the platform's core IP. It composes deterministic policy gates + AI scoring + offer engine, and must be configurable by the risk team day-to-day without engineering lift (drag-and-drop policy editor). Vendor scoring (Provenir, Experian DataX) is generic. UAE SME risk is structurally different — high cash-flow volatility, opaque ownership, trade-credit dependencies — and the data is our moat.</p>
-        <div class="vs"><span class="win">Build (Python · XGBoost · Feast)</span><span>Provenir</span><span>Experian DataX</span><span>SAS</span></div>
+        <p>The decision engine is the platform's core IP. It composes deterministic policy gates, model scoring, and the offer engine. It must be configurable by the risk team day-to-day without engineering lift, ideally a low-code policy editor. Vendor scoring is generic. UAE SME risk is structurally different (high cashflow volatility, opaque ownership, trade-credit dependencies), and the data is our moat. We have a working prototype already.</p>
+        <div class="vs"><span class="win">Build in-house</span><span>Provenir</span><span>Experian DataX</span><span>SAS</span></div>
       </div>
 
       <div class="adr">
@@ -835,7 +844,7 @@
 
       <div class="adr">
         <div class="h"><span class="n">ADR-005</span><h4>Build the underwriting model in-house</h4></div>
-        <p>Vendor scoring (Provenir, etc.) is generic. UAE SME credit risk is structurally different — high cash-flow volatility, opaque ownership, trade-credit dependencies. The model is a core differentiator, and the data is our moat.</p>
+        <p>Vendor scoring is generic. UAE SME credit risk is structurally different (high cashflow volatility, opaque ownership, trade-credit dependencies). The model is a core differentiator, and the data is our moat. The model class is whatever best fits the task at hand; the architecture commits to the platform that lets the team choose, not to one algorithm.</p>
         <div class="vs"><span class="win">Build in-house</span><span>Provenir</span><span>Experian DataX</span></div>
       </div>
 
@@ -864,12 +873,12 @@
 
       <div class="adr">
         <div class="h"><span class="n">ADR-010</span><h4>Temporal for sagas, not Step Functions</h4></div>
-        <p>KYC, money movement, Murabaha lifecycle, dispute handling — all are multi-step, hours-to-days workflows with retries and compensation. Temporal's developer model (workflows as code) is dramatically more productive than Step Functions JSON.</p>
+        <p>KYC, money movement, Murabaha lifecycle, dispute handling. All are multi-step, hours-to-days workflows with retries and compensation. Temporal's developer model (workflows as code) is dramatically more productive than Step Functions JSON.</p>
       </div>
 
       <div class="adr">
         <div class="h"><span class="n">ADR-011</span><h4>20-agent specialist swarm over a single all-purpose LLM</h4></div>
-        <p>Bounded specialist agents — each with a clear contract, tool list, and HITL trigger — outperform a single monolithic LLM on every dimension that matters in a regulated lender: evaluability (golden sets per agent), cost control (route Haiku for routine, Opus for memos), auditability (per-agent trace logs), and safety (no agent can act outside its tool list). LangGraph on top of Temporal gives the orchestrator semantics; Bedrock gives UAE-region inference.</p>
+        <p>Bounded specialist agents, each with a clear contract, tool list, and human-in-the-loop trigger, outperform a single monolithic LLM on every dimension that matters in a regulated lender. They are easier to evaluate (golden sets per agent), easier to cost-control (route the cheaper model for routine, the bigger model for memos and reasoning), easier to audit (per-agent trace logs), and safer (no agent can act outside its tool list). LangGraph on top of Temporal gives the orchestrator semantics. Bedrock gives UAE-region inference.</p>
         <div class="vs"><span class="win">20 specialists + Temporal orchestrator</span><span>One general LLM</span><span>Buy off-shelf agent platform</span></div>
       </div>
 
@@ -881,7 +890,7 @@
 
       <div class="adr">
         <div class="h"><span class="n">ADR-013</span><h4>ADGM Cat 2 + Cat 4 (with RegLab option)</h4></div>
-        <p>ADGM FSP gives us the credit licence (Cat 2) and the financing platform licence (Cat 4) in a single forum with a CBUAE-aligned regulator and an English-common-law jurisdiction. RegLab is available for a 12–18-month sandbox period for the BNPL instalment feature inside invoice finance — useful if we want a faster path to market for that single product.</p>
+        <p>ADGM FSP gives us the credit licence (Cat 2) and the financing platform licence (Cat 4) in a single forum with a CBUAE-aligned regulator and an English-common-law jurisdiction. RegLab is available for a 12 to 18 month sandbox period for the BNPL instalment feature inside invoice finance, which is useful if we want a faster path to market for that single product.</p>
         <div class="vs"><span class="win">ADGM FSP Cat 2 + Cat 4</span><span>CBUAE Finance Company</span><span>DIFC</span></div>
       </div>
 
@@ -893,56 +902,98 @@
     </section>
 
 
-    <!-- 11 · VENDORS ───────────────────────────────── -->
+    <!-- 11 · BUILD vs BUY ─────────────────────────── -->
     <section class="s" id="vendors">
-      <div class="kicker">§ 11 · Vendors</div>
-      <h2>Vendor matrix</h2>
-      <p class="lede">Every external service we depend on. Primary, backup, indicative annual cost at Year 1 scale, and why we chose them. The "build vs buy" column flags where we keep optionality.</p>
+      <div class="kicker">§ 11 · Build vs Buy</div>
+      <h2>Build over buy. Two real exceptions.</h2>
+      <p class="lede">The cost of building software has dropped dramatically. AI-assisted coding has automated something like 90 percent of routine implementation work, and the number is still climbing. What used to take a fifteen-person team six months can now be delivered by three to five high-agency developers and PMs who actually understand the business. The traditional SaaS licensing model, where you pay a vendor for a configurable but ultimately generic platform, is becoming less relevant for the parts of a bank that touch the customer, the policy, or the IP. The cost of building has collapsed. The cost of being locked into someone else's product roadmap has not.</p>
 
+      <h3>11.1 · The two genuine vendor exceptions</h3>
+      <div class="cols-2">
+        <div class="card"><h4>Regulator-mandated services</h4><p>Credit bureau (AECB), licensed KYC and AML providers, sanctions screening, and commodity trading platforms for Sharia execution (DMCC, Bursa Suq Al-Sila). These are compliance requirements. They are not technology choices.</p></div>
+        <div class="card"><h4>Fraud intelligence</h4><p>Hub-and-spoke. A fraud vendor integrated across hundreds of institutions sees a compromised IP, a synthetic identity, or a spoofed device days before any individual lender can catch it internally. That network effect is not something you replicate by building. This is fundamentally different from a Decision Engine or an LOS, where the value is in your own proprietary logic.</p></div>
+      </div>
+
+      <h3>11.2 · The phased reality</h3>
+      <p>For systems where a mistake is costly on day one, we license to de-risk launch and migrate later. The clearest example is the LMS. Ledger accuracy is non-negotiable, and getting it wrong in production is not something you want to debug under pressure. We license a proven LMS (Mambu or equivalent) for launch, then build the in-house replacement once we understand exact requirements from live operations.</p>
+      <p>The architectural commitment that makes this work is composability. Every vendor-integrated module sits behind a clean API contract from day one, so the migration to an in-house module is a backend switch and not a re-architecture. We can run vendor and in-house side-by-side in shadow mode before cutting over. The same logic applies to collections, which starts manual at low volume and gets a dedicated platform as NPL volume justifies it.</p>
+
+      <h3>11.3 · The lending stack: canonical component decisions</h3>
+      <p>This is the table from the Vendor Selection note. It governs every component on the lending side.</p>
       <table class="t">
-        <thead><tr>
-          <th>Function</th>
-          <th>Primary</th>
-          <th>Backup</th>
-          <th>Y1 cost (AED)</th>
-          <th>Build / buy</th>
-        </tr></thead>
+        <thead><tr><th>Component</th><th>Launch</th><th>Steady state</th><th>Why</th></tr></thead>
         <tbody>
-          <tr><td>Core banking (LMS + GL)</td><td class="vendor">Mambu Cloud</td><td class="vendor">Finflux · in-house</td><td>1.2M – 2.0M</td><td>Buy</td></tr>
-          <tr><td>Loan Origination System</td><td>Mal-built on <span class="vendor">Temporal</span></td><td>—</td><td>—</td><td>Build</td></tr>
-          <tr><td>Decision Engine</td><td>Mal-built (Python · <span class="vendor">XGBoost</span> · <span class="vendor">Feast</span>)</td><td>—</td><td>—</td><td>Build</td></tr>
-          <tr><td>Pricing Engine</td><td>Mal-built (risk-tier model)</td><td>—</td><td>—</td><td>Build</td></tr>
-          <tr><td>Murabaha contract engine</td><td>Mal-built (template-driven)</td><td>—</td><td>—</td><td>Build</td></tr>
-          <tr><td>Card issuance</td><td class="vendor">Nymcard</td><td class="vendor">Marqeta · Galileo</td><td>0.6M – 1.2M</td><td>Buy</td></tr>
-          <tr><td>Identity · KYC</td><td class="vendor">UAE Pass + Sumsub</td><td class="vendor">FOCAL · IDnow</td><td>0.5M – 0.8M</td><td>Buy</td></tr>
-          <tr><td>AML screening (sanctions · PEP · adverse media)</td><td class="vendor">Refinitiv World-Check + Dow Jones</td><td class="vendor">ComplyAdvantage</td><td>0.4M – 0.7M</td><td>Buy</td></tr>
-          <tr><td>Credit bureau</td><td class="vendor">AECB (Etihad Bureau API)</td><td>—</td><td>0.4M – 0.6M</td><td>Buy (mandated)</td></tr>
-          <tr><td>Open banking aggregation</td><td class="vendor">Lean Technologies (1st IPA)</td><td class="vendor">Tarabut Gateway</td><td>0.2M – 0.4M</td><td>Buy</td></tr>
-          <tr><td>POS / payment-processor data</td><td class="vendor">Network International + Magnati</td><td class="vendor">Mashreq NeoPay · Stripe · Telr · Checkout.com</td><td>0.15M – 0.3M</td><td>Buy (partnership)</td></tr>
-          <tr><td>Accounting connectors</td><td class="vendor">Wafeq · Zoho · QuickBooks · Xero · Tally (native)</td><td class="vendor">Codat (long tail)</td><td>0.2M – 0.4M</td><td>Hybrid</td></tr>
-          <tr><td>E-invoicing (Peppol ASP)</td><td class="vendor">Avalara · RTC Suite</td><td class="vendor">Pagero · Comarch · Tradeshift</td><td>0.1M – 0.2M</td><td>Buy</td></tr>
-          <tr><td>Document OCR (Arabic-English VAT)</td><td class="vendor">AWS Textract + LayoutLMv3 fine-tune</td><td class="vendor">Google Document AI</td><td>0.2M – 0.4M</td><td>Hybrid</td></tr>
-          <tr><td>FX &amp; multi-currency</td><td class="vendor">Currencycloud</td><td class="vendor">Wise Platform</td><td>0.3M – 0.6M</td><td>Buy</td></tr>
-          <tr><td>Cloud (compute / storage)</td><td class="vendor">AWS me-central-1</td><td class="vendor">AWS me-south-1 (DR)</td><td>1.0M – 3.0M</td><td>Buy</td></tr>
-          <tr><td>Sharia ref data</td><td class="vendor">IdealRatings</td><td class="vendor">Path Solutions</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
-          <tr><td>Sharia Supervisory Board</td><td class="vendor">Dar Al Sharia</td><td class="vendor">Shariyah Review Bureau</td><td>0.3M – 0.6M</td><td>Retainer</td></tr>
-          <tr><td>Identity Provider (IDP)</td><td class="vendor">Auth0 + UAE Pass federation</td><td class="vendor">Okta</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
-          <tr><td>Workflow / orchestration</td><td class="vendor">Temporal Cloud + LangGraph</td><td class="vendor">Self-hosted Temporal</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
-          <tr><td>Foundation LLM (Bedrock)</td><td class="vendor">Anthropic Claude (Opus · Sonnet · Haiku)</td><td class="vendor">Llama 3.1 · Cohere · Qwen</td><td>0.9M – 1.8M</td><td>Buy</td></tr>
-          <tr><td>Arabic conversational model</td><td class="vendor">Cohere Command-R fine-tune</td><td class="vendor">Qwen 2.5 fallback</td><td>0.1M – 0.3M</td><td>Buy + fine-tune</td></tr>
-          <tr><td>Embeddings</td><td class="vendor">Voyage AI</td><td class="vendor">Cohere Embed v3 multilingual</td><td>—</td><td>Buy</td></tr>
-          <tr><td>Vector store</td><td class="vendor">Pinecone</td><td class="vendor">pgvector on Postgres</td><td>0.1M – 0.2M</td><td>Buy</td></tr>
-          <tr><td>Observability (infra)</td><td class="vendor">Datadog</td><td class="vendor">Grafana Cloud</td><td>0.4M – 0.8M</td><td>Buy</td></tr>
-          <tr><td>Observability (LLM traces)</td><td class="vendor">Langfuse (self-hosted)</td><td class="vendor">Helicone · Braintrust</td><td>0.1M – 0.2M</td><td>Buy</td></tr>
-          <tr><td>Security · EDR</td><td class="vendor">CrowdStrike Falcon</td><td class="vendor">SentinelOne</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
-          <tr><td>Notifications · SMS · email · push</td><td class="vendor">Twilio + Postmark + OneSignal</td><td class="vendor">Unifonic</td><td>0.1M – 0.3M</td><td>Buy</td></tr>
-          <tr><td>Customer support platform</td><td class="vendor">Intercom + Cohere Arabic fine-tune</td><td class="vendor">Zendesk · Freshdesk</td><td>0.15M – 0.3M</td><td>Buy</td></tr>
-          <tr><td>Underwriting model</td><td>Mal-built (XGBoost + SHAP + policy engine)</td><td>—</td><td>—</td><td>Build</td></tr>
-          <tr><td>Customer apps (iOS / Android / Web)</td><td>Mal-built</td><td>—</td><td>—</td><td>Build</td></tr>
+          <tr><td><b>Decision Engine</b></td><td>Build in-house (Day 1)</td><td>In-house</td><td>Core IP. The risk team must be able to configure rules without engineering dependency. We have a working prototype.</td></tr>
+          <tr><td><b>LOS</b></td><td>Build in-house (Day 1)</td><td>In-house</td><td>Workflow is deeply product-specific. Off-the-shelf platforms force compromise on customer experience and funnel design.</td></tr>
+          <tr><td><b>Pricing Engine</b></td><td>Build in-house (Day 1)</td><td>In-house</td><td>Tightly coupled with the Decision Engine and the risk models. Must support real-time risk-based pricing, not static rate cards.</td></tr>
+          <tr><td><b>Collections Engine</b></td><td>Manual or light vendor</td><td>In-house</td><td>Low volume at launch, manual is fine. Build the dedicated platform as NPL volume scales. EWS is the priority investment (prevention over cure).</td></tr>
+          <tr><td><b>LMS</b></td><td>License (e.g. Mambu)</td><td>Migrate in-house</td><td>Ledger accuracy is non-negotiable. License a proven provider to de-risk launch, then migrate once we know exact requirements.</td></tr>
+          <tr><td><b>Core Banking</b></td><td>Integrate existing</td><td>Integrate existing</td><td>Depends on Mal's existing core banking stack. Standard integration layer.</td></tr>
+          <tr><td><b>Fraud Management</b></td><td>Buy (vendor)</td><td>Buy (vendor)</td><td>Hub-and-spoke. Vendor aggregates signals across the industry. Network effect is irreplaceable.</td></tr>
+          <tr><td><b>Bureau / KYC / AML</b></td><td>Buy / API</td><td>Buy / API</td><td>Regulatory requirement. Standard API integration with AECB, licensed KYC providers, sanctions databases.</td></tr>
+          <tr><td><b>Commodity Trading (Islamic)</b></td><td>Buy / partner</td><td>Buy / partner</td><td>DMCC or Bursa Suq Al-Sila for Tawarruq commodity execution. Regulated marketplace, not a build candidate.</td></tr>
+          <tr><td><b>Portfolio Monitoring &amp; Reporting</b></td><td>Build in-house</td><td>In-house</td><td>Real-time dashboarding and EWS are competitive differentiators. Must be tailored to our risk framework and KPI hierarchy.</td></tr>
         </tbody>
       </table>
 
-      <p class="muted" style="font-size:12.5px;"><b>Note on costs.</b> Ranges are indicative at Year 1 scale (~2,500 active SMEs, ~250K monthly transactions, ~AED 500M in financed receivables). Most contracts step up by ~50% in Year 2 and ~2× in Year 3 as volume grows.</p>
+      <h3>11.4 · Extending the same logic to the SME banking surface</h3>
+      <p>The lending stance carries over to the rest of the bank. The same questions apply. Does this touch our customers, our policy, or our IP? Then build it. Is it regulator-mandated or a hub-and-spoke commodity? Then buy it. Is the launch risk too high to absorb? Then license now and migrate later.</p>
+
+      <table class="t">
+        <thead><tr><th>SME banking component</th><th>Launch</th><th>Steady state</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><b>Customer apps</b> (iOS, Android, web, ops console)</td><td>Build</td><td>Build</td><td>This is the product. A small senior team ships faster on its own stack than any vendor allows. Distinctive experience is the brand.</td></tr>
+          <tr><td><b>Onboarding orchestration</b> (KYB workflow)</td><td>Build</td><td>Build</td><td>Workflow IP. Sequencing the UAE Pass, DET / DED / ADGM / DIFC, AECB, MOET UBO, Lean, and Peppol calls is a competitive moat. Vendor BPM tools cannot match.</td></tr>
+          <tr><td><b>Customer graph</b> (KYB record, UBO graph, signatories, consent register)</td><td>Build</td><td>Build</td><td>The canonical record of who our customers are. Lives at the centre of every other system. Never outsourced.</td></tr>
+          <tr><td><b>Identity verification</b> (face match, liveness, document forensics)</td><td>Buy (Sumsub, FOCAL)</td><td>Buy</td><td>Specialised computer vision and a network of fraud signals. Building this in-house is the wrong battle for a lender.</td></tr>
+          <tr><td><b>UAE Pass federation</b></td><td>Integrate</td><td>Integrate</td><td>Government identity rail. Standard integration.</td></tr>
+          <tr><td><b>Multi-currency accounts</b> (customer-facing wallet experience)</td><td>Build</td><td>Build</td><td>The customer's view of their money. We build the experience; the FX counterparty sits behind it.</td></tr>
+          <tr><td><b>FX engine</b> (rates, hedging, sub-ledger for non-AED)</td><td>Buy (Currencycloud)</td><td>Buy / hybrid</td><td>Liquidity, hedging, regulatory licensing for FX. Commodity infrastructure. Build a hedging policy on top; do not build the FX book.</td></tr>
+          <tr><td><b>Virtual IBAN issuance</b></td><td>Partner (Wio, RAKBank)</td><td>Self-issue once licensed</td><td>Today we lean on a partner bank's IBAN. Once Mal holds the licence, self-issue.</td></tr>
+          <tr><td><b>Card issuance and processing</b></td><td>Buy (Nymcard)</td><td>Buy</td><td>BIN sponsorship, scheme connectivity, 3DS, tokenisation. Commodity rails.</td></tr>
+          <tr><td><b>Expense management</b> (per-employee cards, MCC policy, receipt OCR, approvals)</td><td>Build</td><td>Build</td><td>Customer-facing surface. The card rail is bought; the policy engine, receipt OCR, approval workflows, and reporting are ours.</td></tr>
+          <tr><td><b>Accounting connectors</b> (Wafeq, Zoho, QuickBooks, Xero, Tally)</td><td>Build (native)</td><td>Build (native)</td><td>The native experience lives in our app. Codat is the meta-integrator for the long tail only. The five core connectors are ours.</td></tr>
+          <tr><td><b>Open banking aggregator</b></td><td>Buy (Lean, first CBUAE IPA)</td><td>Buy</td><td>Bank-by-bank integration is a 12-month job we would never recoup. Lean owns the breadth.</td></tr>
+          <tr><td><b>Payments orchestration</b> (rail selection, idempotency, retries, sagas)</td><td>Build</td><td>Build</td><td>Money movement IP. Each rail (AANI, UAEFTS, IPP, Buna, SWIFT) is integrated; orchestration logic is ours.</td></tr>
+          <tr><td><b>Payment rails</b> (AANI, UAEFTS, IPP, Buna, SWIFT)</td><td>Integrate</td><td>Integrate</td><td>National infrastructure. Standard integration through partner bank where required.</td></tr>
+          <tr><td><b>Peppol e-invoicing</b></td><td>Buy ASP (Avalara + RTC Suite)</td><td>Buy ASP</td><td>FTA-accredited service provider is required. We pick two for resilience and own the integration layer.</td></tr>
+          <tr><td><b>Sanctions, PEP, adverse media</b></td><td>Buy (Refinitiv, Dow Jones)</td><td>Buy</td><td>Regulator-mandated screening with continuous list updates. Vendor required.</td></tr>
+          <tr><td><b>Document OCR</b> (Arabic-English VAT invoices, IDs, MOA)</td><td>Buy + fine-tune</td><td>Buy + fine-tune</td><td>Vendor OCR for the substrate; we fine-tune layout and field-extraction on our own corpus. Best of both.</td></tr>
+          <tr><td><b>Murabaha contract engine</b></td><td>Build</td><td>Build</td><td>Template-driven, SSB-approved. Refuses to render a contract outside template. Core Sharia IP.</td></tr>
+          <tr><td><b>Sharia screening reference data</b></td><td>Buy (IdealRatings)</td><td>Buy</td><td>Industry classifications for halal compatibility. Specialist reference data, not worth replicating.</td></tr>
+          <tr><td><b>Conversational AI (Arabic-first CX)</b></td><td>Build on managed models</td><td>Build</td><td>The customer-facing assistant is ours. We use managed LLM serving (Bedrock for Claude, fine-tuned Cohere or open-weights for Arabic) but build the RAG, the policy grounding, and the eval harness in-house.</td></tr>
+          <tr><td><b>Foundation LLM serving</b></td><td>Buy (AWS Bedrock)</td><td>Buy</td><td>Cloud-resident inference in UAE region. Commodity. We pay for the inference, not the platform.</td></tr>
+          <tr><td><b>Feature store, embedding store, vector retrieval</b></td><td>Build on managed primitives</td><td>Build</td><td>The platform that lets the team choose, version, and replace models. Built on managed databases and managed vector stores.</td></tr>
+          <tr><td><b>Observability (infra, app traces)</b></td><td>Buy (Datadog)</td><td>Buy</td><td>Commodity. Buy.</td></tr>
+          <tr><td><b>Observability (LLM traces, evals)</b></td><td>Buy (Langfuse self-hosted)</td><td>Buy</td><td>Specialist tool, self-hosted for data residency. Commodity.</td></tr>
+          <tr><td><b>Security (EDR, SIEM, SOC tooling)</b></td><td>Buy</td><td>Buy</td><td>Vendor benefit from cross-customer telemetry. Same network-effect logic as fraud.</td></tr>
+          <tr><td><b>Identity provider (workforce SSO + MFA)</b></td><td>Buy (Auth0, hardware keys)</td><td>Buy</td><td>Commodity.</td></tr>
+          <tr><td><b>Workflow / sagas / agent orchestration</b></td><td>Buy (Temporal Cloud)</td><td>Buy</td><td>Durability, retries, replay are well-served by a managed product.</td></tr>
+          <tr><td><b>Portfolio monitoring, EWS, regulatory reporting</b></td><td>Build</td><td>Build</td><td>Real-time, tailored to our risk framework. The whole point is that it is ours.</td></tr>
+          <tr><td><b>Cloud (compute, storage, network)</b></td><td>Buy (AWS me-central-1)</td><td>Buy</td><td>Commodity. UAE-resident, CBUAE-approved.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>11.5 · The culture this requires</h3>
+      <p>Build-first only works with a specific kind of team. Three commitments make it possible.</p>
+      <div class="cols-3">
+        <div class="card">
+          <h4>PMs ship features alongside engineers</h4>
+          <p>The old chain of PM, design, engineering, QA, release is too slow for this world. When AI handles most of the implementation, the PM's job shifts from writing specs to actually shipping. We set this up deliberately.</p>
+        </div>
+        <div class="card">
+          <h4>Small teams, high agency</h4>
+          <p>Five to ten people with high agency and domain knowledge will outperform a fifty-person team that runs on process. AI-assisted development means the bottleneck is no longer coding capacity. It is clarity of thought about what to build.</p>
+        </div>
+        <div class="card">
+          <h4>Minimal bureaucracy</h4>
+          <p>Approval chains and multi-week sprint ceremonies kill velocity. The companies winning right now have stripped out unnecessary process and given individual contributors real ownership. Anthropic is a useful reference. Lean teams, high-paced releases, complex systems shipping quickly.</p>
+        </div>
+      </div>
+
+      <p class="muted" style="margin-top:18px;">A year ago, the recommendation would have been heavier on vendor-assisted launches across the board. What is observable in the market right now, with how quickly AI-assisted coding is maturing, is that building in-house is the better long-term bet. The SaaS licensing model served the industry well when software required large teams and long timelines. That is changing. The organisations that recognise the shift earliest will have a structural advantage that compounds.</p>
+
+      <p class="muted" style="font-size:12.5px;">Indicative steady-state vendor spend at Year 1 scale (~2,500 active SMEs, ~250K monthly transactions, ~AED 500M in financed receivables) is AED 4 to 6M across cloud, identity, screening, bureau, card rails, OCR, ASP, and managed model serving. Most contracts step up by roughly 50 percent in Year 2 and 2x in Year 3 as volume grows. The number to watch is not vendor cost, but the cost of running engineering with the wrong-sized team. A 50-person stack that drifts toward process is more expensive than a 10-person stack that ships.</p>
     </section>
 
 
@@ -975,7 +1026,7 @@
       <h3>Q1 2027 · Public launch + instalment plan</h3>
       <ul>
         <li>Open enrolment opens. Auto-underwriting (Express) at ticket ≤ AED 250K; manual above.</li>
-        <li>Instalment plan (2–6 months) launches inside invoice finance — the headline buyer-side differentiator vs Comfi / Beehive / Funding Souq.</li>
+        <li>Instalment plan (2 to 6 months) launches inside invoice finance. This is the headline buyer-side differentiator versus Comfi, Beehive, Funding Souq.</li>
         <li>Sharia Murabaha contract live for every customer (single SKU).</li>
         <li>Expense management surfaces ship: receipt OCR, MCC controls, per-employee cards, policy engine.</li>
         <li>Underwriting + collections agents: Credit Memo Writer, Invoice Verifier, Collections Conductor.</li>
@@ -998,7 +1049,7 @@
         <li>Cross-border via Buna (AED corridor) + SWIFT (USD/EUR/GBP) live.</li>
         <li>Conversational AI assistant graduates to private preview, then GA.</li>
         <li>Remaining agents: Pricing Optimizer, Cohort Analyst, Regulatory Horizon Scanner.</li>
-        <li>SME Peppol mandate goes live (July 2027) — Mal already production-ready.</li>
+        <li>SME Peppol mandate goes live (July 2027). Mal is already production-ready.</li>
       </ul>
       <p><b>Exit:</b> 12,000 SMEs, AED 1.2B financed cumulatively in Y2, ops cost per active SME &lt; AED 60/month.</p>
 
