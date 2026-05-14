@@ -6,219 +6,387 @@
 <title>Mal · SME Banking Architecture Documentation</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
+  /*
+   * Mal · SME banking architecture
+   * Editorial design language, deliberately not "card UI"
+   * Paper, ruled hairlines, large serif numerals, sparing iridescent
+   */
   :root{
-    --surface:#FAF7EE; --paper:#FFFFFF; --paper-2:#FBF9F2;
-    --ink:#1A1A28; --mid:#6B6B7D; --mid-2:#9CA0AE;
-    --line:#E8E5D9; --line-2:#F2EFE6;
-    --primary:#2A1F6F; --primary-3:#5B3FB2; --primary-50:#EFEAFF;
+    --paper:#F4F0E6;          /* warm paper */
+    --paper-2:#EAE5D5;        /* subtle block tint */
+    --ink:#15151E;
+    --ink-2:#2A2A38;
+    --mid:#5A5A6A;
+    --mid-2:#8A8A98;
+    --rule:#1A1A24;           /* near-black hairline */
+    --rule-soft:#C9C2AD;      /* subtle hairline */
+    --accent:#8C2018;         /* deep burgundy */
+    --warm:#B86F1A;
+    --gold:#B58A3B;
+    --green:#3A6F4A;
     --iri-1:#C9B7E8; --iri-2:#F0B7C2; --iri-3:#F4D38C; --iri-4:#B7D6C0;
-    --success:#2E8B57; --success-bg:#E6F7EC;
-    --warn:#B86F1A; --warn-bg:#FFF8E1;
-    --info:#2A6FB2; --info-bg:#E3EEFA;
-    --rose:#C1303C; --rose-bg:#FFEEEE;
-    --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:24px;
-    --sh-1: 0 1px 0 rgba(26,26,40,.04), 0 1px 2px rgba(26,26,40,.04);
-    --sh-2: 0 1px 0 rgba(26,26,40,.04), 0 4px 12px rgba(26,26,40,.06);
-    --sh-3: 0 18px 60px -24px rgba(26,26,40,.18), 0 4px 16px rgba(26,26,40,.06);
   }
   *{ box-sizing:border-box; }
-  html,body{ margin:0; padding:0; background:var(--surface); color:var(--ink);
-    font-family:'Inter', system-ui, sans-serif; font-feature-settings:'ss01','cv11';
-    -webkit-font-smoothing:antialiased; line-height:1.6; font-size:15.5px; }
+  html{ background:var(--paper); }
+  body{ margin:0; padding:0; background:var(--paper); color:var(--ink);
+    font-family:'Inter', system-ui, sans-serif;
+    font-feature-settings:'ss01','cv11','calt';
+    -webkit-font-smoothing:antialiased; line-height:1.6; font-size:16px; }
+  ::selection{ background: color-mix(in srgb, var(--gold) 35%, transparent); color: var(--ink); }
   .mono{ font-family:'JetBrains Mono', ui-monospace, monospace; }
-  .display{ font-family:'Playfair Display', Georgia, serif; font-style:italic; letter-spacing:-.012em; }
-  .iri-text{
-    background: linear-gradient(110deg, var(--primary-3) 0%, var(--iri-1) 35%, var(--iri-2) 55%, var(--iri-3) 75%, var(--primary-3) 100%);
-    background-size: 200% 100%;
-    -webkit-background-clip: text; background-clip:text; color:transparent;
-    animation: shimmer 9s linear infinite;
-  }
-  @keyframes shimmer{ to { background-position:-200% 0; } }
-  a{ color:var(--primary-3); text-decoration:none; border-bottom:1px solid transparent; transition:border-color .15s; }
-  a:hover{ border-bottom-color:var(--primary-3); }
+  .display{ font-family:'Fraunces', 'Cormorant Garamond', Georgia, serif; font-style:italic; letter-spacing:-.012em; }
+  a{ color:var(--ink); text-decoration:none; border-bottom:1px solid var(--rule-soft); transition:border-color .15s; }
+  a:hover{ border-bottom-color:var(--ink); }
 
   /* Layout */
-  .shell{ display:grid; grid-template-columns: 260px minmax(0, 1fr); gap:48px;
-    max-width: 1400px; margin: 0 auto; padding: 56px 40px 96px; }
-  @media (max-width: 960px){ .shell{ grid-template-columns: 1fr; padding: 36px 20px 64px; gap:24px; } }
+  .shell{
+    display:grid; grid-template-columns: 240px minmax(0, 1fr); gap:72px;
+    max-width: 1280px; margin: 0 auto; padding: 64px 56px 96px;
+  }
+  @media (max-width: 960px){ .shell{ grid-template-columns: 1fr; padding: 40px 22px 64px; gap:32px; } }
 
-  /* Sidebar TOC */
-  aside.toc{ position:sticky; top:32px; align-self:start; max-height:calc(100vh - 64px); overflow:auto; }
+  /* Sidebar TOC, less component-y */
+  aside.toc{ position:sticky; top:32px; align-self:start; max-height:calc(100vh - 64px); overflow:auto;
+    border-right: 0; }
   aside.toc .crest{
-    width:36px; height:36px; border-radius:11px;
+    width:34px; height:34px; border-radius:50%;
     background: conic-gradient(from 90deg, var(--iri-1), var(--iri-2), var(--iri-3), var(--iri-4), var(--iri-1));
     display:inline-flex; align-items:center; justify-content:center;
-    font-family:'Playfair Display', serif; font-style:italic; font-weight:600; color:var(--primary); font-size:18px;
-    box-shadow: 0 4px 14px -6px rgba(91,63,178,.4), inset 0 0 0 3px var(--paper);
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500; color:#1A1A28; font-size:18px;
+    box-shadow: inset 0 0 0 2px var(--paper);
   }
-  aside.toc h6{ font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
-    color:var(--mid-2); margin: 24px 0 8px; }
-  aside.toc ol{ list-style:none; padding:0; margin:0; counter-reset: toc; display:flex; flex-direction:column; gap:2px; }
-  aside.toc ol li{ counter-increment: toc; }
+  aside.toc h6{
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size:13px; letter-spacing:.02em; color:var(--mid-2);
+    margin: 28px 0 10px; text-transform:none;
+  }
+  aside.toc ol{ list-style:none; padding:0; margin:0; counter-reset: toc;
+    display:flex; flex-direction:column; gap:0;
+    border-top: 1px solid var(--rule-soft);
+  }
+  aside.toc ol li{ counter-increment: toc;
+    border-bottom: 1px solid var(--rule-soft); }
   aside.toc ol li a{
-    display:flex; align-items:flex-start; gap:8px; padding:7px 10px; border-radius:8px;
-    color:var(--mid); font-size:13px; line-height:1.35;
-    border:1px solid transparent; transition: all .15s;
+    display:flex; align-items:baseline; gap:14px; padding:9px 0;
+    color:var(--mid); font-size:13.5px; line-height:1.35; border-bottom:none;
   }
-  aside.toc ol li a:hover{ background:var(--paper); color:var(--ink); border-color:var(--line); }
-  aside.toc ol li a::before{ content: counter(toc, decimal-leading-zero);
-    font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--mid-2); padding-top:2px; flex-shrink:0; }
+  aside.toc ol li a:hover{ color:var(--ink); }
+  aside.toc ol li a::before{
+    content: counter(toc, decimal-leading-zero);
+    font-family:'Fraunces', serif; font-style:italic;
+    font-size:13px; color:var(--mid-2); flex-shrink:0; min-width:18px;
+  }
   @media (max-width: 960px){ aside.toc{ position:static; max-height:none; } }
 
-  /* Hero */
+  /* Hero, typographic poster, no gradient cards */
   header.hero{
-    background:
-      radial-gradient(900px 320px at 8% -10%, var(--iri-1) 0%, transparent 55%),
-      radial-gradient(700px 280px at 92% 110%, var(--iri-2) 0%, transparent 55%),
-      linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
-    border:1px solid var(--line); border-radius:var(--r-xl);
-    padding:56px 56px; margin-bottom: 48px;
-    position:relative; overflow:hidden;
+    background: transparent; border: none; border-radius: 0;
+    padding: 56px 0 64px; margin-bottom: 56px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
   }
-  header.hero .tag{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px;
-    background:var(--paper); border:1px solid var(--line); border-radius:999px;
-    font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--mid); }
-  header.hero .tag .dot{ width:6px; height:6px; border-radius:999px; background:var(--success); }
+  header.hero .masthead{
+    display:flex; align-items:center; gap:14px;
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size: 15px; color: var(--mid);
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--rule-soft);
+    margin-bottom: 36px;
+  }
+  header.hero .tag{
+    display:inline-flex; align-items:center; gap:8px;
+    background: transparent; border: 1px solid var(--rule-soft);
+    padding: 4px 10px; border-radius: 2px;
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size:12px; color:var(--mid); text-transform:none; letter-spacing:0;
+  }
+  header.hero .tag .dot{ width:5px; height:5px; border-radius:999px; background:var(--green); }
+  header.hero .pretitle{
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size: 13px; color: var(--mid);
+    margin-bottom: 16px;
+    letter-spacing: 0; text-transform: none;
+  }
   header.hero h1{
-    font-family:'Playfair Display', serif; font-style:italic; font-weight:500;
-    font-size: clamp(40px, 5vw, 64px); line-height:1.02; letter-spacing:-.022em;
-    margin:18px 0 14px;
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size: clamp(48px, 6vw, 76px);
+    line-height: 0.98; letter-spacing: -.02em;
+    margin: 0 0 28px;
+    color: var(--ink);
+    max-width: 11ch;
   }
-  header.hero p.lede{ color:var(--mid); font-size:16.5px; max-width:760px; margin:0; line-height:1.6; }
-  header.hero .meta{ display:flex; gap:24px; flex-wrap:wrap; font-size:12px; color:var(--mid); margin-top:22px; padding-top:22px; border-top:1px solid var(--line-2); }
-  header.hero .meta b{ color:var(--ink); font-weight:600; }
+  header.hero h1 .em{ font-style:italic; }
+  header.hero p.lede{
+    font-family:'Inter', sans-serif; font-weight: 400;
+    color:var(--ink); font-size: 19px; line-height: 1.55;
+    max-width: 56ch; margin: 0;
+  }
+  header.hero .meta{
+    display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 28px; font-size: 13.5px; color:var(--mid);
+    margin-top: 40px; padding-top: 28px;
+    border-top: 1px solid var(--rule-soft);
+  }
+  header.hero .meta div b{ display:block; font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    color: var(--ink); font-size: 14px; margin-bottom: 4px; }
 
-  /* Sections */
-  section.s{ background:var(--paper); border:1px solid var(--line); border-radius:var(--r-xl);
-    padding: 44px 48px; box-shadow:var(--sh-2); margin-bottom: 36px; }
-  @media (max-width: 960px){ section.s{ padding: 28px 22px; } }
-  section.s > h2{
-    font-family:'Playfair Display', serif; font-style:italic; font-weight:500;
-    font-size: 38px; letter-spacing:-.02em; line-height:1.05;
-    margin:0 0 6px;
+  /* Sections: paper-on-paper, no card */
+  section.s{
+    background: transparent;
+    border: none; border-radius: 0; box-shadow: none;
+    border-top: 1px solid var(--rule);
+    padding: 72px 0 24px;
+    margin: 0;
+    position: relative;
   }
+  section.s + section.s{ margin-top: 0; }
+  @media (max-width: 960px){ section.s{ padding: 48px 0 16px; } }
+
+  /* Editorial section header: huge numeral, italic display, ruled */
   section.s > .kicker{
-    font-family:'JetBrains Mono', monospace; font-size:11.5px; letter-spacing:.12em; text-transform:uppercase;
-    color:var(--mid-2); margin-bottom:14px;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 14px; color: var(--mid-2); margin: 0 0 14px;
+    letter-spacing: 0; text-transform: none;
   }
-  section.s > .lede{ color:var(--mid); font-size:15.5px; max-width:780px; line-height:1.65; margin: 0 0 24px; }
+  section.s > h2{
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size: clamp(36px, 4.4vw, 56px);
+    line-height: 1.02; letter-spacing: -.02em;
+    margin: 0 0 18px; color: var(--ink);
+    max-width: 22ch;
+  }
+  section.s > .lede{
+    font-family:'Inter', sans-serif;
+    color: var(--ink); font-size: 17.5px; line-height: 1.55;
+    max-width: 60ch; margin: 0 0 32px;
+  }
+  section.s > .lede::first-letter{
+    font-family:'Fraunces', serif; font-style: italic;
+    float: left; font-size: 3.2em; line-height: 0.86;
+    padding: 4px 10px 0 0; color: var(--ink);
+  }
+  /* drop-cap only on the executive-summary lede, not every section */
+  section.s:not(#summary) > .lede::first-letter{ all: revert; }
+
   section.s h3{
-    font-family:'Playfair Display', serif; font-style:italic; font-weight:500;
-    font-size: 22px; line-height:1.2; letter-spacing:-.012em; margin: 36px 0 10px;
-    padding-top: 8px;
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size: 26px; line-height:1.2; letter-spacing:-.012em;
+    margin: 44px 0 14px; color: var(--ink);
+    padding-bottom: 8px; border-bottom: 1px solid var(--rule-soft);
   }
-  section.s h3:first-of-type{ margin-top: 16px; }
+  section.s h3:first-of-type{ margin-top: 24px; }
   section.s h4{
-    font-size: 14px; font-weight:600; margin: 20px 0 8px; letter-spacing:-.005em;
+    font-family:'Fraunces', serif; font-style:italic; font-weight:500;
+    font-size: 18px; color: var(--ink); margin: 24px 0 8px; letter-spacing:0;
   }
-  section.s p{ margin: 0 0 14px; color:var(--ink); }
+  section.s p{ margin: 0 0 16px; color:var(--ink); font-size: 16px; line-height: 1.65; }
   section.s p.muted{ color:var(--mid); }
-  section.s ul, section.s ol{ padding-left: 20px; margin: 0 0 14px; }
-  section.s ul li, section.s ol li{ margin-bottom: 6px; }
+  section.s ul, section.s ol{ padding-left: 22px; margin: 0 0 18px; }
+  section.s ul li, section.s ol li{ margin-bottom: 10px; line-height: 1.55; }
+  section.s ul{ list-style: none; padding-left: 0; }
+  section.s ul li{ position: relative; padding-left: 22px; }
+  section.s ul li::before{
+    content: ""; position: absolute; left: 0; top: 0.65em;
+    width: 8px; height: 1px; background: var(--ink);
+  }
   section.s b{ font-weight:600; }
 
-  /* Callout */
+  /* Callout: editorial pull-quote style, no fill */
   .callout{
-    background: var(--paper-2); border:1px solid var(--line); border-left:3px solid var(--primary-3);
-    border-radius: 0 var(--r-md) var(--r-md) 0;
-    padding: 14px 18px; margin: 16px 0;
-    font-size: 14px;
+    background: transparent;
+    border: none;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 18px 0 18px 24px;
+    margin: 24px 0;
+    font-size: 17px; line-height: 1.55;
+    font-family:'Fraunces', serif; font-style: italic;
+    color: var(--ink);
+    border-left: 3px solid var(--accent);
+    border-radius: 0;
   }
-  .callout b{ display:block; margin-bottom: 3px; font-size:12.5px;
-    color:var(--primary); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
-  .callout.warn{ border-left-color:var(--warn); background: var(--warn-bg); }
-  .callout.warn b{ color:var(--warn); }
-  .callout.success{ border-left-color:var(--success); background: var(--success-bg); }
-  .callout.success b{ color:var(--success); }
-  .callout.rose{ border-left-color:var(--rose); background: var(--rose-bg); }
-  .callout.rose b{ color:var(--rose); }
+  .callout b{
+    display:block; margin-bottom: 8px;
+    font-family:'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 13px; color: var(--accent);
+    text-transform: none; letter-spacing: 0;
+  }
+  .callout.warn{ border-left-color: var(--warm); }
+  .callout.warn b{ color: var(--warm); }
+  .callout.success{ border-left-color: var(--green); }
+  .callout.success b{ color: var(--green); }
+  .callout.rose{ border-left-color: var(--accent); }
+  .callout.rose b{ color: var(--accent); }
 
-  /* Table */
-  table.t{ width:100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 13.5px; }
-  table.t th{ text-align:left; padding: 10px 14px; background: var(--paper-2); border-bottom:1px solid var(--line);
-    font-size: 11.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--mid); font-weight:600;
-    font-family:'JetBrains Mono', monospace; }
-  table.t td{ padding: 12px 14px; border-bottom:1px solid var(--line-2); vertical-align: top; }
-  table.t tr:hover td{ background: var(--paper-2); }
-  table.t .vendor{ font-family:'JetBrains Mono', monospace; font-size:12px; }
+  /* Table: serif italic head, thin rules, no hover, no fill */
+  table.t{
+    width:100%; border-collapse: collapse; margin: 20px 0 28px;
+    font-size: 14.5px; line-height: 1.5;
+  }
+  table.t th{
+    text-align:left; padding: 12px 16px 12px 0;
+    background: transparent;
+    border-bottom: 1px solid var(--rule);
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 14px; color: var(--ink);
+    text-transform: none; letter-spacing: 0;
+  }
+  table.t td{
+    padding: 12px 16px 12px 0;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  table.t tr:hover td{ background: transparent; }
+  table.t .vendor{ font-family:'Inter', sans-serif; font-size:14.5px; }
+  table.t b{ font-weight: 600; color: var(--ink); }
 
-  /* Pill */
-  .pill{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:11px;
-    background: var(--paper-2); border:1px solid var(--line); color:var(--mid); margin-right:4px; margin-bottom:4px;
-    font-family:'JetBrains Mono', monospace; }
-  .pill.primary{ background: var(--primary-50); border-color: color-mix(in srgb, var(--primary-3) 30%, white); color:var(--primary); }
-  .pill.warn{ background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 35%, white); color:var(--warn); }
-  .pill.success{ background: var(--success-bg); border-color: color-mix(in srgb, var(--success) 35%, white); color:var(--success); }
-  .pill.info{ background: var(--info-bg); border-color: color-mix(in srgb, var(--info) 35%, white); color:var(--info); }
+  /* Pill: minimal, near-square, no fill */
+  .pill{
+    display:inline-block; padding: 2px 8px; border-radius: 2px;
+    font-size: 11px; font-family:'Inter', sans-serif;
+    background: transparent; border: 1px solid var(--rule-soft); color: var(--mid);
+    margin-right: 4px; margin-bottom: 4px; letter-spacing: 0;
+  }
+  .pill.primary{ border-color: var(--accent); color: var(--accent); }
+  .pill.warn{ border-color: var(--warm); color: var(--warm); }
+  .pill.success{ border-color: var(--green); color: var(--green); }
+  .pill.info{ border-color: var(--ink-2); color: var(--ink-2); }
 
-  /* ADR card */
-  .adr{ background: var(--paper-2); border:1px solid var(--line); border-radius: var(--r-md);
-    padding: 14px 18px; margin: 10px 0; }
-  .adr .h{ display:flex; align-items:baseline; gap:10px; margin-bottom:6px; }
-  .adr .h .n{ font-family:'JetBrains Mono', monospace; font-size:11px;
-    color:var(--mid-2); letter-spacing:.08em; text-transform:uppercase; }
-  .adr .h h4{ font-size:15px; margin:0; font-weight:600; }
-  .adr p{ font-size:13.5px; margin: 4px 0; color:var(--ink); }
-  .adr p.muted{ color:var(--mid); font-size:12.5px; }
-  .adr .vs{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
-  .adr .vs span{ font-size:11px; padding:2px 8px; border-radius:6px; background:var(--paper); border:1px solid var(--line); color:var(--mid); }
-  .adr .vs span.win{ background: var(--success-bg); color:var(--success); border-color: color-mix(in srgb, var(--success) 30%, white); }
+  /* ADR: editorial entry, not a card */
+  .adr{
+    background: transparent;
+    border: none; border-top: 1px solid var(--rule-soft);
+    border-radius: 0;
+    padding: 18px 0 16px;
+    margin: 0;
+  }
+  .adr:last-of-type{ border-bottom: 1px solid var(--rule-soft); }
+  .adr .h{ display:flex; align-items:baseline; gap:14px; margin-bottom:8px; }
+  .adr .h .n{
+    font-family:'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 14px; color: var(--mid-2);
+    text-transform: none; letter-spacing: 0;
+    min-width: 64px;
+  }
+  .adr .h h4{
+    font-family:'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 19px; margin:0; color: var(--ink);
+  }
+  .adr p{ font-size:15px; margin: 6px 0; color:var(--ink); line-height: 1.55; }
+  .adr p.muted{ color:var(--mid); font-size:14px; }
+  .adr .vs{ display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; align-items: center; }
+  .adr .vs span{
+    font-size:12px; padding:2px 8px; border-radius:2px;
+    background: transparent; border:1px solid var(--rule-soft); color:var(--mid);
+    font-family: 'Inter', sans-serif;
+  }
+  .adr .vs span.win{
+    background: transparent; color: var(--ink);
+    border-color: var(--ink);
+    font-weight: 500;
+  }
 
-  /* Stat row */
-  .stats{ display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 16px 0 24px; }
+  /* Stat row: typographic, no card */
+  .stats{
+    display:grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    margin: 24px 0 32px;
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+  }
   @media (max-width:760px){ .stats{ grid-template-columns: repeat(2, 1fr); } }
-  .stat{ padding: 14px 16px; border:1px solid var(--line); border-radius: var(--r-md); background: var(--paper-2); }
-  .stat .l{ font-size: 11px; color:var(--mid); letter-spacing:.08em; text-transform:uppercase; font-family:'JetBrains Mono', monospace; }
-  .stat .v{ font-family:'Playfair Display', serif; font-style:italic; font-size: 26px; line-height:1.1; margin-top: 4px; }
-  .stat .s{ font-size: 11.5px; color:var(--mid); margin-top: 2px; }
+  .stat{
+    padding: 20px 16px 20px 0;
+    border: none; border-radius: 0; background: transparent;
+    border-right: 1px solid var(--rule-soft);
+  }
+  .stat:last-child{ border-right: none; }
+  .stat .l{
+    font-size: 12px; color:var(--mid); letter-spacing: 0;
+    text-transform: none;
+    font-family:'Fraunces', serif; font-style: italic; font-weight: 500;
+  }
+  .stat .v{
+    font-family:'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 30px; line-height:1.05; margin-top: 8px; color: var(--ink);
+  }
+  .stat .s{ font-size: 12.5px; color:var(--mid); margin-top: 6px; line-height: 1.4; }
 
-  /* Org chart */
-  .org{ display:flex; flex-direction:column; align-items:center; gap:12px; padding: 24px 0; }
+  /* Org chart: editorial, no gradient fill */
+  .org{ display:flex; flex-direction:column; align-items:center; gap:14px; padding: 32px 0 24px; }
   .org .row{ display:flex; gap:14px; flex-wrap:wrap; justify-content:center; }
   .org .box{
-    background: var(--paper); border:1px solid var(--line); border-radius: 10px;
-    padding: 10px 14px; min-width: 160px; text-align:center; box-shadow: var(--sh-1);
+    background: transparent; border: 1px solid var(--rule-soft); border-radius: 2px;
+    padding: 12px 16px; min-width: 168px; text-align:center; box-shadow: none;
   }
   .org .box.exec{
-    background: linear-gradient(180deg, var(--primary) 0%, var(--primary-3) 100%);
-    color:#fff; border-color:transparent;
+    background: var(--paper);
+    border: 1px solid var(--ink); border-color: var(--ink);
+    color: var(--ink);
   }
-  .org .box.exec .role{ color:rgba(255,255,255,.85); }
-  .org .box .name{ font-weight:600; font-size:13.5px; }
-  .org .box .role{ font-size:11px; color:var(--mid); margin-top:2px;
-    font-family:'JetBrains Mono', monospace; letter-spacing:.04em; }
-  .org .line{ width:2px; height:18px; background: var(--mid-2); opacity:.4; }
+  .org .box.exec .role{ color: var(--mid); }
+  .org .box .name{
+    font-family:'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 16px;
+  }
+  .org .box .role{ font-size:11.5px; color:var(--mid); margin-top:4px;
+    font-family:'Inter', sans-serif; letter-spacing: 0; }
+  .org .line{ width:1px; height:24px; background: var(--rule); opacity: 1; }
 
   /* Code blocks */
-  pre{ background: var(--ink); color: #E5E5EE; padding:14px 18px; border-radius:var(--r-md);
-    font-family:'JetBrains Mono', monospace; font-size:12.5px; line-height:1.55; overflow:auto;
-    margin: 12px 0; }
-  pre .c{ color: #82B6E7; } /* comment */
-  pre .k{ color: #F4D38C; } /* keyword */
-  pre .s{ color: #B7D6C0; } /* string */
-  pre .n{ color: #F0B7C2; } /* identifier */
-  code.k{ background: var(--paper-2); border:1px solid var(--line);
-    border-radius:5px; padding: 1px 6px; font-family:'JetBrains Mono', monospace; font-size: 12px; }
+  pre{
+    background: var(--ink); color: #ECE6D6;
+    padding: 18px 22px; border-radius: 2px;
+    font-family:'JetBrains Mono', monospace; font-size:13px; line-height:1.55; overflow:auto;
+    margin: 16px 0;
+  }
+  pre .c{ color: #9BB8D8; }
+  pre .k{ color: #E8C97A; }
+  pre .s{ color: #B7D6C0; }
+  pre .n{ color: #F0B7C2; }
+  code.k{
+    background: transparent; border: 1px solid var(--rule-soft);
+    border-radius: 2px; padding: 1px 6px;
+    font-family:'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-2);
+  }
 
   /* 2 col split */
-  .cols-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-  @media (max-width: 760px){ .cols-2{ grid-template-columns: 1fr; } }
-  .cols-3{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
-  @media (max-width: 760px){ .cols-3{ grid-template-columns: 1fr; } }
+  .cols-2{ display:grid; grid-template-columns: 1fr 1fr; gap: 32px; margin: 8px 0 16px; }
+  @media (max-width: 760px){ .cols-2{ grid-template-columns: 1fr; gap: 18px; } }
+  .cols-3{ display:grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin: 8px 0 16px; }
+  @media (max-width: 760px){ .cols-3{ grid-template-columns: 1fr; gap: 18px; } }
 
-  /* Bullet card */
-  .card{ background: var(--paper-2); border:1px solid var(--line); border-radius: var(--r-md); padding: 16px 18px; }
-  .card h4{ margin: 0 0 6px; font-size:14px; }
-  .card p{ font-size:13px; color:var(--mid); margin:0; line-height:1.55; }
+  /* Card: minimal block with a hairline rule on top */
+  .card{
+    background: transparent;
+    border: none; border-top: 1px solid var(--rule);
+    border-radius: 0; padding: 16px 0 8px;
+  }
+  .card h4{
+    margin: 0 0 8px;
+    font-family: 'Fraunces', serif; font-style: italic; font-weight: 500;
+    font-size: 17px; color: var(--ink);
+  }
+  .card p{ font-size:14.5px; color:var(--ink); margin:0; line-height: 1.6; }
+
+  /* Iridescent text accent, used very sparingly (the masthead only) */
+  .iri-text{
+    background: linear-gradient(110deg, var(--ink) 0%, var(--accent) 35%, var(--gold) 55%, var(--warm) 75%, var(--ink) 100%);
+    background-size: 200% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
 
   /* Footer */
-  footer.footer{ margin-top: 48px; padding: 28px 32px; text-align:center; color:var(--mid); font-size:12px;
-    border-top:1px solid var(--line); }
-  footer .display{ font-size: 18px; color:var(--ink); }
+  footer.footer{
+    margin-top: 64px; padding: 32px 0 12px; text-align: left;
+    color: var(--mid); font-size: 13px;
+    border-top: 1px solid var(--rule);
+    font-family: 'Fraunces', serif; font-style: italic;
+  }
+  footer .display{ font-size: 22px; color: var(--ink); display: block; margin-bottom: 6px; }
+  footer p{ margin: 4px 0; font-style: italic; }
 
-  /* Anchor offset for sticky TOC */
+  /* Anchor offset */
   section.s, header.hero{ scroll-margin-top: 24px; }
 </style>
 </head>
@@ -248,7 +416,7 @@
       <li><a href="#team">Team structure &amp; headcount</a></li>
       <li><a href="#adrs">Key architectural decisions</a></li>
       <li><a href="#vendors">Vendor matrix</a></li>
-      <li><a href="#roadmap">Phased roadmap &amp; cost</a></li>
+      <li><a href="#roadmap">Roadmap and cost</a></li>
     </ol>
     <h6 style="margin-top: 28px;">Companion</h6>
     <ol style="counter-reset: toc 0;">
@@ -266,17 +434,22 @@
 
     <!-- HERO ─────────────────────────────────────────── -->
     <header class="hero">
-      <span class="tag"><span class="dot"></span> v1.0 · 2026-05-13 · For exec review</span>
-      <div class="mono" style="font-size:11px; color:var(--mid); letter-spacing:.16em; text-transform:uppercase; margin-top:14px;">Architecture documentation</div>
-      <h1>Mal · SME Banking <span class="iri-text">for the UAE</span></h1>
+      <div class="masthead">
+        <span class="crest" style="width:28px; height:28px; border-radius:50%; background: conic-gradient(from 90deg, var(--iri-1), var(--iri-2), var(--iri-3), var(--iri-4), var(--iri-1)); display:inline-flex; align-items:center; justify-content:center; font-family:'Fraunces', serif; font-style:italic; font-weight:500; color:var(--ink); font-size:14px; box-shadow: inset 0 0 0 2px var(--paper);">m</span>
+        <span style="font-family:'Fraunces', serif; font-style:italic; font-weight:500; font-size:16px; color:var(--ink);">Mal</span>
+        <span style="flex:1; height:1px; background:var(--rule-soft);"></span>
+        <span class="tag"><span class="dot"></span> Architecture, v1.0</span>
+      </div>
+      <div class="pretitle">Architecture documentation, for exec review</div>
+      <h1>An SME bank, <span class="em iri-text">built for the UAE</span></h1>
       <p class="lede">
-        A reference architecture, vendor stack, team model, and 24-month execution plan for launching Mal: a Sharia-native, AI-augmented, cloud-resident bank for UAE small and medium businesses (5–50 FTE). The product surface is multi-currency accounts, expense management, Murabaha-compliant invoice financing, and an integrated accounting and insights layer.
+        A reference architecture, a vendor stance, a team model, and a build sequence for launching Mal. The launch surface is four things: multi-currency accounts, Murabaha-compliant invoice financing, expense management, and integrated accounting. Around them sits an AI-native decisioning platform, a Sharia compliance engine, and a regulator-aligned audit fabric.
       </p>
       <div class="meta">
-        <div><b>Customer</b> · UAE SME · 5–50 employees · mainland + free-zone</div>
-        <div><b>Licensing path</b> · CBUAE Finance Company → SVF → Specialised Bank</div>
-        <div><b>Cloud</b> · AWS me-central-1 (Abu Dhabi)</div>
-        <div><b>Sharia</b> · AAOIFI · SSB · quarterly audit</div>
+        <div><b>Customer</b>UAE SMEs of 5 to 50 employees, mainland and free zone.</div>
+        <div><b>Licensing path</b>ADGM FSP Category 2 plus Category 4, with optional RegLab sandbox.</div>
+        <div><b>Cloud</b>AWS me-central-1 in Abu Dhabi, DR in me-south-1.</div>
+        <div><b>Sharia</b>AAOIFI-aligned, SSB-governed, audited quarterly.</div>
       </div>
     </header>
 
@@ -285,26 +458,14 @@
     <section class="s" id="summary">
       <div class="kicker">§ 01 · Executive summary</div>
       <h2>What we're building</h2>
-      <p class="lede">Mal is an SME-only bank for the UAE, targeting businesses of 5 to 50 employees. The launch surface is four features. <b>Multi-currency accounts</b> (AED primary, USD/EUR/GBP). <b>Invoice financing structured as Murabaha</b>. <b>Expense management</b> (per-employee cards, receipt OCR, policy controls). <b>Integrated accounting</b>, with native connectors for Wafeq, Zoho Books, QuickBooks, Xero, Tally, and Codat for the long tail. Around those four sits an AI-native decisioning platform, a Sharia compliance engine, and a regulator-aligned audit fabric.</p>
+      <p class="lede">Mal is an SME bank for the UAE, serving businesses of 5 to 50 employees. The launch surface is four things. Multi-currency accounts. Invoice financing structured as Murabaha. Expense management. Integrated accounting with native connectors for the tools UAE SMEs already use. Around those four sits an AI-native decisioning platform, a Sharia compliance engine, and a regulator-aligned audit fabric.</p>
 
-      <div class="stats">
-        <div class="stat"><div class="l">Y1 target</div><div class="v">2,500</div><div class="s">active SME accounts</div></div>
-        <div class="stat"><div class="l">Y2 target</div><div class="v">12,000</div><div class="s">active SME accounts</div></div>
-        <div class="stat"><div class="l">Time to fund</div><div class="v">&lt; 4h</div><div class="s">invoice to supplier wire</div></div>
-        <div class="stat"><div class="l">Express decision</div><div class="v">&lt; 4 hours</div><div class="s">tickets ≤ AED 250K, fully automated</div></div>
-      </div>
+      <h3>The principles</h3>
+      <p><b>Build over buy.</b> Software is cheaper to build than it has been at any point in our careers. With a small, senior, AI-native engineering team and modern tooling, the parts of the stack that touch our customers, our policy, or our IP are faster to build than to integrate, and we end up owning the product. We buy where the value is genuinely ecosystem-wide (fraud, sanctions), where the regulator mandates the counterparty (AECB), or where the system is a true commodity (cards, identity rails). Everything else is built in-house.</p>
 
-      <h3>The three things that shape every other choice</h3>
-      <p><b>Build over buy.</b> Software is cheaper to build than it has been at any point in our careers. With a tight, AI-native engineering team and modern tooling, the parts of the stack that touch our customers, our policy, or our IP are faster to build than to integrate, and we end up owning the product. We buy where the value is genuinely ecosystem-wide (fraud signal sharing, sanctions watch-lists), where the regulator mandates the counterparty (AECB), or where the system is a commodity (cards, identity rails). Everything else is built in-house from day one.</p>
+      <p><b>Sharia by design.</b> Every product is contract-typed in the data model. Invoice finance is a true-sale Murabaha, cost plus profit, deferred payment, under a fatwa from Dar Al Sharia or Shariyah Review Bureau, AAOIFI-aligned, and submitted to the UAE Higher Sharia Authority before launch. Late fees never accrue to Mal income. They go to charity, and the customer sees the destination on their statement.</p>
 
-      <p><b>Sharia by design, not bolt-on.</b> Every product is contract-typed in the data model. Invoice finance is a true-sale Murabaha, with cost plus profit and deferred payment, under a fatwa from Dar Al Sharia or Shariyah Review Bureau. It complies with AAOIFI standards and is submitted to the UAE Higher Sharia Authority (HSA) before launch. Late fees never accrue to Mal income; they go to charity (Ta'widh) and the customer sees the destination on their statement.</p>
-
-      <p><b>UAE-resident and CBUAE-aligned.</b> The primary licence is <b>ADGM FSP Category 2 (Providing Credit) plus Category 4 (Operating a Private Financing Platform)</b>, with the option to use ADGM RegLab as a sandbox for the BNPL instalment feature inside invoice finance. The CBUAE Customer Protection Regulation for SMEs (effective 13 Sep 2026) is designed into product disclosures from day one. All customer PII and ledger journal data lives on AWS me-central-1 (Abu Dhabi), with warm DR in me-south-1 (Bahrain). Audit trails are immutable for 10 years.</p>
-
-      <div class="callout">
-        <b>The single business question this architecture optimises for</b>
-        How quickly does a UAE SME, one we don't yet know, get from "I have an invoice my buyer wants to pay over 60 days" to "my supplier's account just received the wire", with the contract structured halal under Murabaha, the credit decision explainable, and a regulator-ready audit trail captured end-to-end? The target is under four hours.
-      </div>
+      <p><b>UAE-resident and CBUAE-aligned.</b> The primary licence is ADGM FSP Category 2 (Providing Credit) plus Category 4 (Operating a Private Financing Platform), with ADGM RegLab as an optional sandbox for the BNPL instalment feature inside invoice finance. The CBUAE Customer Protection Regulation for SMEs (effective 13 Sep 2026) is designed into product disclosures from day one. All customer PII and ledger journal data lives on AWS me-central-1, with warm DR in me-south-1. Audit trails are immutable for ten years.</p>
     </section>
 
 
@@ -710,10 +871,19 @@
     <!-- 9 · TEAM ───────────────────────────────────── -->
     <section class="s" id="team">
       <div class="kicker">§ 09 · Team</div>
-      <h2>Team structure &amp; headcount</h2>
-      <p class="lede">A pre-launch team of ~75, growing to ~160 in year two and ~269 by year three. The dominant ratio is operations + servicing-heavy in year one (manual reconciliation, manual KYC review), tilting to engineering + ML by year three as the agent stack absorbs structured work. Indicative all-in payroll: AED 75M Y1 · AED 175M Y2 · AED 320M Y3.</p>
+      <h2>Team</h2>
+      <p class="lede">If we are going to build, we have to staff like a builder. The team is deliberately small, generalist by default, and AI-leveraged in every role. A pre-launch team of around thirty, growing to roughly sixty by year two and a hundred by year three. The shape matters more than the number. Each pod owns an outcome end to end. PMs ship features alongside engineers. Senior generalists outnumber narrow specialists, because what compounds in this kind of company is the ability to learn, not a particular skill.</p>
 
-      <h3>9.1 · Org chart (Year 2 · ~160 FTE)</h3>
+      <h3>9.1 · The hiring philosophy</h3>
+      <p>Three commitments shape who we hire and how the work flows.</p>
+      <ul>
+        <li><b>General intelligence and agency over deep specialism.</b> Unless a role is specifically regulated (Sharia scholar, MLRO, CFO with banking experience), we hire generalists who can learn the domain quickly and who know how to use AI to multiply their output. Banking experience is useful, not required. What is required is the ability to think clearly, ship, and pick up a new system in a week.</li>
+        <li><b>Small pods, full ownership.</b> A pod is two to four people. It owns a customer outcome end to end (onboarding, decisioning, payments, accounting, expense, support). PMs are part of the pod and ship features alongside engineers. Design lives inside the pod. The pod sets its own cadence.</li>
+        <li><b>Minimal bureaucracy.</b> No multi-week sprint ceremonies. No long approval chains. Quarterly objectives, weekly check-ins, daily decisions made by the person closest to the problem.</li>
+      </ul>
+
+      <h3>9.2 · Year 2 shape</h3>
+      <p>The Year 2 organisation is roughly six pods plus a thin spine of risk, compliance, finance, ops, and commercial. The shape:</p>
 
       <div class="org">
         <div class="row">
@@ -721,84 +891,58 @@
         </div>
         <div class="line"></div>
         <div class="row">
-          <div class="box exec"><div class="name">CTO</div><div class="role">Engineering · 48 FTE</div></div>
-          <div class="box exec"><div class="name">CPO</div><div class="role">Product &amp; Design · 14 FTE</div></div>
-          <div class="box exec"><div class="name">CRO</div><div class="role">Risk · 9 FTE</div></div>
-          <div class="box exec"><div class="name">CCO</div><div class="role">Compliance · 12 FTE</div></div>
-          <div class="box exec"><div class="name">Head of Sharia</div><div class="role">Sharia · 4 FTE + 3 ext.</div></div>
-          <div class="box exec"><div class="name">COO</div><div class="role">Operations · 18 FTE</div></div>
-          <div class="box exec"><div class="name">CCO</div><div class="role">Commercial · 9 FTE</div></div>
-          <div class="box exec"><div class="name">CFO</div><div class="role">Finance · 6 FTE</div></div>
+          <div class="box exec"><div class="name">CTO</div><div class="role">Engineering, six pods</div></div>
+          <div class="box exec"><div class="name">CPO</div><div class="role">Product, embedded in pods</div></div>
+          <div class="box exec"><div class="name">CRO</div><div class="role">Risk</div></div>
+          <div class="box exec"><div class="name">CCO</div><div class="role">Compliance</div></div>
+          <div class="box exec"><div class="name">Head of Sharia</div><div class="role">Sharia, with external SSB</div></div>
+          <div class="box exec"><div class="name">COO</div><div class="role">Ops, CS, vendor mgmt</div></div>
+          <div class="box exec"><div class="name">CFO</div><div class="role">Finance, treasury</div></div>
         </div>
       </div>
 
-      <h4 style="margin-top:32px;">Engineering (48)</h4>
-      <ul>
-        <li><b>Platform · 8</b> · Kubernetes, observability, CI/CD, developer experience.</li>
-        <li><b>Banking core · 10</b> · Payments orchestrator, Mambu integration, ledger services, card platform.</li>
-        <li><b>Lending engine · 6</b> · Murabaha contract engine, EMI, collections.</li>
-        <li><b>Customer apps · 12</b> · iOS, Android, Web (4 each).</li>
-        <li><b>Data &amp; AI · 8</b> · Data eng (4), ML eng (4); plus a Head of Data.</li>
-        <li><b>SRE · 3</b> · On-call rotation; chaos engineering.</li>
-        <li><b>Security · 3</b> · AppSec, infrastructure, IAM. Reports dotted-line to CCO.</li>
-      </ul>
+      <h4>Engineering and product (around 25)</h4>
+      <p>Six pods of three to four. Each pod has a PM, two or three engineers, and a designer dropping in where needed. The pods own: customer apps and onboarding, decisioning and pricing, payments and Murabaha, accounts and FX, expense and accounting integrations, AI and data platform. SRE and security are part-time roles shared across pods, not separate teams. Senior engineers run the platform on the side.</p>
 
-      <h4>Product &amp; Design (14)</h4>
-      <ul>
-        <li>1 CPO · 6 PMs (Banking, Lending, Sharia, AI/ML, Onboarding, Cards) · 5 designers · 2 user researchers.</li>
-      </ul>
+      <h4>Risk (around 6)</h4>
+      <p>One CRO. Two credit officers who own the policy in the Decision Engine and review every Standard and Enhanced case. Two fraud ops who tune the fraud vendor and work the queues. One operational risk owner.</p>
 
-      <h4>Risk (9)</h4>
-      <ul>
-        <li>1 CRO · 3 Credit risk analysts · 2 Operational risk · 3 Fraud Ops.</li>
-      </ul>
+      <h4>Compliance (around 6)</h4>
+      <p>One CCO who is the regulator-facing leader. One MLRO. Two AML analysts. One KYC ops lead. One internal audit and DPO combined.</p>
 
-      <h4>Compliance (12)</h4>
-      <ul>
-        <li>1 CCO (regulator-facing) · 1 MLRO · 3 AML analysts · 2 KYC/KYB ops · 2 Regulatory reporting · 1 Internal Audit · 1 DPO · 1 SOC analyst.</li>
-      </ul>
+      <h4>Sharia (2 internal plus 3 external)</h4>
+      <p>One Head of Sharia who is full-time. One Sharia analyst who owns the product reviews and the audit sample. Three AAOIFI-certified scholars on retainer who meet monthly.</p>
 
-      <h4>Sharia (4 FTE + 3 external SSB scholars)</h4>
-      <ul>
-        <li>1 Head of Sharia · 1 SSB secretariat · 1 Sharia auditor · 1 Sharia product analyst.</li>
-        <li>External: 3 AAOIFI-certified scholars on retainer.</li>
-      </ul>
+      <h4>Operations and CS (around 12)</h4>
+      <p>One COO. Bilingual CS team of six covering twelve hours a day. Three onboarding and recon ops. One vendor management lead. One workplace and BCP / DR. CS escalations into the engineering pods through a clear runbook, not a long handover.</p>
 
-      <h4>Operations (18)</h4>
-      <ul>
-        <li>1 COO · 8 Customer support (bilingual EN/AR, 12×7 coverage) · 3 Onboarding ops · 2 Reconciliation &amp; Treasury ops · 2 Vendor mgmt · 1 BCP/DR · 1 Workplace.</li>
-      </ul>
+      <h4>Commercial (around 5)</h4>
+      <p>One Head of Commercial. Two sales (SME field, broker / accountant channel). One partnerships lead (ERP partners, ASP partners). One brand and marketing generalist.</p>
 
-      <h4>Commercial (9)</h4>
-      <ul>
-        <li>1 Chief Commercial Officer · 3 Sales (SME field, broker channel) · 2 Partnerships (accountants, ERP partners) · 2 Marketing · 1 Brand.</li>
-      </ul>
+      <h4>Finance (around 4)</h4>
+      <p>One CFO. One treasury lead. One controller. One FP&amp;A.</p>
 
-      <h4>Finance (6)</h4>
-      <ul>
-        <li>1 CFO · 2 Treasury · 1 FP&amp;A · 1 Controller · 1 Investor Relations.</li>
-      </ul>
-
-      <h3>9.2 · Phased hiring</h3>
+      <h3>9.3 · Headcount over time</h3>
       <table class="t">
         <thead><tr><th>Function</th><th>Year 1</th><th>Year 2</th><th>Year 3</th></tr></thead>
         <tbody>
-          <tr><td>Product (PMs + designers)</td><td>8</td><td>14</td><td>20</td></tr>
-          <tr><td>Engineering</td><td>20</td><td>40</td><td>65</td></tr>
-          <tr><td>Data &amp; ML</td><td>5</td><td>10</td><td>16</td></tr>
-          <tr><td>Risk &amp; credit</td><td>8</td><td>16</td><td>26</td></tr>
-          <tr><td>Operations &amp; servicing</td><td>10</td><td>30</td><td>60</td></tr>
-          <tr><td>Sales &amp; partnerships</td><td>8</td><td>20</td><td>35</td></tr>
-          <tr><td>Compliance &amp; legal</td><td>5</td><td>10</td><td>15</td></tr>
-          <tr><td>Finance &amp; treasury</td><td>5</td><td>8</td><td>12</td></tr>
-          <tr><td>G&amp;A</td><td>6</td><td>12</td><td>20</td></tr>
-          <tr><td><b>Total FTE</b></td><td><b>75</b></td><td><b>160</b></td><td><b>269</b></td></tr>
+          <tr><td>Engineering and product</td><td>10</td><td>25</td><td>40</td></tr>
+          <tr><td>Risk</td><td>3</td><td>6</td><td>10</td></tr>
+          <tr><td>Compliance</td><td>3</td><td>6</td><td>9</td></tr>
+          <tr><td>Sharia (internal)</td><td>1</td><td>2</td><td>3</td></tr>
+          <tr><td>Operations and CS</td><td>5</td><td>12</td><td>22</td></tr>
+          <tr><td>Commercial</td><td>3</td><td>5</td><td>9</td></tr>
+          <tr><td>Finance</td><td>2</td><td>4</td><td>6</td></tr>
+          <tr><td>G&amp;A and CEO office</td><td>3</td><td>4</td><td>6</td></tr>
+          <tr><td><b>Total</b></td><td><b>30</b></td><td><b>64</b></td><td><b>105</b></td></tr>
         </tbody>
       </table>
 
+      <p class="muted">These numbers assume an AI-leveraged team where each person produces what would have taken three to five people in a process-heavy bank. The traditional shape (twice the engineering, three times the ops) would deliver the same product later and at higher cost.</p>
+
       <div class="callout">
         <b>Bilingualism is non-negotiable</b>
-        Every customer-facing role (CS, Onboarding Ops, Sales, Marketing) and every public-output role (PMs, Designers, Brand) must operate fluently in Arabic and English. Hiring policy reflects this.
+        Every customer-facing role and every public-output role operates fluently in Arabic and English. The hiring filter reflects that.
       </div>
     </section>
 
@@ -905,16 +1049,16 @@
     <!-- 11 · BUILD vs BUY ─────────────────────────── -->
     <section class="s" id="vendors">
       <div class="kicker">§ 11 · Build vs Buy</div>
-      <h2>Build over buy. Two real exceptions.</h2>
+      <h2>Build over buy</h2>
       <p class="lede">The cost of building software has dropped dramatically. AI-assisted coding has automated something like 90 percent of routine implementation work, and the number is still climbing. What used to take a fifteen-person team six months can now be delivered by three to five high-agency developers and PMs who actually understand the business. The traditional SaaS licensing model, where you pay a vendor for a configurable but ultimately generic platform, is becoming less relevant for the parts of a bank that touch the customer, the policy, or the IP. The cost of building has collapsed. The cost of being locked into someone else's product roadmap has not.</p>
 
-      <h3>11.1 · The two genuine vendor exceptions</h3>
+      <h3>11.1 · The exceptions</h3>
       <div class="cols-2">
         <div class="card"><h4>Regulator-mandated services</h4><p>Credit bureau (AECB), licensed KYC and AML providers, sanctions screening, and commodity trading platforms for Sharia execution (DMCC, Bursa Suq Al-Sila). These are compliance requirements. They are not technology choices.</p></div>
         <div class="card"><h4>Fraud intelligence</h4><p>Hub-and-spoke. A fraud vendor integrated across hundreds of institutions sees a compromised IP, a synthetic identity, or a spoofed device days before any individual lender can catch it internally. That network effect is not something you replicate by building. This is fundamentally different from a Decision Engine or an LOS, where the value is in your own proprietary logic.</p></div>
       </div>
 
-      <h3>11.2 · The phased reality</h3>
+      <h3>11.2 · Licence at launch, migrate later</h3>
       <p>For systems where a mistake is costly on day one, we license to de-risk launch and migrate later. The clearest example is the LMS. Ledger accuracy is non-negotiable, and getting it wrong in production is not something you want to debug under pressure. We license a proven LMS (Mambu or equivalent) for launch, then build the in-house replacement once we understand exact requirements from live operations.</p>
       <p>The architectural commitment that makes this work is composability. Every vendor-integrated module sits behind a clean API contract from day one, so the migration to an in-house module is a backend switch and not a re-architecture. We can run vendor and in-house side-by-side in shadow mode before cutting over. The same logic applies to collections, which starts manual at low volume and gets a dedicated platform as NPL volume justifies it.</p>
 
@@ -1000,7 +1144,7 @@
     <!-- 12 · ROADMAP ──────────────────────────────── -->
     <section class="s" id="roadmap">
       <div class="kicker">§ 12 · Roadmap</div>
-      <h2>Phased roadmap &amp; cost envelope</h2>
+      <h2>Roadmap and cost</h2>
       <p class="lede">A 24-month plan tied to regulatory milestones. Each phase has a clear technical exit criterion and a cost band.</p>
 
       <h3>Q3 2026 · Foundations (launch quarter)</h3>
@@ -1053,15 +1197,15 @@
       </ul>
       <p><b>Exit:</b> 12,000 SMEs, AED 1.2B financed cumulatively in Y2, ops cost per active SME &lt; AED 60/month.</p>
 
-      <h3>Cost envelope · steady state Year 2</h3>
+      <h3>Cost, steady state Year 2</h3>
       <div class="stats">
-        <div class="stat"><div class="l">People (160 FTE)</div><div class="v">~AED 175M</div><div class="s">blended cost · payroll-dominant</div></div>
-        <div class="stat"><div class="l">Infra · vendors</div><div class="v">~AED 10M</div><div class="s">cloud + SaaS + rails + ASPs</div></div>
-        <div class="stat"><div class="l">Reg · audit · legal</div><div class="v">~AED 6M</div><div class="s">ADGM + CBUAE + external audit + SSB</div></div>
-        <div class="stat"><div class="l">GTM</div><div class="v">~AED 12M</div><div class="s">marketing · sales · partnerships</div></div>
+        <div class="stat"><div class="l">People (around 60 FTE)</div><div class="v">~AED 65M</div><div class="s">small senior team, AI-leveraged</div></div>
+        <div class="stat"><div class="l">Vendors and infra</div><div class="v">~AED 8M</div><div class="s">cloud, SaaS, rails, ASPs</div></div>
+        <div class="stat"><div class="l">Regulator, audit, legal</div><div class="v">~AED 5M</div><div class="s">ADGM, CBUAE, external audit, SSB</div></div>
+        <div class="stat"><div class="l">GTM</div><div class="v">~AED 10M</div><div class="s">marketing, sales, partnerships</div></div>
       </div>
 
-      <p class="muted">Total Year 2 opex envelope ≈ AED 200M. Revenue at Year 2 target (12K SMEs, AED 1.2B avg outstanding book) drives toward operating break-even by mid-Year 3 at conservative monetisation.</p>
+      <p class="muted">Total Year 2 opex is roughly AED 90M, almost half what a traditionally-staffed bank at the same volume would carry. The lower figure is the consequence of the build-first, small-team approach.</p>
 
       <div class="callout success">
         <b>What this architecture is built to survive</b>
